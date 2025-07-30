@@ -31,7 +31,6 @@ export function ClaudeTerminal({ worktreePath }: ClaudeTerminalProps) {
   useEffect(() => {
     if (!terminalRef.current) return;
 
-    console.log('Initializing terminal...');
 
     // Create terminal instance
     const term = new Terminal({
@@ -161,7 +160,6 @@ export function ClaudeTerminal({ worktreePath }: ClaudeTerminalProps) {
         }
 
         processIdRef.current = result.processId!;
-        console.log(`Shell started: ${result.processId}, isNew: ${result.isNew}, worktree: ${worktreePath}`);
 
         // Handle terminal state
         if (result.isNew) {

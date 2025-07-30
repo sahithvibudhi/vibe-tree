@@ -44,6 +44,19 @@ const api = {
   },
   dialog: {
     selectDirectory: () => ipcRenderer.invoke('dialog:select-directory')
+  },
+  notifications: {
+    onNotification: (callback: (notification: {
+      type: string;
+      worktree: string;
+      projectName: string;
+      message?: string;
+    }) => void) => {
+      ipcRenderer.on('notification', (_, notification) => callback(notification));
+    },
+    onFocusWorktree: (callback: (worktreePath: string) => void) => {
+      ipcRenderer.on('focus-worktree', (_, worktreePath) => callback(worktreePath));
+    }
   }
 };
 

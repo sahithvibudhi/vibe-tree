@@ -8,7 +8,7 @@
     "dev:main": "tsc -w -p tsconfig.main.json",
     "dev:preload": "tsc -w -p tsconfig.preload.json",
     "dev:renderer": "vite",
-    "dev:electron": "wait-on tcp:5173 && wait-on dist/main/index.js && wait-on dist/preload/index.js && electron .",
+    "dev:electron": "wait-on tcp:5173 && wait-on dist/main/index.js && wait-on dist/preload/index.js && sleep 1 && electron .",
     "build": "npm run build:main && npm run build:preload && npm run build:renderer",
     "build:main": "tsc -p tsconfig.main.json",
     "build:preload": "tsc -p tsconfig.preload.json",

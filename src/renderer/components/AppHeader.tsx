@@ -1,5 +1,6 @@
 import { Button } from './ui/button';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, Bell, BellOff } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 interface AppHeaderProps {
   className?: string;
@@ -8,6 +9,22 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ className = '', theme, onThemeToggle }: AppHeaderProps) {
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+  useEffect(() => {
+    // Load notification preference from localStorage
+    const saved = localStorage.getItem('notificationsEnabled');
+    if (saved !== null) {
+      setNotificationsEnabled(saved === 'true');
+    }
+  }, []);
+
+  const toggleNotifications = () => {
+    const newValue = !notificationsEnabled;
+    setNotificationsEnabled(newValue);
+    localStorage.setItem('notificationsEnabled', String(newValue));
+  };
+
   return (
     <div 
       className={`border-b relative select-none ${className}`}
@@ -34,19 +51,36 @@ export function AppHeader({ className = '', theme, onThemeToggle }: AppHeaderPro
             Vibe code with AI in parallel git worktrees
           </p>
         </div>
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={onThemeToggle}
-          className="rounded-full"
-          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-        >
-          {theme === 'dark' ? (
-            <Sun className="h-5 w-5" />
-          ) : (
-            <Moon className="h-5 w-5" />
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={toggleNotifications}
+            className="rounded-full"
+            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+            title={notificationsEnabled ? 'Disable notifications' : 'Enable notifications'}
+          >
+            {notificationsEnabled ? (
+              <Bell className="h-5 w-5" />
+            ) : (
+              <BellOff className="h-5 w-5" />
+            )}
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={onThemeToggle}
+            className="rounded-full"
+            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? (
+              <Sun className="h-5 w-5" />
+            ) : (
+              <Moon className="h-5 w-5" />
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -2,6 +2,8 @@ import { app, BrowserWindow, ipcMain, nativeTheme, dialog } from 'electron';
 import path from 'path';
 import { spawn } from 'child_process';
 import { shellProcessManager } from './shell-manager';
+import { notificationServer } from './notification-server';
+import { claudeHooksManager } from './claude-hooks-manager';
 import './ide-detector';
 
 let mainWindow: BrowserWindow | null = null;
@@ -34,13 +36,27 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+
+  // Set the main window reference for the notification server
+  notificationServer.setMainWindow(mainWindow);
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(async () => {
+  // Start notification server first
+  notificationServer.start();
+  
+  // Setup global Claude hooks
+  await claudeHooksManager.ensureGlobalHooks();
+  
+  // Then create window
+  createWindow();
+  
+});
 
-// Clean up shell processes on quit
+// Clean up on quit
 app.on('before-quit', () => {
   shellProcessManager.cleanup();
+  notificationServer.stop();
 });
 
 app.on('window-all-closed', () => {
@@ -124,18 +140,29 @@ ipcMain.handle('dialog:select-directory', async () => {
   const result = await dialog.showOpenDialog({
     properties: ['openDirectory']
   });
-  return result.filePaths[0];
+  const selectedPath = result.filePaths[0];
+  
+  // Ensure Claude hooks are set up for this project
+  if (selectedPath) {
+    await claudeHooksManager.ensureProjectHooks(selectedPath);
+  }
+  
+  return selectedPath;
 });
 
 function parseWorktrees(output: string): Array<{ path: string; branch: string; head: string }> {
   const lines = output.trim().split('\n');
-  const worktrees = [];
-  let current: any = {};
+  const worktrees: Array<{ path: string; branch: string; head: string }> = [];
+  let current: { path?: string; head?: string; branch?: string } = {};
 
   for (const line of lines) {
     if (line.startsWith('worktree ')) {
-      if (current.path) {
-        worktrees.push(current);
+      if (current.path && current.head && current.branch) {
+        worktrees.push({
+          path: current.path,
+          head: current.head,
+          branch: current.branch
+        });
       }
       current = { path: line.substring(9) };
     } else if (line.startsWith('HEAD ')) {
@@ -145,8 +172,12 @@ function parseWorktrees(output: string): Array<{ path: string; branch: string; h
     }
   }
 
-  if (current.path) {
-    worktrees.push(current);
+  if (current.path && current.head && current.branch) {
+    worktrees.push({
+      path: current.path,
+      head: current.head,
+      branch: current.branch
+    });
   }
 
   return worktrees;
