@@ -32,7 +32,6 @@ export function ClaudeTerminal({ worktreePath, theme = 'dark' }: ClaudeTerminalP
   useEffect(() => {
     if (!terminalRef.current) return;
 
-    console.log('Initializing terminal...');
 
     // Create terminal instance with theme-aware colors
     const getTerminalTheme = (currentTheme: 'light' | 'dark') => {
@@ -192,7 +191,6 @@ export function ClaudeTerminal({ worktreePath, theme = 'dark' }: ClaudeTerminalP
         }
 
         processIdRef.current = result.processId!;
-        console.log(`Shell started: ${result.processId}, isNew: ${result.isNew}, worktree: ${worktreePath}`);
 
         // Handle terminal state
         if (result.isNew) {

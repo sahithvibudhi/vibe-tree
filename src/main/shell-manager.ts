@@ -6,7 +6,7 @@ interface ShellProcess {
   pty: pty.IPty;
   worktreePath: string;
   processId: string;
-  listeners: Map<string, { handler: (data: string) => void; disposable?: any }>;
+  listeners: Map<string, { handler: (data: string) => void; disposable?: { dispose: () => void } }>;
 }
 
 class ShellProcessManager {
@@ -113,7 +113,6 @@ class ShellProcessManager {
       });
 
       // Log process creation
-      console.log(`Started PTY process ${processId} in ${worktreePath}`);
 
       return { success: true, processId, isNew: true };
     } catch (error) {
@@ -127,7 +126,6 @@ class ShellProcessManager {
   private async writeToProcess(processId: string, data: string) {
     const process = this.processes.get(processId);
     if (!process || !process.pty) {
-      console.error(`PTY not found: ${processId}`);
       return { success: false, error: 'PTY not found' };
     }
 
@@ -135,7 +133,6 @@ class ShellProcessManager {
       process.pty.write(data);
       return { success: true };
     } catch (error) {
-      console.error(`Error writing to PTY ${processId}:`, error);
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Failed to write to PTY' 
@@ -153,7 +150,6 @@ class ShellProcessManager {
       process.pty.resize(cols, rows);
       return { success: true };
     } catch (error) {
-      console.error(`Error resizing PTY ${processId}:`, error);
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Failed to resize PTY' 
@@ -185,7 +181,7 @@ class ShellProcessManager {
         shell.listeners.clear();
         shell.pty.kill();
       } catch (error) {
-        console.error('Error killing PTY process:', error);
+        // Process might already be dead
       }
     }
   }

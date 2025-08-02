@@ -7,6 +7,7 @@
   
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
   [![Release](https://img.shields.io/github/v/release/sahithvibudhi/vibe-tree)](https://github.com/sahithvibudhi/vibe-tree/releases)
+  ![Status: Active Development](https://img.shields.io/badge/Status-Active%20Development-orange)
 </div>
 
 ---

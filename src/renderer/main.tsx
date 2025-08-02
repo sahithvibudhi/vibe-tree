@@ -16,7 +16,6 @@ const rootElement = document.getElementById('root');
 if (!rootElement) {
   console.error('Root element not found!');
 } else {
-  console.log('Rendering app...');
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
       <App />
