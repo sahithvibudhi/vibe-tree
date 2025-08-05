@@ -36,7 +36,12 @@
         "arch": ["x64"]
       }
     ],
-    "icon": "assets/icons/VibeTree.png"
+    "icon": "assets/icons/VibeTree.png",
+    "certificateSubjectName": null,
+    "certificateSha1": null,
+    "signingHashAlgorithms": ["sha256"],
+    "rfc3161TimeStampServer": "http://timestamp.digicert.com",
+    "signDlls": true
   },
   "nsis": {
     "oneClick": false,
