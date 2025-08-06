@@ -12,22 +12,40 @@
   "publish": null,
   "mac": {
     "category": "public.app-category.developer-tools",
-    "hardenedRuntime": true,
-    "gatekeeperAssess": false,
     "icon": "assets/icons/VibeTree.png",
+    "notarize": false,
     "target": [
       {
         "target": "dmg",
         "arch": ["x64", "arm64"]
       },
       {
-        "target": "zip",
+        "target": "zip", 
         "arch": ["x64", "arm64"]
       }
     ]
   },
   "dmg": {
-    "artifactName": "${productName}-${version}-${arch}.${ext}"
+    "sign": false,
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "background": "build/background.png",
+    "contents": [
+      {
+        "x": 130,
+        "y": 220
+      },
+      {
+        "x": 410,
+        "y": 220,
+        "type": "link",
+        "path": "/Applications"
+      }
+    ],
+    "window": {
+      "width": 540,
+      "height": 380
+    },
+    "format": "ULFO"
   },
   "win": {
     "target": [
