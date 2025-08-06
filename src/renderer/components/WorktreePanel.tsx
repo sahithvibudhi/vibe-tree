@@ -3,7 +3,7 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
-import { GitBranch, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { GitBranch, Plus, RefreshCw, Trash2, AlertTriangle } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 
 interface Worktree {
@@ -246,8 +246,9 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
                 <p className="text-sm">
                   <strong>Path:</strong> {worktreeToDelete.path}
                 </p>
-                <p className="text-sm text-destructive mt-2">
-                  ⚠️ Both the worktree directory and git branch will be permanently deleted.
+                <p className="text-sm text-destructive mt-2 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Both the worktree directory and git branch will be permanently deleted.
                 </p>
               </div>
             )}
