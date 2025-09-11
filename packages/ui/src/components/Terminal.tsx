@@ -16,7 +16,6 @@ export interface TerminalConfig {
   cursorBlink?: boolean;
   scrollback?: number;
   tabStopWidth?: number;
-  convertEol?: boolean;
 }
 
 /**
@@ -139,8 +138,7 @@ export const Terminal: React.FC<TerminalProps> = ({
       theme = 'dark',
       cursorBlink = true,
       scrollback = 10000,
-      tabStopWidth = 4,
-      convertEol = true
+      tabStopWidth = 4
     } = config;
 
     // Detect if running on mobile device
@@ -153,7 +151,6 @@ export const Terminal: React.FC<TerminalProps> = ({
       lineHeight: 1.2,
       cursorBlink,
       allowTransparency: false,
-      convertEol, // Required for proper line ending handling
       scrollback,
       tabStopWidth,
       windowsMode: false,

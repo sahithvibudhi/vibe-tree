@@ -111,7 +111,6 @@ export function ClaudeTerminal({
       lineHeight: 1.2,
       cursorBlink: true,
       allowTransparency: false,
-      convertEol: true,
       scrollback: 10000,
       tabStopWidth: 4,
       // Handle screen clearing properly
