@@ -209,7 +209,7 @@ export function ClaudeTerminal({
 
     // Handle keyboard shortcuts for search
     const keyDisposable = term.onKey((e) => {
-      const { key, domEvent } = e;
+      const { domEvent } = e;
       // Ctrl+F or Cmd+F to toggle search
       if ((domEvent.ctrlKey || domEvent.metaKey) && domEvent.key === 'f') {
         domEvent.preventDefault();
