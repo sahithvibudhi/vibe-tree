@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
+import { SearchAddon } from '@xterm/addon-search';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
-import { Code2, Columns2, X } from 'lucide-react';
+import { Code2, Columns2, X, Search } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 import '@xterm/xterm/css/xterm.css';
 
@@ -42,9 +43,30 @@ export function ClaudeTerminal({
   const processIdRef = useRef<string>('');
   const fitAddonRef = useRef<FitAddon | null>(null);
   const serializeAddonRef = useRef<SerializeAddon | null>(null);
+  const searchAddonRef = useRef<SearchAddon | null>(null);
   const removeListenersRef = useRef<Array<() => void>>([]);
   const [detectedIDEs, setDetectedIDEs] = useState<Array<{ name: string; command: string }>>([]);
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
+
+  // Search functionality
+  const handleSearch = useCallback((query: string, direction: 'next' | 'previous' = 'next') => {
+    if (!searchAddonRef.current || !query) return;
+
+    if (direction === 'next') {
+      searchAddonRef.current.findNext(query);
+    } else {
+      searchAddonRef.current.findPrevious(query);
+    }
+  }, []);
+
+  const handleSearchInputChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    if (value) {
+      handleSearch(value);
+    }
+  }, [handleSearch]);
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -139,6 +161,10 @@ export function ClaudeTerminal({
     const unicode11Addon = new Unicode11Addon();
     term.loadAddon(unicode11Addon);
 
+    const searchAddon = new SearchAddon();
+    searchAddonRef.current = searchAddon;
+    term.loadAddon(searchAddon);
+
     // Open terminal in container
     term.open(terminalRef.current);
     
@@ -179,6 +205,22 @@ export function ClaudeTerminal({
         .catch(err => {
           console.error('Bell sound playback failed:', err);
         });
+    });
+
+    // Handle keyboard shortcuts for search
+    const keyDisposable = term.onKey((e) => {
+      const { key, domEvent } = e;
+      // Ctrl+F or Cmd+F to toggle search
+      if ((domEvent.ctrlKey || domEvent.metaKey) && domEvent.key === 'f') {
+        domEvent.preventDefault();
+        setSearchVisible(!searchVisible);
+      }
+      // Escape to close search
+      if (domEvent.key === 'Escape' && searchVisible) {
+        setSearchVisible(false);
+        setSearchQuery('');
+        term.focus();
+      }
     });
 
     // Handle resize (both window resize and container resize)
@@ -226,6 +268,7 @@ export function ClaudeTerminal({
       removeListenersRef.current.forEach(remove => remove());
       removeListenersRef.current = [];
       bellDisposable.dispose();
+      keyDisposable.dispose();
       term.dispose();
     };
   }, []); // Empty dependency array - terminal only initializes once
@@ -502,6 +545,14 @@ export function ClaudeTerminal({
           <p className="text-xs text-muted-foreground truncate">{worktreePath}</p>
         </div>
         <div className="flex items-center gap-1">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => setSearchVisible(!searchVisible)}
+            title="Search Terminal (Ctrl+F)"
+          >
+            <Search className="h-4 w-4" />
+          </Button>
           {onSplit && (
             <Button
               size="icon"
@@ -555,9 +606,63 @@ export function ClaudeTerminal({
         </div>
       </div>
 
+      {/* Search Bar */}
+      {searchVisible && (
+        <div className="search-bar border-b p-2 flex items-center gap-2 bg-background">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => handleSearchInputChange(e.target.value)}
+            placeholder="Search terminal..."
+            className="flex-1 px-2 py-1 text-sm border rounded"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSearch(searchQuery, e.shiftKey ? 'previous' : 'next');
+              } else if (e.key === 'Escape') {
+                setSearchVisible(false);
+                setSearchQuery('');
+                terminal?.focus();
+              }
+            }}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleSearch(searchQuery, 'previous')}
+            disabled={!searchQuery}
+            title="Previous match (Shift+Enter)"
+          >
+            ↑
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleSearch(searchQuery, 'next')}
+            disabled={!searchQuery}
+            title="Next match (Enter)"
+          >
+            ↓
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setSearchVisible(false);
+              setSearchQuery('');
+              terminal?.focus();
+            }}
+            title="Close search (Escape)"
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+
       {/* Terminal container */}
-      <div 
-        ref={terminalRef} 
+      <div
+        ref={terminalRef}
         className={`terminal-xterm-container flex-1 h-full ${theme === 'light' ? 'bg-white' : 'bg-black'}`}
         style={{ minHeight: '100px' }}
       />

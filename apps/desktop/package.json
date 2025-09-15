@@ -81,7 +81,7 @@
     "@xterm/addon-image": "^0.9.0-beta.118",
     "@xterm/addon-ligatures": "^0.10.0-beta.118",
     "@xterm/addon-progress": "^0.2.0-beta.24",
-    "@xterm/addon-search": "^0.16.0-beta.118",
+    "@xterm/addon-search": "0.16.0-beta.118",
     "@xterm/addon-serialize": "0.14.0-beta.118",
     "@xterm/addon-unicode11": "^0.9.0-beta.118",
     "@xterm/addon-web-links": "^0.11.0",

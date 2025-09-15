@@ -63,7 +63,7 @@ importers:
         specifier: ^0.2.0-beta.24
         version: 0.2.0-beta.24(@xterm/xterm@5.6.0-beta.118)
       '@xterm/addon-search':
-        specifier: ^0.16.0-beta.118
+        specifier: 0.16.0-beta.118
         version: 0.16.0-beta.118(@xterm/xterm@5.6.0-beta.118)
       '@xterm/addon-serialize':
         specifier: 0.14.0-beta.118
@@ -340,19 +340,22 @@ importers:
     dependencies:
       '@xterm/addon-fit':
         specifier: ^0.10.0
-        version: 0.10.0(@xterm/xterm@5.5.0)
+        version: 0.10.0(@xterm/xterm@5.6.0-beta.118)
+      '@xterm/addon-search':
+        specifier: ^0.16.0-beta.118
+        version: 0.16.0-beta.118(@xterm/xterm@5.6.0-beta.118)
       '@xterm/addon-serialize':
         specifier: ^0.13.0
-        version: 0.13.0(@xterm/xterm@5.5.0)
+        version: 0.13.0(@xterm/xterm@5.6.0-beta.118)
       '@xterm/addon-unicode11':
         specifier: ^0.8.0
-        version: 0.8.0(@xterm/xterm@5.5.0)
+        version: 0.8.0(@xterm/xterm@5.6.0-beta.118)
       '@xterm/addon-web-links':
         specifier: ^0.11.0
-        version: 0.11.0(@xterm/xterm@5.5.0)
+        version: 0.11.0(@xterm/xterm@5.6.0-beta.118)
       '@xterm/xterm':
-        specifier: ^5.5.0
-        version: 5.5.0
+        specifier: 5.6.0-beta.118
+        version: 5.6.0-beta.118
       clsx:
         specifier: ^2.1.0
         version: 2.1.1
@@ -3634,12 +3637,12 @@ packages:
       js-base64: 3.7.8
     dev: false
 
-  /@xterm/addon-fit@0.10.0(@xterm/xterm@5.5.0):
+  /@xterm/addon-fit@0.10.0(@xterm/xterm@5.6.0-beta.118):
     resolution: {integrity: sha512-UFYkDm4HUahf2lnEyHvio51TNGiLK66mqP2JoATy7hRZeXaGMRDr00JiSF7m63vR5WKATF605yEggJKsw0JpMQ==}
     peerDependencies:
       '@xterm/xterm': ^5.0.0
     dependencies:
-      '@xterm/xterm': 5.5.0
+      '@xterm/xterm': 5.6.0-beta.118
     dev: false
 
   /@xterm/addon-fit@0.11.0-beta.118(@xterm/xterm@5.6.0-beta.118):
@@ -3685,12 +3688,12 @@ packages:
       '@xterm/xterm': 5.6.0-beta.118
     dev: false
 
-  /@xterm/addon-serialize@0.13.0(@xterm/xterm@5.5.0):
+  /@xterm/addon-serialize@0.13.0(@xterm/xterm@5.6.0-beta.118):
     resolution: {integrity: sha512-kGs8o6LWAmN1l2NpMp01/YkpxbmO4UrfWybeGu79Khw5K9+Krp7XhXbBTOTc3GJRRhd6EmILjpR8k5+odY39YQ==}
     peerDependencies:
       '@xterm/xterm': ^5.0.0
     dependencies:
-      '@xterm/xterm': 5.5.0
+      '@xterm/xterm': 5.6.0-beta.118
     dev: false
 
   /@xterm/addon-serialize@0.14.0-beta.118(@xterm/xterm@5.6.0-beta.118):
@@ -3701,12 +3704,12 @@ packages:
       '@xterm/xterm': 5.6.0-beta.118
     dev: false
 
-  /@xterm/addon-unicode11@0.8.0(@xterm/xterm@5.5.0):
+  /@xterm/addon-unicode11@0.8.0(@xterm/xterm@5.6.0-beta.118):
     resolution: {integrity: sha512-LxinXu8SC4OmVa6FhgwsVCBZbr8WoSGzBl2+vqe8WcQ6hb1r6Gj9P99qTNdPiFPh4Ceiu2pC8xukZ6+2nnh49Q==}
     peerDependencies:
       '@xterm/xterm': ^5.0.0
     dependencies:
-      '@xterm/xterm': 5.5.0
+      '@xterm/xterm': 5.6.0-beta.118
     dev: false
 
   /@xterm/addon-unicode11@0.9.0-beta.118(@xterm/xterm@5.6.0-beta.118):
@@ -3715,14 +3718,6 @@ packages:
       '@xterm/xterm': ^5.6.0-beta.118
     dependencies:
       '@xterm/xterm': 5.6.0-beta.118
-    dev: false
-
-  /@xterm/addon-web-links@0.11.0(@xterm/xterm@5.5.0):
-    resolution: {integrity: sha512-nIHQ38pQI+a5kXnRaTgwqSHnX7KE6+4SVoceompgHL26unAxdfP6IPqUTSYPQgSwM56hsElfoNrrW5V7BUED/Q==}
-    peerDependencies:
-      '@xterm/xterm': ^5.0.0
-    dependencies:
-      '@xterm/xterm': 5.5.0
     dev: false
 
   /@xterm/addon-web-links@0.11.0(@xterm/xterm@5.6.0-beta.118):
@@ -3743,10 +3738,6 @@ packages:
 
   /@xterm/headless@5.6.0-beta.118:
     resolution: {integrity: sha512-VUIlj6NvEmhi4PISiPhBAhPhEPcoSBYG39E3nuVHp2wvo02Z+2lig8WppVuwBMDk1EfBSo/MYa1YqPxVSqYNUQ==}
-    dev: false
-
-  /@xterm/xterm@5.5.0:
-    resolution: {integrity: sha512-hqJHYaQb5OptNunnyAnkHyM8aCjZ1MEIDTQu1iIbbTD/xops91NB5yq1ZK/dC2JDbVWtF23zUtl9JE2NqwT87A==}
     dev: false
 
   /@xterm/xterm@5.6.0-beta.118:

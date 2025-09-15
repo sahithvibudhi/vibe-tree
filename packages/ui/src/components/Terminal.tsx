@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
+import { SearchAddon } from '@xterm/addon-search';
 import '@xterm/xterm/css/xterm.css';
 
 /**
@@ -26,31 +27,36 @@ export interface TerminalProps {
    * Unique identifier for this terminal instance
    */
   id: string;
-  
+
   /**
    * Configuration options for terminal appearance and behavior
    */
   config?: TerminalConfig;
-  
+
   /**
    * Callback when user inputs data in the terminal
    */
   onData?: (data: string) => void;
-  
+
   /**
    * Callback when terminal is resized
    */
   onResize?: (cols: number, rows: number) => void;
-  
+
   /**
    * Callback when terminal is ready
    */
   onReady?: (terminal: XTerm) => void;
-  
+
   /**
    * CSS class name for the terminal container
    */
   className?: string;
+
+  /**
+   * Whether to show the search bar
+   */
+  showSearchBar?: boolean;
 }
 
 /**
@@ -119,12 +125,16 @@ export const Terminal: React.FC<TerminalProps> = ({
   onData,
   onResize,
   onReady,
-  className = ''
+  className = '',
+  showSearchBar = false
 }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [terminal, setTerminal] = useState<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const serializeAddonRef = useRef<SerializeAddon | null>(null);
+  const searchAddonRef = useRef<SearchAddon | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchVisible, setSearchVisible] = useState(false);
 
   /**
    * Initialize terminal instance and addons
@@ -208,6 +218,10 @@ export const Terminal: React.FC<TerminalProps> = ({
     const unicode11Addon = new Unicode11Addon();
     term.loadAddon(unicode11Addon);
 
+    const searchAddon = new SearchAddon();
+    searchAddonRef.current = searchAddon;
+    term.loadAddon(searchAddon);
+
     // Open terminal in DOM container
     term.open(terminalRef.current);
     
@@ -268,6 +282,24 @@ export const Terminal: React.FC<TerminalProps> = ({
       }
     });
 
+    // Handle keyboard shortcuts for search
+    const keyDisposable = term.onKey((e) => {
+      const { key, domEvent } = e;
+      // Ctrl+F or Cmd+F to toggle search
+      if ((domEvent.ctrlKey || domEvent.metaKey) && domEvent.key === 'f') {
+        domEvent.preventDefault();
+        if (showSearchBar) {
+          setSearchVisible(!searchVisible);
+        }
+      }
+      // Escape to close search
+      if (domEvent.key === 'Escape' && searchVisible) {
+        setSearchVisible(false);
+        setSearchQuery('');
+        term.focus();
+      }
+    });
+
     // Handle bell character - play sound when bell is triggered
     const bellDisposable = term.onBell(() => {
       // Create an audio element and play the bell sound
@@ -286,6 +318,7 @@ export const Terminal: React.FC<TerminalProps> = ({
         resizeObserver.disconnect();
       }
       dataDisposable.dispose();
+      keyDisposable.dispose();
       bellDisposable.dispose();
       term.dispose();
     };
@@ -298,6 +331,26 @@ export const Terminal: React.FC<TerminalProps> = ({
     if (!terminal || !config.theme) return;
     terminal.options.theme = getTerminalTheme(config.theme);
   }, [terminal, config.theme]);
+
+  /**
+   * Search functionality
+   */
+  const handleSearch = useCallback((query: string, direction: 'next' | 'previous' = 'next') => {
+    if (!searchAddonRef.current || !query) return;
+
+    if (direction === 'next') {
+      searchAddonRef.current.findNext(query);
+    } else {
+      searchAddonRef.current.findPrevious(query);
+    }
+  }, []);
+
+  const handleSearchInputChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    if (value) {
+      handleSearch(value);
+    }
+  }, [handleSearch]);
 
   /**
    * Public API methods exposed via ref
@@ -317,7 +370,10 @@ export const Terminal: React.FC<TerminalProps> = ({
         terminal.resize(cols, rows);
         // Also fit after resize to ensure proper display
         fitAddonRef.current?.fit();
-      }
+      },
+      search: (query: string) => searchAddonRef.current?.findNext(query),
+      searchPrevious: (query: string) => searchAddonRef.current?.findPrevious(query),
+      toggleSearch: () => setSearchVisible(!searchVisible)
     };
 
     return () => {
@@ -326,15 +382,120 @@ export const Terminal: React.FC<TerminalProps> = ({
   }, [terminal, id]);
 
   return (
-    <div 
-      ref={terminalRef} 
-      className={`terminal-container ${className}`}
-      style={{ 
-        width: '100%', 
+    <div
+      className={`terminal-wrapper ${className}`}
+      style={{
+        width: '100%',
         height: '100%',
-        minHeight: '100px'
+        position: 'relative'
       }}
-    />
+    >
+      {showSearchBar && searchVisible && (
+        <div
+          className="terminal-search-bar"
+          style={{
+            position: 'absolute',
+            top: '8px',
+            right: '8px',
+            zIndex: 1000,
+            background: config?.theme === 'light' ? '#ffffff' : '#000000',
+            border: `1px solid ${config?.theme === 'light' ? '#cccccc' : '#444444'}`,
+            borderRadius: '4px',
+            padding: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontSize: '12px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}
+        >
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => handleSearchInputChange(e.target.value)}
+            placeholder="Search..."
+            autoFocus
+            style={{
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              color: config?.theme === 'light' ? '#000000' : '#ffffff',
+              width: '150px',
+              fontSize: '12px'
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSearch(searchQuery, e.shiftKey ? 'previous' : 'next');
+              } else if (e.key === 'Escape') {
+                setSearchVisible(false);
+                setSearchQuery('');
+                terminal?.focus();
+              }
+            }}
+          />
+          <button
+            onClick={() => handleSearch(searchQuery, 'previous')}
+            disabled={!searchQuery}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: config?.theme === 'light' ? '#000000' : '#ffffff',
+              cursor: searchQuery ? 'pointer' : 'default',
+              opacity: searchQuery ? 1 : 0.5,
+              padding: '2px 4px',
+              fontSize: '10px'
+            }}
+            title="Previous match (Shift+Enter)"
+          >
+            ↑
+          </button>
+          <button
+            onClick={() => handleSearch(searchQuery, 'next')}
+            disabled={!searchQuery}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: config?.theme === 'light' ? '#000000' : '#ffffff',
+              cursor: searchQuery ? 'pointer' : 'default',
+              opacity: searchQuery ? 1 : 0.5,
+              padding: '2px 4px',
+              fontSize: '10px'
+            }}
+            title="Next match (Enter)"
+          >
+            ↓
+          </button>
+          <button
+            onClick={() => {
+              setSearchVisible(false);
+              setSearchQuery('');
+              terminal?.focus();
+            }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: config?.theme === 'light' ? '#000000' : '#ffffff',
+              cursor: 'pointer',
+              padding: '2px 4px',
+              fontSize: '10px'
+            }}
+            title="Close search (Escape)"
+          >
+            ×
+          </button>
+        </div>
+      )}
+      <div
+        ref={terminalRef}
+        className="terminal-container"
+        style={{
+          width: '100%',
+          height: '100%',
+          minHeight: '100px'
+        }}
+      />
+    </div>
   );
 };
 
