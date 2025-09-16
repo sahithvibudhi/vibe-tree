@@ -171,6 +171,104 @@ test.describe('Terminal Split Feature', () => {
     await expect(splitButtonAfter).toBeVisible();
   });
 
+  test('should split terminal horizontally and manage multiple terminals', async () => {
+    test.setTimeout(60000);
+
+    await page.waitForLoadState('domcontentloaded');
+
+    // Verify the app launches with project selector
+    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+
+    // Click the "Open Project Folder" button
+    const openButton = page.locator('button', { hasText: 'Open Project Folder' });
+    await expect(openButton).toBeVisible();
+
+    // Mock the Electron dialog to return our dummy repository path
+    await electronApp.evaluate(async ({ dialog }, repoPath) => {
+      dialog.showOpenDialog = async () => {
+        return {
+          canceled: false,
+          filePaths: [repoPath]
+        };
+      };
+    }, dummyRepoPath);
+
+    // Click the open button which will trigger the mocked dialog
+    await openButton.click();
+
+    // Wait for worktree list to appear
+    await page.waitForTimeout(3000);
+
+    // Find and click the worktree button
+    const worktreeButton = page.locator('button[data-worktree-branch="main"]');
+    expect(await worktreeButton.count()).toBeGreaterThan(0);
+    await worktreeButton.click();
+
+    // Wait for the terminal to load
+    await page.waitForTimeout(3000);
+
+    // Verify initial terminal is present
+    const initialTerminal = page.locator('.claude-terminal-root').first();
+    await expect(initialTerminal).toBeVisible();
+
+    // Count initial terminals (should be 1)
+    const initialTerminalCount = await page.locator('.claude-terminal-root').count();
+    expect(initialTerminalCount).toBe(1);
+
+    // Find and click the horizontal split button (Rows2 icon button)
+    const horizontalSplitButton = page.locator('button[title="Split Terminal Horizontally"]').first();
+    await expect(horizontalSplitButton).toBeVisible();
+    await horizontalSplitButton.click();
+
+    // Wait for the new terminal to appear
+    await page.waitForTimeout(2000);
+
+    // Verify we now have 2 terminals
+    const splitTerminalCount = await page.locator('.claude-terminal-root').count();
+    expect(splitTerminalCount).toBe(2);
+
+    // Verify both terminals are visible and stacked vertically
+    const terminals = page.locator('.claude-terminal-root');
+    for (let i = 0; i < 2; i++) {
+      await expect(terminals.nth(i)).toBeVisible();
+    }
+
+    // Verify the terminals are arranged horizontally (stacked vertically)
+    const terminalWrappers = page.locator('.terminal-outportal-wrapper');
+    const firstWrapperBox = await terminalWrappers.first().boundingBox();
+    const secondWrapperBox = await terminalWrappers.nth(1).boundingBox();
+
+    // In horizontal split, terminals should be stacked (same x, different y)
+    expect(firstWrapperBox?.x).toBeCloseTo(secondWrapperBox?.x || 0, 1);
+    expect(firstWrapperBox?.y).toBeLessThan(secondWrapperBox?.y || 0);
+
+    // Each should take approximately 50% height
+    const containerBox = await page.locator('.terminal-manager-root').boundingBox();
+    const expectedHeight = (containerBox?.height || 0) / 2;
+    expect(firstWrapperBox?.height).toBeCloseTo(expectedHeight, expectedHeight * 0.2); // Allow 20% tolerance
+    expect(secondWrapperBox?.height).toBeCloseTo(expectedHeight, expectedHeight * 0.2);
+
+    // Test typing in both terminals
+    const firstTerminalScreen = page.locator('.xterm-screen').first();
+    await firstTerminalScreen.click();
+    await page.keyboard.type('echo "Terminal Top"');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(1000);
+
+    const secondTerminalScreen = page.locator('.xterm-screen').nth(1);
+    await secondTerminalScreen.click();
+    await page.keyboard.type('echo "Terminal Bottom"');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(1000);
+
+    // Verify the outputs
+    const firstTerminalContent = await firstTerminalScreen.textContent();
+    expect(firstTerminalContent).toContain('Terminal Top');
+
+    const secondTerminalContent = await secondTerminalScreen.textContent();
+    expect(secondTerminalContent).toContain('Terminal Bottom');
+  });
+
   test('should maintain independent PTY sessions for split terminals', async () => {
     test.setTimeout(60000);
 

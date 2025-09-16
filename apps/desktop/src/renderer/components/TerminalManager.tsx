@@ -15,9 +15,12 @@ interface TerminalInstance {
   processId?: string;
 }
 
+type SplitDirection = 'vertical' | 'horizontal';
+
 interface WorktreeTerminals {
   worktreePath: string;
   terminals: TerminalInstance[];
+  splitDirection: SplitDirection;
 }
 
 // Global cache for terminal portals - persists across component re-renders
@@ -44,7 +47,8 @@ export function TerminalManager({ worktreePath, projectId, theme }: TerminalMana
       
       const worktreeData: WorktreeTerminals = {
         worktreePath,
-        terminals: [terminal]
+        terminals: [terminal],
+        splitDirection: 'vertical'
       };
       
       // Add to global cache
@@ -56,7 +60,7 @@ export function TerminalManager({ worktreePath, projectId, theme }: TerminalMana
   }, [worktreePath]);
 
   // Handle terminal split
-  const handleSplit = useCallback((existingTerminalId: string) => {
+  const handleSplit = useCallback((existingTerminalId: string, direction: SplitDirection) => {
     const worktreeData = worktreeTerminalsCache.get(worktreePath);
     if (!worktreeData) return;
 
@@ -73,7 +77,10 @@ export function TerminalManager({ worktreePath, projectId, theme }: TerminalMana
     
     // Add the new terminal to the list
     worktreeData.terminals.push(newTerminal);
-    
+
+    // Update split direction
+    worktreeData.splitDirection = direction;
+
     // Update state to trigger re-render
     setWorktreeTerminals(new Map(worktreeTerminalsCache));
     
@@ -128,6 +135,12 @@ export function TerminalManager({ worktreePath, projectId, theme }: TerminalMana
     return worktreeData?.terminals || [];
   }, [worktreeTerminals, worktreePath]);
 
+  // Get current split direction
+  const currentSplitDirection = useMemo(() => {
+    const worktreeData = worktreeTerminals.get(worktreePath);
+    return worktreeData?.splitDirection || 'vertical';
+  }, [worktreeTerminals, worktreePath]);
+
   // Get all terminals from all worktrees for rendering InPortals
   const allTerminals = useMemo(() => {
     const terminals: TerminalInstance[] = [];
@@ -177,7 +190,8 @@ export function TerminalManager({ worktreePath, projectId, theme }: TerminalMana
             theme={theme}
             terminalId={terminal.id}
             isVisible={currentTerminals.some(t => t.id === terminal.id)}
-            onSplit={() => handleSplit(terminal.id)}
+            onSplitVertical={() => handleSplit(terminal.id, 'vertical')}
+            onSplitHorizontal={() => handleSplit(terminal.id, 'horizontal')}
             onClose={() => handleClose(terminal.id)}
             canClose={currentTerminals.length > 1}
             onProcessIdChange={(processId) => handleTerminalProcessId(terminal.id, processId)}
@@ -186,14 +200,19 @@ export function TerminalManager({ worktreePath, projectId, theme }: TerminalMana
       ))}
       
       {/* Show the current worktree's terminals in a split layout */}
-      <div className="flex h-full">
+      <div className={`${currentSplitDirection === 'horizontal' ? 'flex flex-col' : 'flex'} h-full`}>
         {currentTerminals.map((terminal, index) => (
           <div
             key={`out-${terminal.id}`}
-            className="terminal-outportal-wrapper h-full relative flex flex-col"
-            style={{
+            className="terminal-outportal-wrapper relative flex flex-col"
+            style={currentSplitDirection === 'vertical' ? {
               width: `${100 / currentTerminals.length}%`,
+              height: '100%',
               borderRight: index < currentTerminals.length - 1 ? '1px solid var(--border)' : 'none'
+            } : {
+              width: '100%',
+              height: `${100 / currentTerminals.length}%`,
+              borderBottom: index < currentTerminals.length - 1 ? '1px solid var(--border)' : 'none'
             }}
           >
             <OutPortal node={terminal.portalNode} />
