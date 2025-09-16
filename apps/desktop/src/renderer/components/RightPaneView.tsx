@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
-import { TerminalManager } from './TerminalManager';
+import { TerminalGrid } from './TerminalGrid';
 import { GitDiffView } from './GitDiffView';
 import { Terminal, GitBranch } from 'lucide-react';
 
@@ -43,8 +43,8 @@ export function RightPaneView({ worktreePath, projectId, theme }: RightPaneViewP
           value="terminal"
           className="flex-1 m-0 h-full"
         >
-          <TerminalManager 
-            worktreePath={worktreePath} 
+          <TerminalGrid
+            worktreePath={worktreePath}
             projectId={projectId}
             theme={theme}
           />
