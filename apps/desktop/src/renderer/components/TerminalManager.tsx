@@ -200,11 +200,11 @@ export function TerminalManager({ worktreePath, projectId, theme }: TerminalMana
       ))}
       
       {/* Show the current worktree's terminals in a split layout */}
-      <div className={`${currentSplitDirection === 'horizontal' ? 'flex flex-col' : 'flex'} h-full`}>
+      <div className={`${currentSplitDirection === 'horizontal' ? 'flex flex-col' : 'flex'} h-full overflow-hidden`}>
         {currentTerminals.map((terminal, index) => (
           <div
             key={`out-${terminal.id}`}
-            className="terminal-outportal-wrapper relative flex flex-col"
+            className={`terminal-outportal-wrapper relative flex flex-col ${currentSplitDirection === 'horizontal' ? 'min-h-0' : 'min-w-0'}`}
             style={currentSplitDirection === 'vertical' ? {
               width: `${100 / currentTerminals.length}%`,
               height: '100%',
@@ -212,7 +212,8 @@ export function TerminalManager({ worktreePath, projectId, theme }: TerminalMana
             } : {
               width: '100%',
               height: `${100 / currentTerminals.length}%`,
-              borderBottom: index < currentTerminals.length - 1 ? '1px solid var(--border)' : 'none'
+              borderBottom: index < currentTerminals.length - 1 ? '1px solid var(--border)' : 'none',
+              overflow: 'hidden'
             }}
           >
             <OutPortal node={terminal.portalNode} />

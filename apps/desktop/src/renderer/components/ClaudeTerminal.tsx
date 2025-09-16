@@ -539,7 +539,7 @@ export function ClaudeTerminal({
 
 
   return (
-    <div className="claude-terminal-root flex-1 flex flex-col h-full">
+    <div className="claude-terminal-root flex-1 flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="terminal-header h-[57px] px-4 border-b flex items-center justify-between flex-shrink-0">
         <div className="min-w-0 flex-1">
