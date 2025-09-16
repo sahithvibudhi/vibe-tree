@@ -297,25 +297,30 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
       <div
         key={`split-${node.id}`}
         className={`flex h-full w-full ${isHorizontal ? 'flex-col' : 'flex-row'} overflow-hidden`}
+        style={{ position: 'relative' }}
       >
         <div
-          className={`relative ${isHorizontal ? 'min-h-0' : 'min-w-0'} overflow-hidden`}
+          className={`relative ${isHorizontal ? 'min-h-0 flex-shrink-0' : 'min-w-0 flex-shrink-0'} overflow-hidden`}
           style={isHorizontal ? {
             height: `${splitRatio * 100}%`,
+            maxHeight: `${splitRatio * 100}%`,
             borderBottom: '1px solid var(--border)'
           } : {
             width: `${splitRatio * 100}%`,
+            maxWidth: `${splitRatio * 100}%`,
             borderRight: '1px solid var(--border)'
           }}
         >
           {renderGridNode(node.children[0])}
         </div>
         <div
-          className={`relative ${isHorizontal ? 'min-h-0' : 'min-w-0'} overflow-hidden`}
+          className={`relative ${isHorizontal ? 'min-h-0 flex-grow' : 'min-w-0 flex-grow'} overflow-hidden`}
           style={isHorizontal ? {
-            height: `${(1 - splitRatio) * 100}%`
+            height: `${(1 - splitRatio) * 100}%`,
+            maxHeight: `${(1 - splitRatio) * 100}%`
           } : {
-            width: `${(1 - splitRatio) * 100}%`
+            width: `${(1 - splitRatio) * 100}%`,
+            maxWidth: `${(1 - splitRatio) * 100}%`
           }}
         >
           {renderGridNode(node.children[1])}
@@ -375,7 +380,7 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
 
       {/* Render the grid layout */}
       {currentGrid && (
-        <div className="h-full w-full overflow-hidden">
+        <div className="h-full w-full overflow-hidden" style={{ position: 'absolute', inset: 0 }}>
           {renderGridNode(currentGrid.root)}
         </div>
       )}
