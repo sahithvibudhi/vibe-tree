@@ -10,7 +10,6 @@ import { Plus, X } from 'lucide-react';
 
 function AppContent() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [showProjectSelector, setShowProjectSelector] = useState(false);
   const { projects, activeProjectId, addProject, removeProject, setActiveProject } = useProjects();
 
   useEffect(() => {
@@ -50,7 +49,13 @@ function AppContent() {
 
   const handleSelectProject = (path: string) => {
     addProject(path);
-    setShowProjectSelector(false);
+  };
+
+  const handleOpenProjectDialog = async () => {
+    const path = await window.electronAPI.dialog.selectDirectory();
+    if (path) {
+      addProject(path);
+    }
   };
 
   const handleCloseProject = (e: React.MouseEvent, projectId: string) => {
@@ -68,7 +73,7 @@ function AppContent() {
     <div className="h-screen flex flex-col bg-background">
       <AppHeader theme={theme} onThemeToggle={toggleTheme} />
 
-      {projects.length === 0 || showProjectSelector ? (
+      {projects.length === 0 ? (
         <ProjectSelector onSelectProject={handleSelectProject} />
       ) : (
         <Tabs 
@@ -97,7 +102,7 @@ function AppContent() {
             <Button
               size="icon"
               variant="ghost"
-              onClick={() => setShowProjectSelector(true)}
+              onClick={handleOpenProjectDialog}
               className="h-8 w-8"
             >
               <Plus className="h-4 w-4" />
