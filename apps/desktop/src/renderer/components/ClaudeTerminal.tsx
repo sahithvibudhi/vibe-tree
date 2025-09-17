@@ -575,12 +575,14 @@ export function ClaudeTerminal({
               <Rows2 className="h-4 w-4" />
             </Button>
           )}
-          {canClose && onClose && (
+          {onClose && (
             <Button
               size="icon"
               variant="ghost"
               onClick={onClose}
               title="Close Terminal"
+              disabled={!canClose}
+              className={!canClose ? "opacity-50 cursor-not-allowed" : ""}
             >
               <X className="h-4 w-4" />
             </Button>
