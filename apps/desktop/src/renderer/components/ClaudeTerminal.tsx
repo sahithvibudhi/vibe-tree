@@ -38,8 +38,6 @@ export function ClaudeTerminal({
   canClose = false,
   onProcessIdChange
 }: ClaudeTerminalProps) {
-  // Log when component renders to verify it only happens once per terminal
-  console.log(`[ClaudeTerminal] Rendering terminal for: ${worktreePath}`);
   const terminalRef = useRef<HTMLDivElement>(null);
   const [terminal, setTerminal] = useState<Terminal | null>(null);
   const processIdRef = useRef<string>('');
@@ -73,7 +71,6 @@ export function ClaudeTerminal({
   useEffect(() => {
     if (!terminalRef.current) return;
 
-    console.log(`[ClaudeTerminal] Initializing terminal for: ${worktreePath}`);
 
     // Create terminal instance with theme-aware colors
     const getTerminalTheme = (currentTheme: 'light' | 'dark') => {

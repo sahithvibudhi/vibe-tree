@@ -161,17 +161,10 @@ test.describe('Terminal Split Feature', () => {
     const afterCloseCount = await page.locator('.claude-terminal-root').count();
     expect(afterCloseCount).toBe(1);
 
-    // Verify the close button behavior when only one terminal remains
-    // It should either be disabled or not visible
-    const closeButtonAfter = page.locator('button[title*="Close"]');
-    const closeButtonCount = await closeButtonAfter.count();
-
-    if (closeButtonCount > 0) {
-      // If visible, it should be disabled
-      const firstCloseButton = closeButtonAfter.first();
-      await expect(firstCloseButton).toBeDisabled();
-    }
-    // Otherwise, it's fine if it's not visible at all
+    // Verify the close button is visible but disabled when only one terminal remains
+    const closeButtonAfter = page.locator('button[title="Cannot close last terminal"]').first();
+    await expect(closeButtonAfter).toBeVisible();
+    await expect(closeButtonAfter).toBeDisabled();
 
     // Verify split button is still available
     const splitButtonAfter = page.locator('button[title="Split Terminal Vertically"]').first();

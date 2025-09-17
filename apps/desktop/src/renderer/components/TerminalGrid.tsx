@@ -122,7 +122,6 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
     const grid = worktreeGridCache.get(worktreePath);
     if (!grid) return;
 
-    console.log('Splitting terminal:', terminalId, 'direction:', direction);
 
     // Find the terminal node to split
     const result = findNodeAndParent(grid.root, terminalId);
@@ -168,8 +167,12 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
       }
     }
 
+    // Force a new grid reference to ensure React detects the change
+    worktreeGridCache.set(worktreePath, { ...grid });
+
     // Update state to trigger re-render
     setWorktreeGrids(new Map(worktreeGridCache));
+
 
     // Force a resize event after a short delay to ensure DOM is updated
     setTimeout(() => {
@@ -245,6 +248,9 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
       }
     }
 
+    // Force a new grid reference to ensure React detects the change
+    worktreeGridCache.set(worktreePath, { ...grid });
+
     // Update state to trigger re-render
     setWorktreeGrids(new Map(worktreeGridCache));
   }, [worktreePath]);
@@ -264,7 +270,8 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
   // Get all terminals from current grid
   const currentTerminals = useMemo(() => {
     if (!currentGrid) return [];
-    return collectTerminals(currentGrid.root);
+    const terminals = collectTerminals(currentGrid.root);
+    return terminals;
   }, [currentGrid]);
 
   // Get all terminals from all worktrees for rendering InPortals
@@ -361,22 +368,27 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
   return (
     <div ref={containerRef} className="terminal-manager-root flex-1 h-full relative overflow-hidden">
       {/* Render all terminals into their portals (this happens once per terminal) */}
-      {allTerminals.map((terminal) => (
-        <InPortal key={terminal.id} node={terminal.portalNode}>
-          <ClaudeTerminal
-            worktreePath={terminal.worktreePath}
-            projectId={projectId}
-            theme={theme}
-            terminalId={terminal.id}
-            isVisible={currentTerminals.some(t => t.id === terminal.id)}
-            onSplitVertical={() => handleSplit(terminal.id, 'vertical')}
-            onSplitHorizontal={() => handleSplit(terminal.id, 'horizontal')}
-            onClose={() => handleClose(terminal.id)}
-            canClose={currentTerminals.length > 1}
-            onProcessIdChange={(processId) => handleTerminalProcessId(terminal.id, processId)}
-          />
-        </InPortal>
-      ))}
+      {allTerminals.map((terminal) => {
+        const isCurrentTerminal = currentTerminals.some(t => t.id === terminal.id);
+        const canCloseTerminal = isCurrentTerminal && currentTerminals.length > 1;
+
+        return (
+          <InPortal key={terminal.id} node={terminal.portalNode}>
+            <ClaudeTerminal
+              worktreePath={terminal.worktreePath}
+              projectId={projectId}
+              theme={theme}
+              terminalId={terminal.id}
+              isVisible={isCurrentTerminal}
+              onSplitVertical={() => handleSplit(terminal.id, 'vertical')}
+              onSplitHorizontal={() => handleSplit(terminal.id, 'horizontal')}
+              onClose={() => handleClose(terminal.id)}
+              canClose={canCloseTerminal}
+              onProcessIdChange={(processId) => handleTerminalProcessId(terminal.id, processId)}
+            />
+          </InPortal>
+        );
+      })}
 
       {/* Render the grid layout */}
       {currentGrid && (
