@@ -579,8 +579,8 @@ export function ClaudeTerminal({
             <Button
               size="icon"
               variant="ghost"
-              onClick={onClose}
-              title="Close Terminal"
+              onClick={canClose ? onClose : undefined}
+              title={canClose ? "Close Terminal" : "Cannot close last terminal"}
               disabled={!canClose}
               className={!canClose ? "opacity-50 cursor-not-allowed" : ""}
             >
