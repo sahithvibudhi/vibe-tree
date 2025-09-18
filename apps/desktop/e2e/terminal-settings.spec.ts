@@ -126,9 +126,7 @@ test.describe('Terminal Settings', () => {
     // Send the IPC event from main process
     await electronApp.evaluate(({ BrowserWindow }) => {
       const windows = BrowserWindow.getAllWindows();
-      if (windows.length > 0) {
-        windows[0].webContents.send('menu:open-terminal-settings');
-      }
+      windows[0].webContents.send('menu:open-terminal-settings');
     });
 
     // Wait for dialog to appear
