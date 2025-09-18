@@ -49,20 +49,14 @@ test.describe('Terminal Settings', () => {
     // Access the menu to open terminal settings
     await electronApp.evaluate(async ({ Menu }) => {
       const menu = Menu.getApplicationMenu();
-      if (menu) {
-        // Find View menu
-        const viewMenu = menu.items.find(item => item.label === 'View');
-        if (viewMenu && viewMenu.submenu) {
-          // Find Terminal Settings menu item
-          const terminalSettingsItem = viewMenu.submenu.items.find(
-            item => item.label && item.label.includes('Terminal Settings')
-          );
-          if (terminalSettingsItem) {
-            // Trigger the click handler
-            terminalSettingsItem.click();
-          }
-        }
-      }
+      // Find View menu
+      const viewMenu = menu.items.find(item => item.label === 'View');
+      // Find Terminal Settings menu item
+      const terminalSettingsItem = viewMenu.submenu.items.find(
+        item => item.label && item.label.includes('Terminal Settings')
+      );
+      // Trigger the click handler
+      terminalSettingsItem.click();
     });
 
     // Wait for the settings dialog to appear
@@ -126,33 +120,25 @@ test.describe('Terminal Settings', () => {
     // Wait a moment for settings to be saved
     await mainWindow.waitForTimeout(500);
 
-    // Check if settings file exists and contains our changes
-    const settingsExist = fs.existsSync(settingsPath);
-    expect(settingsExist).toBeTruthy();
+    // Verify settings file exists
+    expect(fs.existsSync(settingsPath)).toBeTruthy();
 
-    if (settingsExist) {
-      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-      expect(settings.fontFamily).toBe(newFont);
-      expect(settings.fontSize).toBe(16);
-      expect(settings.cursorBlink).toBe(!initialBlinkState);
-      expect(settings.scrollback).toBe(5000);
-      expect(settings.tabStopWidth).toBe(2);
-    }
+    // Verify settings file contains our changes
+    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    expect(settings.fontFamily).toBe(newFont);
+    expect(settings.fontSize).toBe(16);
+    expect(settings.cursorBlink).toBe(!initialBlinkState);
+    expect(settings.scrollback).toBe(5000);
+    expect(settings.tabStopWidth).toBe(2);
 
     // Re-open settings to verify persistence
     await electronApp.evaluate(async ({ Menu }) => {
       const menu = Menu.getApplicationMenu();
-      if (menu) {
-        const viewMenu = menu.items.find(item => item.label === 'View');
-        if (viewMenu && viewMenu.submenu) {
-          const terminalSettingsItem = viewMenu.submenu.items.find(
-            item => item.label && item.label.includes('Terminal Settings')
-          );
-          if (terminalSettingsItem) {
-            terminalSettingsItem.click();
-          }
-        }
-      }
+      const viewMenu = menu.items.find(item => item.label === 'View');
+      const terminalSettingsItem = viewMenu.submenu.items.find(
+        item => item.label && item.label.includes('Terminal Settings')
+      );
+      terminalSettingsItem.click();
     });
 
     await mainWindow.waitForSelector('[role="dialog"]', { timeout: 5000 });
@@ -185,17 +171,11 @@ test.describe('Terminal Settings', () => {
     // Open terminal settings
     await electronApp.evaluate(async ({ Menu }) => {
       const menu = Menu.getApplicationMenu();
-      if (menu) {
-        const viewMenu = menu.items.find(item => item.label === 'View');
-        if (viewMenu && viewMenu.submenu) {
-          const terminalSettingsItem = viewMenu.submenu.items.find(
-            item => item.label && item.label.includes('Terminal Settings')
-          );
-          if (terminalSettingsItem) {
-            terminalSettingsItem.click();
-          }
-        }
-      }
+      const viewMenu = menu.items.find(item => item.label === 'View');
+      const terminalSettingsItem = viewMenu.submenu.items.find(
+        item => item.label && item.label.includes('Terminal Settings')
+      );
+      terminalSettingsItem.click();
     });
 
     await mainWindow.waitForSelector('[role="dialog"]', { timeout: 5000 });
@@ -215,29 +195,21 @@ test.describe('Terminal Settings', () => {
       return computedStyle.fontSize;
     });
 
-    // The font size should be reflected in the terminal
-    // Note: xterm might apply scaling, so we check if it's changed from default
+    // The font size should be 18px (or scaled equivalent)
     expect(fontSize).toBeTruthy();
-
-    // If there's a split terminal feature, verify both terminals have the same settings
-    // This ensures settings are truly universal
+    // Verify font size matches what we set (accounting for potential scaling)
+    expect(parseFloat(fontSize)).toBeGreaterThan(14);
   });
 
   test('should handle custom font input', async () => {
     // Open terminal settings
     await electronApp.evaluate(async ({ Menu }) => {
       const menu = Menu.getApplicationMenu();
-      if (menu) {
-        const viewMenu = menu.items.find(item => item.label === 'View');
-        if (viewMenu && viewMenu.submenu) {
-          const terminalSettingsItem = viewMenu.submenu.items.find(
-            item => item.label && item.label.includes('Terminal Settings')
-          );
-          if (terminalSettingsItem) {
-            terminalSettingsItem.click();
-          }
-        }
-      }
+      const viewMenu = menu.items.find(item => item.label === 'View');
+      const terminalSettingsItem = viewMenu.submenu.items.find(
+        item => item.label && item.label.includes('Terminal Settings')
+      );
+      terminalSettingsItem.click();
     });
 
     await mainWindow.waitForSelector('[role="dialog"]', { timeout: 5000 });
@@ -267,17 +239,11 @@ test.describe('Terminal Settings', () => {
     // Reopen settings
     await electronApp.evaluate(async ({ Menu }) => {
       const menu = Menu.getApplicationMenu();
-      if (menu) {
-        const viewMenu = menu.items.find(item => item.label === 'View');
-        if (viewMenu && viewMenu.submenu) {
-          const terminalSettingsItem = viewMenu.submenu.items.find(
-            item => item.label && item.label.includes('Terminal Settings')
-          );
-          if (terminalSettingsItem) {
-            terminalSettingsItem.click();
-          }
-        }
-      }
+      const viewMenu = menu.items.find(item => item.label === 'View');
+      const terminalSettingsItem = viewMenu.submenu.items.find(
+        item => item.label && item.label.includes('Terminal Settings')
+      );
+      terminalSettingsItem.click();
     });
 
     await mainWindow.waitForSelector('[role="dialog"]', { timeout: 5000 });
