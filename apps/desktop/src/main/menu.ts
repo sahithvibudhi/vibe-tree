@@ -1,4 +1,4 @@
-import { Menu, BrowserWindow, MenuItemConstructorOptions, dialog } from 'electron';
+import { Menu, BrowserWindow, MenuItemConstructorOptions, dialog, app } from 'electron';
 import { recentProjectsManager } from './recent-projects';
 
 export function createMenu(mainWindow: BrowserWindow | null) {
@@ -93,6 +93,33 @@ export function createMenu(mainWindow: BrowserWindow | null) {
       ]
     }
   ];
+
+  // macOS specific menu adjustments
+  if (process.platform === 'darwin') {
+    template.unshift({
+      label: app.getName(),
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'services', submenu: [] },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    });
+
+    // Window menu - after adding the app menu, Window menu is now at index 4
+    const windowMenu = template[4];
+    if (windowMenu && windowMenu.submenu && Array.isArray(windowMenu.submenu)) {
+      windowMenu.submenu.push(
+        { type: 'separator' },
+        { role: 'front' }
+      );
+    }
+  }
 
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
