@@ -78,7 +78,8 @@ test.describe('Open Current Working Directory', () => {
     // This simulates calling the IPC handler directly
     const result = await electronApp.evaluate(async ({ ipcMain }) => {
       // Get the handler that was registered for 'project:open-cwd'
-      const handlers = (ipcMain as any)._invokeHandlers;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const handlers = (ipcMain as unknown as {_invokeHandlers?: Map<string, (...args: any[]) => any>})._invokeHandlers;
       if (handlers && handlers.get('project:open-cwd')) {
         const handler = handlers.get('project:open-cwd');
         return await handler(null);

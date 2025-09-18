@@ -1,14 +1,15 @@
-import { defineConfig } from 'vite';
+import { defineConfig, ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
+import type { IncomingMessage, ServerResponse } from 'http';
 
 // Plugin to capture the actual port Vite uses
 function portCapturePlugin() {
   return {
     name: 'port-capture',
-    configureServer(server: any) {
-      server.middlewares.use('/__vite_port_capture', (req: any, res: any, next: any) => {
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use('/__vite_port_capture', (req: IncomingMessage, res: ServerResponse, next: () => void) => {
         // This won't be called, but ensures the plugin is active
         next();
       });

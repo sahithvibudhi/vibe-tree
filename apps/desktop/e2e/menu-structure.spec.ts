@@ -3,6 +3,16 @@ import { ElectronApplication, Page, _electron as electron } from 'playwright';
 import path from 'path';
 import fs from 'fs';
 
+interface MenuItem {
+  label?: string;
+  enabled?: boolean;
+  visible?: boolean;
+  type?: string;
+  role?: string;
+  accelerator?: string;
+  submenu?: MenuItem[];
+}
+
 test.describe('Application Menu Structure', () => {
   let electronApp: ElectronApplication;
   let page: Page;
@@ -39,8 +49,8 @@ test.describe('Application Menu Structure', () => {
       }
 
       // Helper function to extract menu structure
-      const extractMenuStructure = (menuItem: any): any => {
-        const item: any = {
+      const extractMenuStructure = (menuItem: Electron.MenuItem): MenuItem => {
+        const item: MenuItem = {
           label: menuItem.label,
           enabled: menuItem.enabled,
           visible: menuItem.visible,
@@ -60,12 +70,12 @@ test.describe('Application Menu Structure', () => {
     });
 
     // Verify File menu exists
-    const fileMenu = menuStructure.find((menu: any) => menu.label === 'File');
+    const fileMenu = menuStructure.find((menu: MenuItem) => menu.label === 'File');
     expect(fileMenu).toBeTruthy();
     expect(fileMenu.submenu).toBeTruthy();
 
     // Verify File menu items
-    const fileMenuLabels = fileMenu.submenu.map((item: any) => item.label).filter(Boolean);
+    const fileMenuLabels = fileMenu.submenu.map((item: MenuItem) => item.label).filter(Boolean);
     expect(fileMenuLabels).toContain('Open Project Folder...');
     expect(fileMenuLabels).toContain('Recent Projects');
 
@@ -76,7 +86,7 @@ test.describe('Application Menu Structure', () => {
     expect(hasQuitItem).toBeTruthy();
 
     // Verify Recent Projects submenu exists
-    const recentProjectsItem = fileMenu.submenu.find((item: any) => item.label === 'Recent Projects');
+    const recentProjectsItem = fileMenu.submenu.find((item: MenuItem) => item.label === 'Recent Projects');
     expect(recentProjectsItem).toBeTruthy();
     expect(recentProjectsItem.submenu).toBeTruthy();
 
@@ -84,12 +94,12 @@ test.describe('Application Menu Structure', () => {
     expect(recentProjectsItem.submenu.length).toBeGreaterThan(0);
 
     // Verify Edit menu exists
-    const editMenu = menuStructure.find((menu: any) => menu.label === 'Edit');
+    const editMenu = menuStructure.find((menu: MenuItem) => menu.label === 'Edit');
     expect(editMenu).toBeTruthy();
     expect(editMenu.submenu).toBeTruthy();
 
     // Verify Edit menu has standard items (roles might be lowercase)
-    const editMenuRoles = editMenu.submenu.map((item: any) => item.role?.toLowerCase()).filter(Boolean);
+    const editMenuRoles = editMenu.submenu.map((item: MenuItem) => item.role?.toLowerCase()).filter(Boolean);
     expect(editMenuRoles).toContain('undo');
     expect(editMenuRoles).toContain('redo');
     expect(editMenuRoles).toContain('cut');
@@ -98,26 +108,26 @@ test.describe('Application Menu Structure', () => {
     expect(editMenuRoles).toContain('selectall');
 
     // Verify View menu exists
-    const viewMenu = menuStructure.find((menu: any) => menu.label === 'View');
+    const viewMenu = menuStructure.find((menu: MenuItem) => menu.label === 'View');
     expect(viewMenu).toBeTruthy();
     expect(viewMenu.submenu).toBeTruthy();
 
     // Verify View menu items
-    const viewMenuLabels = viewMenu.submenu.map((item: any) => item.label).filter(Boolean);
+    const viewMenuLabels = viewMenu.submenu.map((item: MenuItem) => item.label).filter(Boolean);
     expect(viewMenuLabels).toContain('Terminal Settings...');
 
-    const viewMenuRoles = viewMenu.submenu.map((item: any) => item.role?.toLowerCase()).filter(Boolean);
+    const viewMenuRoles = viewMenu.submenu.map((item: MenuItem) => item.role?.toLowerCase()).filter(Boolean);
     expect(viewMenuRoles).toContain('reload');
     expect(viewMenuRoles).toContain('toggledevtools');
     expect(viewMenuRoles).toContain('togglefullscreen');
 
     // Verify Window menu exists
-    const windowMenu = menuStructure.find((menu: any) => menu.label === 'Window');
+    const windowMenu = menuStructure.find((menu: MenuItem) => menu.label === 'Window');
     expect(windowMenu).toBeTruthy();
     expect(windowMenu.submenu).toBeTruthy();
 
     // Verify Window menu has standard items
-    const windowMenuRoles = windowMenu.submenu.map((item: any) => item.role?.toLowerCase()).filter(Boolean);
+    const windowMenuRoles = windowMenu.submenu.map((item: MenuItem) => item.role?.toLowerCase()).filter(Boolean);
     expect(windowMenuRoles).toContain('minimize');
     expect(windowMenuRoles).toContain('close');
   });
@@ -130,8 +140,8 @@ test.describe('Application Menu Structure', () => {
       }
 
       // Extract all menu items with accelerators
-      const extractAccelerators = (menuItem: any): any[] => {
-        const items: any[] = [];
+      const extractAccelerators = (menuItem: Electron.MenuItem): Array<{label?: string; accelerator?: string}> => {
+        const items: Array<{label?: string; accelerator?: string}> = [];
 
         if (menuItem.accelerator) {
           items.push({
@@ -141,7 +151,7 @@ test.describe('Application Menu Structure', () => {
         }
 
         if (menuItem.submenu) {
-          menuItem.submenu.items.forEach((item: any) => {
+          menuItem.submenu.items.forEach((item: Electron.MenuItem) => {
             items.push(...extractAccelerators(item));
           });
         }
@@ -149,8 +159,8 @@ test.describe('Application Menu Structure', () => {
         return items;
       };
 
-      const allAccelerators: any[] = [];
-      menu.items.forEach((item: any) => {
+      const allAccelerators: Array<{label?: string; accelerator?: string}> = [];
+      menu.items.forEach((item: Electron.MenuItem) => {
         allAccelerators.push(...extractAccelerators(item));
       });
 
@@ -158,7 +168,7 @@ test.describe('Application Menu Structure', () => {
     });
 
     // Verify important shortcuts exist
-    const shortcuts = menuStructure.map((item: any) => item.accelerator);
+    const shortcuts = menuStructure.map((item: {label?: string; accelerator?: string}) => item.accelerator);
     expect(shortcuts).toContain('CmdOrCtrl+O'); // Open Project Folder
   });
 
@@ -166,7 +176,8 @@ test.describe('Application Menu Structure', () => {
     // Add a test project to recent projects
     const testProjectPath = '/test/project/path';
     await electronApp.evaluate(async ({ ipcMain }, projectPath) => {
-      const handlers = (ipcMain as any)._invokeHandlers;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const handlers = (ipcMain as unknown as {_invokeHandlers?: Map<string, (...args: any[]) => any>})._invokeHandlers;
       if (handlers && handlers.get('recent-projects:add')) {
         const handler = handlers.get('recent-projects:add');
         await handler(null, projectPath);
@@ -193,24 +204,21 @@ test.describe('Application Menu Structure', () => {
         throw new Error('Recent Projects submenu not found');
       }
 
-      return recentProjects.submenu.items.map((item: any) => ({
+      return recentProjects.submenu.items.map((item: Electron.MenuItem) => ({
         label: item.label,
         enabled: item.enabled
       }));
     });
 
     // Verify the project was added
-    const projectLabels = menuStructure.map((item: any) => item.label).filter(Boolean);
-    const hasTestProject = projectLabels.some((label: string) =>
-      label.includes('test') && label.includes(testProjectPath)
-    );
+    const projectLabels = menuStructure.map((item: {label?: string; enabled?: boolean}) => item.label).filter(Boolean);
 
     // Should either have the test project or "Clear Recent Projects" option
     expect(menuStructure.length).toBeGreaterThan(0);
     expect(projectLabels.some((label: string) =>
       label === 'Clear Recent Projects' ||
       label === 'No Recent Projects' ||
-      label.includes('test')
+      (label.includes('test') && label.includes(testProjectPath))
     )).toBeTruthy();
   });
 });

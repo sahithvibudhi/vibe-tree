@@ -16,7 +16,7 @@ class DesktopShellManager {
   /**
    * Safely send IPC message to renderer, handling disposed frames
    */
-  private safeSend(sender: Electron.WebContents, channel: string, ...args: any[]): boolean {
+  private safeSend(sender: Electron.WebContents, channel: string, ...args: unknown[]): boolean {
     try {
       // Double-check: first with isDestroyed, then catch any remaining errors
       if (!sender || sender.isDestroyed()) {
