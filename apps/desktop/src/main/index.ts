@@ -4,6 +4,7 @@ import fs from 'fs';
 import { shellProcessManager } from './shell-manager';
 import './ide-detector';
 import { recentProjectsManager } from './recent-projects';
+import { terminalSettingsManager } from './terminal-settings';
 import {
   listWorktrees,
   getGitStatus,
@@ -96,7 +97,16 @@ function createMenu() {
         { role: 'zoomIn' },
         { role: 'zoomOut' },
         { type: 'separator' },
-        { role: 'togglefullscreen' }
+        { role: 'togglefullscreen' },
+        { type: 'separator' },
+        {
+          label: 'Terminal Settings...',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('menu:open-terminal-settings');
+            }
+          }
+        }
       ]
     },
     {
@@ -283,6 +293,31 @@ ipcMain.handle('recent-projects:remove', (_, projectPath: string) => {
 ipcMain.handle('recent-projects:clear', () => {
   recentProjectsManager.clearRecentProjects();
   createMenu(); // Refresh menu
+});
+
+// Terminal settings handlers
+ipcMain.handle('terminal-settings:get', () => {
+  return terminalSettingsManager.getSettings();
+});
+
+ipcMain.handle('terminal-settings:update', (_, updates) => {
+  terminalSettingsManager.updateSettings(updates);
+  // Notify all renderer processes about the settings update
+  BrowserWindow.getAllWindows().forEach(window => {
+    window.webContents.send('terminal-settings:changed', terminalSettingsManager.getSettings());
+  });
+});
+
+ipcMain.handle('terminal-settings:reset', () => {
+  terminalSettingsManager.resetToDefaults();
+  // Notify all renderer processes about the reset
+  BrowserWindow.getAllWindows().forEach(window => {
+    window.webContents.send('terminal-settings:changed', terminalSettingsManager.getSettings());
+  });
+});
+
+ipcMain.handle('terminal-settings:get-fonts', () => {
+  return terminalSettingsManager.getAvailableFonts();
 });
 
 // Parsing functions are now imported from @vibetree/core

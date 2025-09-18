@@ -56,6 +56,22 @@ export interface ElectronAPI {
     onOpenProject: (callback: (path: string) => void) => () => void;
     onOpenRecentProject: (callback: (path: string) => void) => () => void;
   };
+  terminalSettings: {
+    get: () => Promise<{
+      fontFamily: string;
+      fontSize: number;
+      cursorBlink: boolean;
+      scrollback: number;
+      tabStopWidth: number;
+    }>;
+    update: (updates: any) => Promise<void>;
+    reset: () => Promise<void>;
+    getFonts: () => Promise<string[]>;
+    onChange: (callback: (settings: any) => void) => () => void;
+  };
+  menu: {
+    onOpenTerminalSettings: (callback: () => void) => () => void;
+  };
 }
 
 declare global {

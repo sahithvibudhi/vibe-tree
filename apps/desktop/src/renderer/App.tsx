@@ -7,6 +7,7 @@ import { Button } from './components/ui/button';
 import { Toaster } from './components/ui/toaster';
 import { ProjectProvider, useProjects } from './contexts/ProjectContext';
 import { Plus, X } from 'lucide-react';
+import { GlobalTerminalSettings } from './components/GlobalTerminalSettings';
 
 function AppContent() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -122,6 +123,7 @@ function AppContent() {
       )}
 
       <Toaster />
+      <GlobalTerminalSettings />
     </div>
   );
 }

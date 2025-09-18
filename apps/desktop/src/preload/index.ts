@@ -76,6 +76,24 @@ const api = {
       ipcRenderer.on('project:open-recent', listener);
       return () => ipcRenderer.removeListener('project:open-recent', listener);
     },
+  },
+  terminalSettings: {
+    get: () => ipcRenderer.invoke('terminal-settings:get'),
+    update: (updates: any) => ipcRenderer.invoke('terminal-settings:update', updates),
+    reset: () => ipcRenderer.invoke('terminal-settings:reset'),
+    getFonts: () => ipcRenderer.invoke('terminal-settings:get-fonts'),
+    onChange: (callback: (settings: any) => void) => {
+      const listener = (_: unknown, settings: any) => callback(settings);
+      ipcRenderer.on('terminal-settings:changed', listener);
+      return () => ipcRenderer.removeListener('terminal-settings:changed', listener);
+    }
+  },
+  menu: {
+    onOpenTerminalSettings: (callback: () => void) => {
+      const listener = () => callback();
+      ipcRenderer.on('menu:open-terminal-settings', listener);
+      return () => ipcRenderer.removeListener('menu:open-terminal-settings', listener);
+    }
   }
 };
 
