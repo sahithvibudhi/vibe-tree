@@ -79,11 +79,11 @@ const api = {
   },
   terminalSettings: {
     get: () => ipcRenderer.invoke('terminal-settings:get'),
-    update: (updates: any) => ipcRenderer.invoke('terminal-settings:update', updates),
+    update: (updates: Record<string, unknown>) => ipcRenderer.invoke('terminal-settings:update', updates),
     reset: () => ipcRenderer.invoke('terminal-settings:reset'),
     getFonts: () => ipcRenderer.invoke('terminal-settings:get-fonts'),
-    onChange: (callback: (settings: any) => void) => {
-      const listener = (_: unknown, settings: any) => callback(settings);
+    onChange: (callback: (settings: Record<string, unknown>) => void) => {
+      const listener = (_: unknown, settings: Record<string, unknown>) => callback(settings);
       ipcRenderer.on('terminal-settings:changed', listener);
       return () => ipcRenderer.removeListener('terminal-settings:changed', listener);
     }

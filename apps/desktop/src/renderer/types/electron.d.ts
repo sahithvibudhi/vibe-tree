@@ -64,10 +64,10 @@ export interface ElectronAPI {
       scrollback: number;
       tabStopWidth: number;
     }>;
-    update: (updates: any) => Promise<void>;
+    update: (updates: Record<string, unknown>) => Promise<void>;
     reset: () => Promise<void>;
     getFonts: () => Promise<string[]>;
-    onChange: (callback: (settings: any) => void) => () => void;
+    onChange: (callback: (settings: Record<string, unknown>) => void) => () => void;
   };
   menu: {
     onOpenTerminalSettings: (callback: () => void) => () => void;

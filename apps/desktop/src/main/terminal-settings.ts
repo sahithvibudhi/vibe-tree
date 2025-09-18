@@ -10,6 +10,8 @@ export interface TerminalSettings {
   tabStopWidth: number;
 }
 
+export type TerminalSettingsUpdate = Partial<TerminalSettings>;
+
 const DEFAULT_SETTINGS: TerminalSettings = {
   fontFamily: 'Menlo, Monaco, "Courier New", monospace',
   fontSize: 14,
@@ -61,7 +63,7 @@ class TerminalSettingsManager {
     return { ...this.settings };
   }
 
-  updateSettings(updates: Partial<TerminalSettings>) {
+  updateSettings(updates: TerminalSettingsUpdate) {
     this.settings = {
       ...this.settings,
       ...updates

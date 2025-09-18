@@ -74,9 +74,6 @@ test.describe('Terminal Settings', () => {
     const fontSelect = await mainWindow.locator('select#fontFamily');
     await expect(fontSelect).toBeVisible();
 
-    // Get initial font value
-    const initialFont = await fontSelect.inputValue();
-
     // Change to a different font
     const newFont = '"Cascadia Code", Menlo, Monaco, monospace';
     await fontSelect.selectOption(newFont);

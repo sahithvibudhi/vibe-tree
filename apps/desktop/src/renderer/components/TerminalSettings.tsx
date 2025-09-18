@@ -19,7 +19,7 @@ interface TerminalSettingsProps {
 }
 
 export function TerminalSettings({ trigger, open: controlledOpen, onOpenChange }: TerminalSettingsProps) {
-  const [settings, setSettings] = useState<any>(null);
+  const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
   const [availableFonts, setAvailableFonts] = useState<string[]>([]);
   const [customFont, setCustomFont] = useState('');
   const [internalOpen, setInternalOpen] = useState(false);
@@ -76,7 +76,7 @@ export function TerminalSettings({ trigger, open: controlledOpen, onOpenChange }
     }
   };
 
-  const updateSettings = async (updates: any) => {
+  const updateSettings = async (updates: Record<string, unknown>) => {
     try {
       await window.electronAPI.terminalSettings.update(updates);
       // Reload settings to get updated values

@@ -48,7 +48,7 @@ export function ClaudeTerminal({
   const [detectedIDEs, setDetectedIDEs] = useState<Array<{ name: string; command: string }>>([]);
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [terminalSettings, setTerminalSettings] = useState<any>(null);
+  const [terminalSettings, setTerminalSettings] = useState<Record<string, unknown> | null>(null);
   const { toast } = useToast();
 
   // Search functionality
@@ -273,8 +273,8 @@ export function ClaudeTerminal({
     // Create ResizeObserver to watch for container size changes (e.g., when splitting terminals)
     const resizeObserver = new ResizeObserver(() => {
       // Debounce resize to avoid excessive calls
-      clearTimeout((window as any).resizeDebounceTimer);
-      (window as any).resizeDebounceTimer = setTimeout(() => {
+      clearTimeout((window as unknown as { resizeDebounceTimer?: NodeJS.Timeout }).resizeDebounceTimer);
+      (window as unknown as { resizeDebounceTimer?: NodeJS.Timeout }).resizeDebounceTimer = setTimeout(() => {
         handleResize();
       }, 100);
     });
