@@ -1,8 +1,10 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, dialog, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeTheme, dialog, shell, Menu } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { shellProcessManager } from './shell-manager';
 import './ide-detector';
+import './terminal-settings';
+import { terminalSettingsManager } from './terminal-settings';
 import {
   listWorktrees,
   getGitStatus,
@@ -13,6 +15,27 @@ import {
 } from '@vibetree/core';
 
 let mainWindow: BrowserWindow | null = null;
+
+function createMenu() {
+  const template: any[] = [
+    {
+      label: 'View',
+      submenu: [
+        {
+          label: 'Terminal Settings...',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('menu:open-terminal-settings');
+            }
+          }
+        }
+      ]
+    }
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -42,6 +65,9 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+
+  // Create the menu
+  createMenu();
 }
 
 app.whenReady().then(createWindow);
@@ -135,4 +161,29 @@ ipcMain.handle('project:open-cwd', async () => {
 // Open external links
 ipcMain.handle('shell:open-external', async (_, url: string) => {
   await shell.openExternal(url);
+});
+
+// Terminal settings handlers
+ipcMain.handle('terminal-settings:get', () => {
+  return terminalSettingsManager.getSettings();
+});
+
+ipcMain.handle('terminal-settings:update', (_, updates) => {
+  terminalSettingsManager.updateSettings(updates);
+  // Notify all renderer processes about the settings update
+  if (mainWindow) {
+    mainWindow.webContents.send('terminal-settings:changed', terminalSettingsManager.getSettings());
+  }
+});
+
+ipcMain.handle('terminal-settings:reset', () => {
+  terminalSettingsManager.resetToDefaults();
+  // Notify all renderer processes about the reset
+  if (mainWindow) {
+    mainWindow.webContents.send('terminal-settings:changed', terminalSettingsManager.getSettings());
+  }
+});
+
+ipcMain.handle('terminal-settings:get-fonts', () => {
+  return terminalSettingsManager.getAvailableFonts();
 });
