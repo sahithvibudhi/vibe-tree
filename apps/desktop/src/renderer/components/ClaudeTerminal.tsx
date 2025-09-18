@@ -10,6 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Code2, Columns2, Rows2, X, Search } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 import '@xterm/xterm/css/xterm.css';
+import type { TerminalSettings } from '../types/terminal-settings';
 
 interface ClaudeTerminalProps {
   worktreePath: string;
@@ -48,7 +49,7 @@ export function ClaudeTerminal({
   const [detectedIDEs, setDetectedIDEs] = useState<Array<{ name: string; command: string }>>([]);
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [terminalSettings, setTerminalSettings] = useState<Record<string, unknown> | null>(null);
+  const [terminalSettings, setTerminalSettings] = useState<TerminalSettings | null>(null);
   const { toast } = useToast();
 
   // Search functionality

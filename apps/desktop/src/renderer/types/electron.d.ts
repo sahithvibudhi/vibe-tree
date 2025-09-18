@@ -57,17 +57,11 @@ export interface ElectronAPI {
     onOpenRecentProject: (callback: (path: string) => void) => () => void;
   };
   terminalSettings: {
-    get: () => Promise<{
-      fontFamily: string;
-      fontSize: number;
-      cursorBlink: boolean;
-      scrollback: number;
-      tabStopWidth: number;
-    }>;
-    update: (updates: Record<string, unknown>) => Promise<void>;
+    get: () => Promise<import('./terminal-settings').TerminalSettings>;
+    update: (updates: import('./terminal-settings').TerminalSettingsUpdate) => Promise<void>;
     reset: () => Promise<void>;
     getFonts: () => Promise<string[]>;
-    onChange: (callback: (settings: Record<string, unknown>) => void) => () => void;
+    onChange: (callback: (settings: import('./terminal-settings').TerminalSettings) => void) => () => void;
   };
   menu: {
     onOpenTerminalSettings: (callback: () => void) => () => void;

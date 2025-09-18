@@ -11,6 +11,7 @@ import {
   DialogTrigger,
 } from './ui/dialog';
 import { useToast } from './ui/use-toast';
+import type { TerminalSettings, TerminalSettingsUpdate } from '../types/terminal-settings';
 
 interface TerminalSettingsProps {
   trigger?: React.ReactNode;
@@ -19,7 +20,7 @@ interface TerminalSettingsProps {
 }
 
 export function TerminalSettings({ trigger, open: controlledOpen, onOpenChange }: TerminalSettingsProps) {
-  const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
+  const [settings, setSettings] = useState<TerminalSettings | null>(null);
   const [availableFonts, setAvailableFonts] = useState<string[]>([]);
   const [customFont, setCustomFont] = useState('');
   const [internalOpen, setInternalOpen] = useState(false);
@@ -39,7 +40,7 @@ export function TerminalSettings({ trigger, open: controlledOpen, onOpenChange }
   const handleFontChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     if (value === 'custom') {
-      setCustomFont(settings.fontFamily);
+      setCustomFont(settings?.fontFamily || '');
       return;
     }
     updateSettings({ fontFamily: value });
@@ -76,7 +77,7 @@ export function TerminalSettings({ trigger, open: controlledOpen, onOpenChange }
     }
   };
 
-  const updateSettings = async (updates: Record<string, unknown>) => {
+  const updateSettings = async (updates: TerminalSettingsUpdate) => {
     try {
       await window.electronAPI.terminalSettings.update(updates);
       // Reload settings to get updated values
