@@ -104,7 +104,10 @@ export class ShellSessionManager {
 
       const shell = getDefaultShell();
       const options = getPtyOptions(worktreePath, cols, rows);
-      const ptyProcess = spawnFunction(shell, [], options);
+      // Launch as login shell to ensure proper PATH initialization
+      // For zsh/bash, use -l flag. For other shells, keep empty args
+      const shellArgs = shell.includes('zsh') || shell.includes('bash') ? ['-l'] : [];
+      const ptyProcess = spawnFunction(shell, shellArgs, options);
 
       const session: ShellSession = {
         id: sessionId,
