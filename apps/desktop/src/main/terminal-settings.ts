@@ -8,6 +8,7 @@ export interface TerminalSettings {
   cursorBlink: boolean;
   scrollback: number;
   tabStopWidth: number;
+  setLocaleVariables: boolean;
 }
 
 export type TerminalSettingsUpdate = Partial<TerminalSettings>;
@@ -17,7 +18,8 @@ const DEFAULT_SETTINGS: TerminalSettings = {
   fontSize: 14,
   cursorBlink: true,
   scrollback: 10000,
-  tabStopWidth: 4
+  tabStopWidth: 4,
+  setLocaleVariables: true
 };
 
 class TerminalSettingsManager {

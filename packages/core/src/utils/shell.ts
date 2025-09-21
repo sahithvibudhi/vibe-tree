@@ -26,17 +26,54 @@ export function getDefaultShell(): string {
  * @param rows - Terminal rows (default: 30)
  * @returns Options for spawning PTY
  */
+/**
+ * Get system locale for macOS
+ * @returns System locale with UTF-8 suffix
+ */
+function getSystemLocale(): string {
+  if (process.platform === 'darwin') {
+    try {
+      // Try to get macOS system locale preference
+      const { execSync } = require('child_process');
+      const appleLocale = execSync('defaults read NSGlobalDomain AppleLocale 2>/dev/null', { 
+        encoding: 'utf8' 
+      }).trim();
+      
+      if (appleLocale) {
+        // Convert Apple locale format (e.g., 'en_US') to POSIX format (e.g., 'en_US.UTF-8')
+        return `${appleLocale}.UTF-8`;
+      }
+    } catch (error) {
+      // Silently fall through to default
+    }
+  }
+  
+  // Default fallback
+  return 'en_US.UTF-8';
+}
+
 export function getPtyOptions(
   worktreePath: string, 
   cols: number = 80, 
-  rows: number = 30
+  rows: number = 30,
+  setLocaleVariables: boolean = true
 ): any {
+  // Create a copy of process.env to avoid modifying the original
+  const env = { ...process.env } as Record<string, string>;
+  
+  // Set LANG if not already set and setting is enabled
+  // This matches iTerm2 and Terminal.app "Set locale environment variables automatically" behavior
+  if (setLocaleVariables && (!env.LANG || env.LANG === '')) {
+    // Use the system's locale preference, matching iTerm2's behavior
+    env.LANG = getSystemLocale();
+  }
+  
   return {
     name: 'xterm-256color',
     cols,
     rows,
     cwd: worktreePath,
-    env: process.env as Record<string, string>
+    env
   };
 }
 

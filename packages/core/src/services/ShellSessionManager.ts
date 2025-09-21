@@ -79,7 +79,8 @@ export class ShellSessionManager {
     rows = 30,
     spawnFunction?: (shell: string, args: string[], options: any) => IPty,
     forceNew: boolean = false,
-    terminalId?: string
+    terminalId?: string,
+    setLocaleVariables: boolean = true
   ): Promise<ShellStartResult> {
     const sessionId = this.generateSessionId(worktreePath, terminalId, forceNew);
     
@@ -103,7 +104,7 @@ export class ShellSessionManager {
       }
 
       const shell = getDefaultShell();
-      const options = getPtyOptions(worktreePath, cols, rows);
+      const options = getPtyOptions(worktreePath, cols, rows, setLocaleVariables);
       // Launch as login shell to ensure proper PATH initialization
       // For zsh/bash, use -l flag. For other shells, keep empty args
       const shellArgs = shell.includes('zsh') || shell.includes('bash') ? ['-l'] : [];

@@ -5,6 +5,7 @@ export interface TerminalSettings {
   cursorBlink: boolean;
   scrollback: number;
   tabStopWidth: number;
+  setLocaleVariables: boolean;
 }
 
 export type TerminalSettingsUpdate = Partial<TerminalSettings>;

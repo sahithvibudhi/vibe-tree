@@ -77,6 +77,10 @@ export function TerminalSettings({ trigger, open: controlledOpen, onOpenChange }
     }
   };
 
+  const handleSetLocaleVariablesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    updateSettings({ setLocaleVariables: e.target.checked });
+  };
+
   const updateSettings = async (updates: TerminalSettingsUpdate) => {
     try {
       await window.electronAPI.terminalSettings.update(updates);
@@ -237,6 +241,20 @@ export function TerminalSettings({ trigger, open: controlledOpen, onOpenChange }
               />
               <span className="text-sm text-muted-foreground">spaces</span>
             </div>
+          </div>
+
+          {/* Locale Variables */}
+          <div className="flex items-center justify-between">
+            <label htmlFor="setLocaleVariables" className="text-sm font-medium">
+              Set locale environment variables automatically
+            </label>
+            <input
+              id="setLocaleVariables"
+              type="checkbox"
+              checked={settings.setLocaleVariables}
+              onChange={handleSetLocaleVariablesChange}
+              className="w-4 h-4"
+            />
           </div>
         </div>
         <div className="flex justify-between">
