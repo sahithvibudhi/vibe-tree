@@ -1,4 +1,4 @@
-import { app, BrowserWindow, nativeTheme } from 'electron';
+import { app, BrowserWindow, nativeTheme, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { shellProcessManager } from './shell-manager';
@@ -8,6 +8,37 @@ import { registerIpcHandlers } from './ipc-handlers';
 import { createMenu } from './menu';
 
 let mainWindow: BrowserWindow | null = null;
+let isQuitting = false;
+
+// For testing: allow disabling the quit dialog
+const DISABLE_QUIT_DIALOG = process.env.DISABLE_QUIT_DIALOG === 'true';
+
+function showQuitConfirmation() {
+  if (DISABLE_QUIT_DIALOG) {
+    isQuitting = true;
+    app.quit();
+    return;
+  }
+
+  const dialogOptions = {
+    type: 'question' as const,
+    buttons: ['Cancel', 'OK'],
+    defaultId: 0,
+    cancelId: 0,
+    title: 'Quit VibeTree?',
+    message: 'Quit VibeTree?',
+    detail: 'All sessions will be closed.',
+  };
+
+  const choice = mainWindow
+    ? dialog.showMessageBoxSync(mainWindow, dialogOptions)
+    : dialog.showMessageBoxSync(dialogOptions);
+
+  if (choice === 1) {
+    isQuitting = true;
+    app.quit();
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -34,6 +65,13 @@ function createWindow() {
   
   // Don't open DevTools in tests as it can interfere with content detection
 
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      showQuitConfirmation();
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -45,14 +83,21 @@ app.whenReady().then(() => {
   registerIpcHandlers(mainWindow);
 });
 
-// Clean up shell processes on quit
-app.on('before-quit', () => {
-  shellProcessManager.cleanup();
+// Handle before-quit event to show confirmation
+app.on('before-quit', (event) => {
+  if (!isQuitting) {
+    event.preventDefault();
+    showQuitConfirmation();
+  } else {
+    shellProcessManager.cleanup();
+  }
 });
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    app.quit();
+    if (!isQuitting) {
+      showQuitConfirmation();
+    }
   }
 });
 
