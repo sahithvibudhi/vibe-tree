@@ -1,4 +1,4 @@
-import { app, BrowserWindow, nativeTheme, dialog } from 'electron';
+import { app, BrowserWindow, nativeTheme } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { shellProcessManager } from './shell-manager';
@@ -6,30 +6,9 @@ import './ide-detector';
 import './terminal-settings';
 import { registerIpcHandlers } from './ipc-handlers';
 import { createMenu } from './menu';
+import { quitManager } from './quit-manager';
 
 let mainWindow: BrowserWindow | null = null;
-let isQuitting = false;
-
-function showQuitConfirmation() {
-  const dialogOptions = {
-    type: 'question' as const,
-    buttons: ['Cancel', 'OK'],
-    defaultId: 0,
-    cancelId: 0,
-    title: 'Quit VibeTree?',
-    message: 'Quit VibeTree?',
-    detail: 'All sessions will be closed.',
-  };
-
-  const choice = mainWindow
-    ? dialog.showMessageBoxSync(mainWindow, dialogOptions)
-    : dialog.showMessageBoxSync(dialogOptions);
-
-  if (choice === 1) {
-    isQuitting = true;
-    app.quit();
-  }
-}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -64,13 +43,6 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
 
-  mainWindow.on('close', (event) => {
-    if (!isQuitting) {
-      event.preventDefault();
-      showQuitConfirmation();
-    }
-  });
-
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -80,23 +52,18 @@ app.whenReady().then(() => {
   createWindow();
   createMenu(mainWindow);
   registerIpcHandlers(mainWindow);
-});
 
-// Handle before-quit event to show confirmation
-app.on('before-quit', (event) => {
-  if (!isQuitting) {
-    event.preventDefault();
-    showQuitConfirmation();
-  } else {
+  // Initialize quit manager with cleanup callback
+  quitManager.initialize(mainWindow);
+  quitManager.options.onQuitConfirmed = () => {
     shellProcessManager.cleanup();
-  }
+  };
 });
 
+// Handle window-all-closed event
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    if (!isQuitting) {
-      showQuitConfirmation();
-    }
+    app.quit();
   }
 });
 
