@@ -17,7 +17,7 @@ vi.mock('electron', () => ({
 }));
 
 import { QuitManager } from './quit-manager';
-import { app, dialog } from 'electron';
+import { app, dialog, BrowserWindow } from 'electron';
 
 describe('QuitManager', () => {
   let quitManager: QuitManager;
@@ -41,7 +41,7 @@ describe('QuitManager', () => {
       vi.mocked(dialog.showMessageBoxSync).mockReturnValue(1); // OK button
 
       const mockWindow = { on: vi.fn(), isDestroyed: vi.fn(() => false) };
-      const result = quitManager.showQuitConfirmation(mockWindow as any);
+      const result = quitManager.showQuitConfirmation(mockWindow as unknown as BrowserWindow);
 
       expect(dialog.showMessageBoxSync).toHaveBeenCalledWith(
         mockWindow,
@@ -64,7 +64,7 @@ describe('QuitManager', () => {
       vi.mocked(dialog.showMessageBoxSync).mockReturnValue(0); // Cancel button
 
       const mockWindow = { on: vi.fn(), isDestroyed: vi.fn(() => false) };
-      const result = quitManager.showQuitConfirmation(mockWindow as any);
+      const result = quitManager.showQuitConfirmation(mockWindow as unknown as BrowserWindow);
 
       expect(result).toBe(false);
       expect(onQuitCancelled).toHaveBeenCalled();
@@ -76,7 +76,7 @@ describe('QuitManager', () => {
       quitManager.setDialogEnabled(false);
 
       const mockWindow = { on: vi.fn(), isDestroyed: vi.fn(() => false) };
-      const result = quitManager.showQuitConfirmation(mockWindow as any);
+      const result = quitManager.showQuitConfirmation(mockWindow as unknown as BrowserWindow);
 
       expect(dialog.showMessageBoxSync).not.toHaveBeenCalled();
       expect(result).toBe(true);

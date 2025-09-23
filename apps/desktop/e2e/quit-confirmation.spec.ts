@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { ElectronApplication, Page, _electron as electron } from 'playwright';
+import { _electron as electron } from 'playwright';
 import path from 'path';
 import fs from 'fs';
 
