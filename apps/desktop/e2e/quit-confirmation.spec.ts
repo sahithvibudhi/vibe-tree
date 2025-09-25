@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { ElectronApplication, _electron as electron } from 'playwright';
+import { _electron as electron } from 'playwright';
 import path from 'path';
 import fs from 'fs';
 
@@ -81,10 +81,10 @@ test.describe('Quit Confirmation Dialog', () => {
       const result = await quitPromise;
       // If we get here, the app didn't quit immediately (unexpected)
       expect(result).toBe('quit-called');
-    } catch (error: any) {
+    } catch (error) {
       // Expected: the app quit and closed the connection
       // This is the success case for this test
-      expect(error.message).toContain('Target page, context or browser has been closed');
+      expect((error as Error).message).toContain('Target page, context or browser has been closed');
     }
   });
 
