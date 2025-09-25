@@ -40,7 +40,8 @@ test.describe('Terminal Settings', () => {
       env: {
         ...process.env,
         NODE_ENV: 'test',
-        TEST_MODE: 'true'
+        TEST_MODE: 'true',
+        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
       },
     });
 
@@ -85,7 +86,7 @@ test.describe('Terminal Settings', () => {
   test.afterEach(async () => {
     // Close the app
     if (electronApp) {
-      await electronApp.close();
+      await electronApp.evaluate(() => process.exit(0));
     }
 
     // Clean up the dummy repository

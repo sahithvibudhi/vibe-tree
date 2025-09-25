@@ -47,6 +47,12 @@ test.describe('Worktree Switch Double Character Bug', () => {
     const appDir = path.join(__dirname, '..');
 
     electronApp = await electron.launch({
+      env: {
+        ...process.env,
+        NODE_ENV: 'test',
+        TEST_MODE: 'true',
+        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
+      },
       args: [testMainPath],
       cwd: appDir,
     });
@@ -57,7 +63,7 @@ test.describe('Worktree Switch Double Character Bug', () => {
 
   test.afterEach(async () => {
     if (electronApp) {
-      await electronApp.close();
+      await electronApp.evaluate(() => process.exit(0));
     }
     
     // Clean up the worktree directories first

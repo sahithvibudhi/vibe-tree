@@ -5,18 +5,17 @@ import fs from 'fs';
 
 test.describe('Quit Confirmation Dialog', () => {
   test('with dialog enabled - should prevent quit', async () => {
-    // Launch app with dialog enabled
-    const mainPath = path.join(__dirname, '../dist/main/index.js');
-    if (!fs.existsSync(mainPath)) {
-      throw new Error('Application not built. Run "pnpm build" first.');
-    }
+    // Use test-index.js like other e2e tests
+    const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
+    const mainPath = fs.existsSync(testMainPath) ? testMainPath : path.join(__dirname, '..');
 
     const electronApp = await electron.launch({
-      args: [path.join(__dirname, '..')],
+      args: [mainPath],
       env: {
         ...process.env,
-        NODE_ENV: 'production',
-        DISABLE_QUIT_DIALOG: 'false'
+        NODE_ENV: 'test',
+        TEST_MODE: 'true',
+        DISABLE_QUIT_DIALOG: 'false'  // Enable dialog for this test
       },
     });
 
@@ -40,18 +39,17 @@ test.describe('Quit Confirmation Dialog', () => {
   });
 
   test('with dialog disabled - should quit immediately', async () => {
-    // Launch app with dialog disabled
-    const mainPath = path.join(__dirname, '../dist/main/index.js');
-    if (!fs.existsSync(mainPath)) {
-      throw new Error('Application not built. Run "pnpm build" first.');
-    }
+    // Use test-index.js like other e2e tests
+    const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
+    const mainPath = fs.existsSync(testMainPath) ? testMainPath : path.join(__dirname, '..');
 
     const electronApp = await electron.launch({
-      args: [path.join(__dirname, '..')],
+      args: [mainPath],
       env: {
         ...process.env,
-        NODE_ENV: 'production',
-        DISABLE_QUIT_DIALOG: 'true'
+        NODE_ENV: 'test',
+        TEST_MODE: 'true',
+        DISABLE_QUIT_DIALOG: 'true'  // Disable dialog for this test
       },
     });
 

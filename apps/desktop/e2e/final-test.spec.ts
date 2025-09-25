@@ -16,6 +16,12 @@ test.beforeAll(async () => {
   electronApp = await electron.launch({
     args: [testMainPath],
     cwd: appDir,
+    env: {
+      ...process.env,
+      NODE_ENV: 'test',
+      TEST_MODE: 'true',
+      DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
+    }
   });
   
   // Wait for the first BrowserWindow to open
@@ -27,7 +33,8 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   if (electronApp) {
-    await electronApp.close();
+    // Force exit to bypass quit confirmation
+    await electronApp.evaluate(() => process.exit(0));
   }
 });
 

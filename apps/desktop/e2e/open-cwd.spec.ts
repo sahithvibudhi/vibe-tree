@@ -38,6 +38,12 @@ test.describe('Open Current Working Directory', () => {
     process.chdir(testRepoPath);
 
     electronApp = await electron.launch({
+      env: {
+        ...process.env,
+        NODE_ENV: 'test',
+        TEST_MODE: 'true',
+        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
+      },
       args: [testMainPath],
       cwd: testRepoPath, // Set the working directory for the Electron app
     });
@@ -51,7 +57,7 @@ test.describe('Open Current Working Directory', () => {
 
   test.afterEach(async () => {
     if (electronApp) {
-      await electronApp.close();
+      await electronApp.evaluate(() => process.exit(0));
     }
     
     // Clean up the test repository

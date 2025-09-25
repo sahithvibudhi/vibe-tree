@@ -26,7 +26,8 @@ test.describe('Application Menu Structure', () => {
       env: {
         ...process.env,
         NODE_ENV: 'test',
-        TEST_MODE: 'true'
+        TEST_MODE: 'true',
+        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
       },
     });
 
@@ -36,7 +37,7 @@ test.describe('Application Menu Structure', () => {
 
   test.afterEach(async () => {
     if (electronApp) {
-      await electronApp.close();
+      await electronApp.evaluate(() => process.exit(0));
     }
   });
 
