@@ -4,20 +4,14 @@ import path from 'path';
 import fs from 'fs';
 
 test.describe('Quit Confirmation Dialog', () => {
-  let electronApp: ElectronApplication;
-
-  test.afterEach(async () => {
-    if (electronApp) {
-      await electronApp.evaluate(() => process.exit(0));
-    }
-  });
-
   test('with dialog enabled - should prevent quit', async () => {
+    test.setTimeout(30000); // Shorter timeout for this specific test
+
     // Use test-index.js like other e2e tests
     const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
     const mainPath = fs.existsSync(testMainPath) ? testMainPath : path.join(__dirname, '..');
 
-    electronApp = await electron.launch({
+    const electronApp = await electron.launch({
       args: [mainPath],
       env: {
         ...process.env,
@@ -41,14 +35,19 @@ test.describe('Quit Confirmation Dialog', () => {
     });
 
     expect(quitPrevented).toBe(true);
+
+    // Force cleanup by killing the process
+    await electronApp.evaluate(() => process.exit(0));
   });
 
   test('with dialog disabled - should quit immediately', async () => {
+    test.setTimeout(30000); // Shorter timeout for this specific test
+
     // Use test-index.js like other e2e tests
     const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
     const mainPath = fs.existsSync(testMainPath) ? testMainPath : path.join(__dirname, '..');
 
-    electronApp = await electron.launch({
+    const electronApp = await electron.launch({
       args: [mainPath],
       env: {
         ...process.env,
@@ -82,7 +81,7 @@ test.describe('Quit Confirmation Dialog', () => {
       const result = await quitPromise;
       // If we get here, the app didn't quit immediately (unexpected)
       expect(result).toBe('quit-called');
-    } catch (error) {
+    } catch (error: any) {
       // Expected: the app quit and closed the connection
       // This is the success case for this test
       expect(error.message).toContain('Target page, context or browser has been closed');
