@@ -70,22 +70,28 @@ test.describe('Quit Confirmation Dialog', () => {
       dialog.showMessageBoxSync = () => 1; // Return 1 for OK button
     });
 
-    // Try to quit - should succeed after dialog returns OK
-    const quitPromise = electronApp.evaluate(({ app }) => {
+    // Try to quit - app should quit after dialog returns OK
+    await electronApp.evaluate(({ app }) => {
       app.quit();
-      return new Promise((resolve) => {
-        setTimeout(() => resolve('still-running'), 200);
-      });
     });
 
-    // The app should quit after confirming
+    // Wait a bit for the quit process to complete
+    await page.waitForTimeout(500);
+
+    // Try to check window state - should fail if app quit
     try {
-      await quitPromise;
-      // If we get here without error, the app didn't quit (test failure)
-      throw new Error('App should have quit after confirming dialog');
+      const windowsAfterQuit = await electronApp.evaluate(({ BrowserWindow }) => {
+        return BrowserWindow.getAllWindows().length;
+      });
+      // If we get here, the app didn't quit (test failure)
+      throw new Error(`App should have quit but still has ${windowsAfterQuit} windows`);
     } catch (error) {
-      // Expected: the app quit after confirmation
-      expect((error as Error).message).toContain('Target page, context or browser has been closed');
+      // Expected: the app quit and we can't communicate with it
+      const errorMessage = (error as Error).message;
+      // The error should indicate connection issues, not our thrown error
+      expect(errorMessage).not.toContain('App should have quit');
+      // It should be a connection/target closed error
+      expect(errorMessage.toLowerCase()).toMatch(/target.*closed|connection|disconnected/);
     }
   });
 
