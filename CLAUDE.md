@@ -2,11 +2,7 @@
 
 ## GitHub Actions Failed Build Logs
 
-To fetch detailed logs from failed GitHub Actions builds, use:
-
-```bash
-gh api repos/{owner}/{repo}/actions/jobs/{jobId}/logs
-```
+View failing build logs: `gh api repos/{owner}/{repo}/actions/jobs/{jobId}/logs`
 
 Example:
 ```bash
