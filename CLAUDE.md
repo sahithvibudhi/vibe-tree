@@ -1,5 +1,20 @@
 # Claude Instructions
 
+## GitHub Actions Failed Build Logs
+
+To fetch detailed logs from failed GitHub Actions builds, use:
+
+```bash
+gh api repos/{owner}/{repo}/actions/jobs/{jobId}/logs
+```
+
+Example:
+```bash
+gh api repos/sahithvibudhi/vibe-tree/actions/jobs/51222513854/logs
+```
+
+This provides the full build logs for debugging CI/CD failures.
+
 ## Electron App Startup Issues
 
 If the Electron app fails to start with errors like:
