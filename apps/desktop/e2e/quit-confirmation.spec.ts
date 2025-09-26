@@ -82,7 +82,7 @@ test.describe('Quit Confirmation Dialog', () => {
     try {
       await quitPromise;
       // If we get here without error, the app didn't quit (test failure)
-      expect.fail('App should have quit after confirming dialog');
+      throw new Error('App should have quit after confirming dialog');
     } catch (error) {
       // Expected: the app quit after confirmation
       expect((error as Error).message).toContain('Target page, context or browser has been closed');
