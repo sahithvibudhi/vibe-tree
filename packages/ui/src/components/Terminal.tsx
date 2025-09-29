@@ -5,6 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { SearchAddon } from '@xterm/addon-search';
+import { escapeShellPath } from '@vibetree/core';
 import '@xterm/xterm/css/xterm.css';
 
 /**
@@ -113,26 +114,6 @@ const getTerminalTheme = (theme: 'light' | 'dark') => {
   };
   
   return themes[theme];
-};
-
-/**
- * Escapes a file path for shell use with proper quoting
- * @param path The file path to escape
- * @returns The escaped path ready for shell use
- */
-const escapeShellPath = (path: string): string => {
-  // Check if path contains special characters that need escaping
-  const needsQuoting = /[\s'"`$(){}[\]!#&*?;<>|\\]/.test(path);
-
-  if (!needsQuoting) {
-    return path;
-  }
-
-  // Escape single quotes by replacing ' with '\''
-  const escaped = path.replace(/'/g, "'\\''");
-
-  // Wrap in single quotes
-  return `'${escaped}'`;
 };
 
 /**

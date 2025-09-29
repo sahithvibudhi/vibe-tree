@@ -9,6 +9,7 @@ import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Code2, Columns2, Rows2, X, Search } from 'lucide-react';
 import { useToast } from './ui/use-toast';
+import { escapeShellPath } from '@vibetree/core';
 import '@xterm/xterm/css/xterm.css';
 import type { TerminalSettings } from '../types/terminal-settings';
 
@@ -27,26 +28,6 @@ interface ClaudeTerminalProps {
 
 // Cache for terminal states per worktree
 const terminalStateCache = new Map<string, string>();
-
-/**
- * Escapes a file path for shell use with proper quoting
- * @param path The file path to escape
- * @returns The escaped path ready for shell use
- */
-const escapeShellPath = (path: string): string => {
-  // Check if path contains special characters that need escaping
-  const needsQuoting = /[\s'"`$(){}[\]!#&*?;<>|\\]/.test(path);
-
-  if (!needsQuoting) {
-    return path;
-  }
-
-  // Escape single quotes by replacing ' with '\''
-  const escaped = path.replace(/'/g, "'\\''");
-
-  // Wrap in single quotes
-  return `'${escaped}'`;
-};
 
 export function ClaudeTerminal({
   worktreePath,

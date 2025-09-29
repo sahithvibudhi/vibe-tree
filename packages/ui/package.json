@@ -28,6 +28,7 @@
     "react-dom": "^18.2.0"
   },
   "dependencies": {
+    "@vibetree/core": "workspace:^",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-search": "^0.16.0-beta.118",
     "@xterm/addon-serialize": "^0.13.0",

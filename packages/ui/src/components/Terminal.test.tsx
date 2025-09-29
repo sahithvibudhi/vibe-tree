@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { Terminal } from './Terminal';
+import { escapeShellPath } from '@vibetree/core';
 import React from 'react';
 
 // Mock xterm and its addons
@@ -55,17 +56,6 @@ vi.mock('@xterm/addon-search', () => ({
 
 // Test the escapeShellPath function
 describe('escapeShellPath', () => {
-  // Extract the function from the component file for testing
-  const escapeShellPath = (path: string): string => {
-    const needsQuoting = /[\s'"`$(){}[\]!#&*?;<>|\\]/.test(path);
-
-    if (!needsQuoting) {
-      return path;
-    }
-
-    const escaped = path.replace(/'/g, "'\\''");
-    return `'${escaped}'`;
-  };
 
   it('should not escape simple paths without special characters', () => {
     expect(escapeShellPath('/home/user/file.txt')).toBe('/home/user/file.txt');

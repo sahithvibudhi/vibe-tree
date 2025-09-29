@@ -12,6 +12,7 @@ export * from './utils/git-parser';
 export * from './utils/shell';
 export * from './utils/git';
 export * from './utils/network';
+export * from './utils/shell-escape';
 
 // Version info
 export const VERSION = '0.0.1';

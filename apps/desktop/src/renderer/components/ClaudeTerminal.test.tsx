@@ -1,18 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { escapeShellPath } from '@vibetree/core';
 
 // Test the escapeShellPath function
 describe('ClaudeTerminal - escapeShellPath', () => {
-  // Extract the function for testing
-  const escapeShellPath = (path: string): string => {
-    const needsQuoting = /[\s'"`$(){}[\]!#&*?;<>|\\]/.test(path);
-
-    if (!needsQuoting) {
-      return path;
-    }
-
-    const escaped = path.replace(/'/g, "'\\''");
-    return `'${escaped}'`;
-  };
 
   it('should correctly escape shell paths', () => {
     expect(escapeShellPath('/simple/path')).toBe('/simple/path');
