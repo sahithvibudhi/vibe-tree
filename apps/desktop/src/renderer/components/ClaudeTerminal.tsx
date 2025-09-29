@@ -28,6 +28,26 @@ interface ClaudeTerminalProps {
 // Cache for terminal states per worktree
 const terminalStateCache = new Map<string, string>();
 
+/**
+ * Escapes a file path for shell use with proper quoting
+ * @param path The file path to escape
+ * @returns The escaped path ready for shell use
+ */
+const escapeShellPath = (path: string): string => {
+  // Check if path contains special characters that need escaping
+  const needsQuoting = /[\s'"`$(){}[\]!#&*?;<>|\\]/.test(path);
+
+  if (!needsQuoting) {
+    return path;
+  }
+
+  // Escape single quotes by replacing ' with '\''
+  const escaped = path.replace(/'/g, "'\\''");
+
+  // Wrap in single quotes
+  return `'${escaped}'`;
+};
+
 export function ClaudeTerminal({
   worktreePath,
   theme = 'dark',
@@ -50,6 +70,7 @@ export function ClaudeTerminal({
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [terminalSettings, setTerminalSettings] = useState<TerminalSettings | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
   const { toast } = useToast();
 
   // Search functionality
@@ -568,8 +589,80 @@ export function ClaudeTerminal({
     }
   };
 
+  /**
+   * Handle drag enter event
+   */
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
 
+  /**
+   * Handle drag over event
+   */
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+    setIsDragOver(true);
+  }, []);
 
+  /**
+   * Handle drag leave event
+   */
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Check if we're actually leaving the terminal container
+    const rect = terminalRef.current?.getBoundingClientRect();
+    if (rect && (e.clientX < rect.left || e.clientX > rect.right ||
+                 e.clientY < rect.top || e.clientY > rect.bottom)) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  /**
+   * Handle drop event
+   */
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    if (!processIdRef.current) {
+      return;
+    }
+
+    // Get the dropped files
+    const files = e.dataTransfer.files;
+    if (files.length === 0) {
+      return;
+    }
+
+    // Build the escaped paths
+    const paths: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+
+      // In Electron 32+, we need to use webUtils.getPathForFile() to get the path
+      try {
+        const path = window.electronAPI.utils.getPathForFile(file);
+        if (path) {
+          const escapedPath = escapeShellPath(path);
+          paths.push(escapedPath);
+        }
+      } catch (error) {
+        console.error(`Error getting path for file:`, error);
+      }
+    }
+
+    if (paths.length > 0) {
+      // Insert the paths at current cursor position
+      const pathString = paths.join(' ');
+      window.electronAPI.shell.write(processIdRef.current, pathString);
+    }
+  }, []);
 
   return (
     <div className="claude-terminal-root flex-1 flex flex-col h-full overflow-hidden">
@@ -711,7 +804,19 @@ export function ClaudeTerminal({
       <div
         ref={terminalRef}
         className={`terminal-xterm-container flex-1 h-full ${theme === 'light' ? 'bg-white' : 'bg-black'}`}
-        style={{ minHeight: '100px' }}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        style={{
+          minHeight: '100px',
+          position: 'relative',
+          ...(isDragOver ? {
+            outline: '2px dashed #007acc',
+            outlineOffset: '-2px',
+            backgroundColor: 'rgba(0, 122, 204, 0.05)'
+          } : {})
+        }}
       />
     </div>
   );

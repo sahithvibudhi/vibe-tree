@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
 const api = {
   git: {
@@ -93,6 +93,11 @@ const api = {
       const listener = () => callback();
       ipcRenderer.on('menu:open-terminal-settings', listener);
       return () => ipcRenderer.removeListener('menu:open-terminal-settings', listener);
+    }
+  },
+  utils: {
+    getPathForFile: (file: File) => {
+      return webUtils.getPathForFile(file);
     }
   }
 };

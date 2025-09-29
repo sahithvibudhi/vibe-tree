@@ -116,6 +116,26 @@ const getTerminalTheme = (theme: 'light' | 'dark') => {
 };
 
 /**
+ * Escapes a file path for shell use with proper quoting
+ * @param path The file path to escape
+ * @returns The escaped path ready for shell use
+ */
+const escapeShellPath = (path: string): string => {
+  // Check if path contains special characters that need escaping
+  const needsQuoting = /[\s'"`$(){}[\]!#&*?;<>|\\]/.test(path);
+
+  if (!needsQuoting) {
+    return path;
+  }
+
+  // Escape single quotes by replacing ' with '\''
+  const escaped = path.replace(/'/g, "'\\''");
+
+  // Wrap in single quotes
+  return `'${escaped}'`;
+};
+
+/**
  * Terminal component that provides a cross-platform terminal interface
  * using xterm.js. Supports both desktop (Electron) and web environments.
  */
@@ -135,6 +155,7 @@ export const Terminal: React.FC<TerminalProps> = ({
   const searchAddonRef = useRef<SearchAddon | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   /**
    * Initialize terminal instance and addons
@@ -353,6 +374,63 @@ export const Terminal: React.FC<TerminalProps> = ({
   }, [handleSearch]);
 
   /**
+   * Handle drag over event
+   */
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+    setIsDragOver(true);
+  }, []);
+
+  /**
+   * Handle drag leave event
+   */
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Check if we're actually leaving the terminal container
+    const rect = terminalRef.current?.getBoundingClientRect();
+    if (rect && (e.clientX < rect.left || e.clientX > rect.right ||
+                 e.clientY < rect.top || e.clientY > rect.bottom)) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  /**
+   * Handle drop event
+   */
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    if (!terminal || !onData) return;
+
+    // Get the dropped files
+    const files = e.dataTransfer.files;
+    if (files.length === 0) return;
+
+    // Build the escaped paths
+    const paths: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      // In web environment, we get the file name; in Electron, we get the full path
+      const path = (file as any).path || file.name;
+      if (path) {
+        paths.push(escapeShellPath(path));
+      }
+    }
+
+    if (paths.length > 0) {
+      // Insert the paths at current cursor position
+      const pathString = paths.join(' ');
+      onData(pathString);
+    }
+  }, [terminal, onData]);
+
+  /**
    * Public API methods exposed via ref
    */
   useEffect(() => {
@@ -489,10 +567,19 @@ export const Terminal: React.FC<TerminalProps> = ({
       <div
         ref={terminalRef}
         className="terminal-container"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         style={{
           width: '100%',
           height: '100%',
-          minHeight: '100px'
+          minHeight: '100px',
+          position: 'relative',
+          ...(isDragOver ? {
+            outline: '2px dashed #007acc',
+            outlineOffset: '-2px',
+            backgroundColor: 'rgba(0, 122, 204, 0.1)'
+          } : {})
         }}
       />
     </div>

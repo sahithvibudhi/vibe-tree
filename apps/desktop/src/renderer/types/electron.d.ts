@@ -66,6 +66,9 @@ export interface ElectronAPI {
   menu: {
     onOpenTerminalSettings: (callback: () => void) => () => void;
   };
+  utils: {
+    getPathForFile: (file: File) => string;
+  };
 }
 
 declare global {
