@@ -1,13 +1,5 @@
 import { describe, it, expect } from 'vitest';
-
-/**
- * Helper function to determine if a branch should be protected from deletion
- * This mirrors the logic in WorktreePanel.tsx
- */
-function isProtectedBranch(branchRef: string): boolean {
-  const branchName = branchRef.replace('refs/heads/', '');
-  return branchName === 'main' || branchName === 'master';
-}
+import { isProtectedBranch } from '../utils/worktree';
 
 describe('WorktreePanel - Branch Protection Logic', () => {
   describe('isProtectedBranch', () => {
