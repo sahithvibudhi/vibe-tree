@@ -4,7 +4,7 @@ import { isProtectedBranch } from '../utils/worktree';
 describe('WorktreePanel - Branch Protection Logic', () => {
   describe('isProtectedBranch', () => {
     it('should protect exact "main" branch', () => {
-      expect(isProtectedBranch('refs/heads/main')).toBe(false); // INTENTIONAL FAILURE TO VERIFY CI
+      expect(isProtectedBranch('refs/heads/main')).toBe(true);
     });
 
     it('should protect exact "master" branch', () => {
