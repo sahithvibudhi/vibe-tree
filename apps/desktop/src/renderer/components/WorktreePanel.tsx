@@ -190,16 +190,20 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
                   </div>
                 </div>
               </button>
-              {worktrees.length > 1 && worktree.branch && !worktree.branch.includes('main') && !worktree.branch.includes('master') && (
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="relative right-2 top-1/2 -translate-y-1/2 h-6 w-6 opacity-60 hover:opacity-100 group-hover:opacity-100 transition-opacity bg-red-50 hover:bg-red-100 border border-red-200 hover:border-red-300"
-                  onClick={(e) => handleDeleteWorktree(worktree, e)}
-                >
-                  <Trash2 className="h-3 w-3 text-red-600" />
-                </Button>
-              )}
+              {(() => {
+                const branchName = worktree.branch ? worktree.branch.replace('refs/heads/', '') : '';
+                const isProtectedBranch = branchName === 'main' || branchName === 'master';
+                return worktrees.length > 1 && worktree.branch && !isProtectedBranch && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="relative right-2 top-1/2 -translate-y-1/2 h-6 w-6 opacity-60 hover:opacity-100 group-hover:opacity-100 transition-opacity bg-red-50 hover:bg-red-100 border border-red-200 hover:border-red-300"
+                    onClick={(e) => handleDeleteWorktree(worktree, e)}
+                  >
+                    <Trash2 className="h-3 w-3 text-red-600" />
+                  </Button>
+                );
+              })()}
             </div>
           ))}
         </div>
