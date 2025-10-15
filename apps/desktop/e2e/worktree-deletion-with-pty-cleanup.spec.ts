@@ -396,8 +396,12 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     const dialogTitle = await page.locator('h2').filter({ hasText: /Deletion/ }).first().textContent();
     console.log('Dialog title:', dialogTitle);
 
+    // Wait a bit for error icons to render
+    await page.waitForTimeout(500);
+
     // Verify error indicators (red X icons) are visible
     const errorIcons = page.locator('svg.lucide-x-circle');
+    await expect(errorIcons.first()).toBeVisible({ timeout: 3000 });
     const errorIconCount = await errorIcons.count();
     expect(errorIconCount).toBeGreaterThanOrEqual(1); // At least one error icon should be present
 
