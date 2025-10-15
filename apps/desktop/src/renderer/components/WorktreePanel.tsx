@@ -134,8 +134,6 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
     setIsDeletionComplete(false);
     setShowDeletionReporting(true);
 
-    let hasError = false;
-
     try {
       // Step 1: Kill all terminal processes for this worktree
       updateDeletionStep(0, { status: 'in-progress' });
@@ -150,7 +148,6 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
           status: 'error',
           error: error instanceof Error ? error.message : 'Failed to kill terminal processes'
         });
-        hasError = true;
       }
 
       // Step 2: Remove worktree and delete branch
@@ -171,7 +168,6 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
             status: 'error',
             error: result.warning
           });
-          hasError = true;
         } else {
           updateDeletionStep(2, { status: 'success' });
         }
@@ -181,7 +177,6 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
           error: error instanceof Error ? error.message : 'Failed to remove worktree'
         });
         updateDeletionStep(2, { status: 'error' });
-        hasError = true;
       }
 
       // Switch to another worktree if the deleted one was selected

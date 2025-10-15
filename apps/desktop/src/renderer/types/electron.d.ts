@@ -30,6 +30,7 @@ export interface ElectronAPI {
     getBuffer: (processId: string) => Promise<{ success: boolean; buffer?: string | null; error?: string }>;
     openExternal: (url: string) => Promise<void>;
     terminate: (processId: string) => Promise<{ success: boolean }>;
+    terminateForWorktree: (worktreePath: string) => Promise<{ success: boolean; count: number }>;
     onOutput: (processId: string, callback: (data: string) => void) => () => void;
     onExit: (processId: string, callback: (code: number) => void) => () => void;
   };
