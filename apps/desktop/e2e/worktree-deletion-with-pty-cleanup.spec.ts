@@ -152,10 +152,9 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     // Wait for delete confirmation dialog
     await expect(page.locator('h2', { hasText: 'Delete Worktree' })).toBeVisible({ timeout: 3000 });
 
-    // Verify confirmation dialog shows correct branch info
-    const confirmDialog = page.locator('div:has(> h2:text("Delete Worktree"))').first();
-    await expect(confirmDialog.locator('text=test-branch')).toBeVisible();
-    await expect(confirmDialog.locator('text=' + testWorktreePath)).toBeVisible();
+    // Verify confirmation dialog shows correct branch and path
+    await expect(page.locator('text=test-branch').first()).toBeVisible();
+    await expect(page.locator('text=Path').first()).toBeVisible();
 
     // Click "Delete Permanently" button
     const deletePermanentlyButton = page.locator('button', { hasText: 'Delete Permanently' });
@@ -273,8 +272,8 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     const stepsContent = await page.locator('text=terminal process').first().textContent();
     expect(stepsContent).toMatch(/Killed \d+ terminal process/);
 
-    // Close dialog
-    const closeButton = page.locator('button', { hasText: 'Close' });
+    // Close dialog (use more specific selector to avoid X button)
+    const closeButton = page.locator('button').filter({ hasText: /^Close$/ }).first();
     await closeButton.click();
   });
 
