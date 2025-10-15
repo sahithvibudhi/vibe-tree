@@ -90,7 +90,7 @@ export function DeletionReportingDialog({
 
         {isComplete && (
           <div className="flex justify-end">
-            <Button onClick={onClose}>Close</Button>
+            <Button onClick={onClose} data-testid="deletion-dialog-close-button">Close</Button>
           </div>
         )}
       </DialogContent>

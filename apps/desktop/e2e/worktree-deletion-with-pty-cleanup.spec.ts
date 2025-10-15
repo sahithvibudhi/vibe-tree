@@ -187,7 +187,7 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     expect(successCount).toBeGreaterThanOrEqual(1); // At least one step should succeed
 
     // Verify the close button is enabled
-    const closeButton = page.locator('button', { hasText: 'Close' });
+    const closeButton = page.getByTestId('deletion-dialog-close-button');
     await expect(closeButton).toBeVisible();
     await expect(closeButton).toBeEnabled();
 
