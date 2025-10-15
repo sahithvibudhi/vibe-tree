@@ -30,6 +30,8 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [worktreeToDelete, setWorktreeToDelete] = useState<Worktree | null>(null);
   const [showDeletionReporting, setShowDeletionReporting] = useState(false);
+  const [deletionBranchName, setDeletionBranchName] = useState('');
+  const [deletionWorktreePath, setDeletionWorktreePath] = useState('');
   const [deletionSteps, setDeletionSteps] = useState<Array<{
     message: string;
     status: 'pending' | 'in-progress' | 'success' | 'error';
@@ -113,11 +115,16 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
   const confirmDeleteWorktree = async () => {
     if (!worktreeToDelete) return;
 
+    // Store branch and path for the deletion dialog
+    const branchName = worktreeToDelete.branch.replace('refs/heads/', '');
+    const worktreePath = worktreeToDelete.path;
+    setDeletionBranchName(branchName);
+    setDeletionWorktreePath(worktreePath);
+
     // Close confirmation dialog and show deletion reporting dialog
     setShowDeleteDialog(false);
 
     // Initialize deletion steps
-    const branchName = worktreeToDelete.branch.replace('refs/heads/', '');
     const steps = [
       { message: 'Killing terminal processes...', status: 'pending' as const },
       { message: 'Removing worktree directory...', status: 'pending' as const },
@@ -335,14 +342,16 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
 
       <DeletionReportingDialog
         open={showDeletionReporting}
-        branchName={worktreeToDelete?.branch.replace('refs/heads/', '') || ''}
-        worktreePath={worktreeToDelete?.path || ''}
+        branchName={deletionBranchName}
+        worktreePath={deletionWorktreePath}
         steps={deletionSteps}
         isComplete={isDeletionComplete}
         onClose={() => {
           setShowDeletionReporting(false);
           setDeletionSteps([]);
           setIsDeletionComplete(false);
+          setDeletionBranchName('');
+          setDeletionWorktreePath('');
         }}
       />
     </div>
