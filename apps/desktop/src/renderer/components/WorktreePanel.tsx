@@ -6,6 +6,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { GitBranch, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 import { isProtectedBranch } from '../utils/worktree';
+import { DeletionReportingDialog } from './DeletionReportingDialog';
 
 interface Worktree {
   path: string;
@@ -28,6 +29,13 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
   const [newBranchName, setNewBranchName] = useState('');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [worktreeToDelete, setWorktreeToDelete] = useState<Worktree | null>(null);
+  const [showDeletionReporting, setShowDeletionReporting] = useState(false);
+  const [deletionSteps, setDeletionSteps] = useState<Array<{
+    message: string;
+    status: 'pending' | 'in-progress' | 'success' | 'error';
+    error?: string;
+  }>>([]);
+  const [isDeletionComplete, setIsDeletionComplete] = useState(false);
   const { toast } = useToast();
 
   const loadWorktrees = useCallback(async () => {
@@ -94,45 +102,96 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
     setShowDeleteDialog(true);
   };
 
+  const updateDeletionStep = (index: number, updates: Partial<typeof deletionSteps[0]>) => {
+    setDeletionSteps(prev => {
+      const newSteps = [...prev];
+      newSteps[index] = { ...newSteps[index], ...updates };
+      return newSteps;
+    });
+  };
+
   const confirmDeleteWorktree = async () => {
     if (!worktreeToDelete) return;
 
+    // Close confirmation dialog and show deletion reporting dialog
+    setShowDeleteDialog(false);
+
+    // Initialize deletion steps
+    const branchName = worktreeToDelete.branch.replace('refs/heads/', '');
+    const steps = [
+      { message: 'Killing terminal processes...', status: 'pending' as const },
+      { message: 'Removing worktree directory...', status: 'pending' as const },
+      { message: 'Deleting git branch...', status: 'pending' as const },
+    ];
+    setDeletionSteps(steps);
+    setIsDeletionComplete(false);
+    setShowDeletionReporting(true);
+
+    let hasError = false;
+
     try {
-      // Extract branch name from refs/heads/branch-name format
-      const branchName = worktreeToDelete.branch.replace('refs/heads/', '');
-      
-      const result = await window.electronAPI.git.removeWorktree(projectPath, worktreeToDelete.path, branchName);
-      
-      if (result.warning) {
-        toast({
-          title: "Warning",
-          description: `Worktree deleted but: ${result.warning}`,
-          variant: "default",
+      // Step 1: Kill all terminal processes for this worktree
+      updateDeletionStep(0, { status: 'in-progress' });
+      try {
+        const result = await window.electronAPI.shell.terminateForWorktree(worktreeToDelete.path);
+        updateDeletionStep(0, {
+          status: 'success',
+          message: `Killed ${result.count} terminal process(es)`
         });
-      } else {
-        toast({
-          title: "Success",
-          description: `Completely deleted worktree and branch ${branchName}`,
+      } catch (error) {
+        updateDeletionStep(0, {
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Failed to kill terminal processes'
         });
+        hasError = true;
       }
-      
+
+      // Step 2: Remove worktree and delete branch
+      updateDeletionStep(1, { status: 'in-progress' });
+      updateDeletionStep(2, { status: 'in-progress' });
+
+      try {
+        const result = await window.electronAPI.git.removeWorktree(
+          projectPath,
+          worktreeToDelete.path,
+          branchName
+        );
+
+        updateDeletionStep(1, { status: 'success' });
+
+        if (result.warning) {
+          updateDeletionStep(2, {
+            status: 'error',
+            error: result.warning
+          });
+          hasError = true;
+        } else {
+          updateDeletionStep(2, { status: 'success' });
+        }
+      } catch (error) {
+        updateDeletionStep(1, {
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Failed to remove worktree'
+        });
+        updateDeletionStep(2, { status: 'error' });
+        hasError = true;
+      }
+
+      // Switch to another worktree if the deleted one was selected
       if (selectedWorktree === worktreeToDelete.path) {
         const remainingWorktrees = worktrees.filter(w => w.path !== worktreeToDelete.path);
         if (remainingWorktrees.length > 0) {
           onSelectWorktree(remainingWorktrees[0].path);
         }
       }
-      
-      setShowDeleteDialog(false);
-      setWorktreeToDelete(null);
+
+      // Reload worktrees
       loadWorktrees();
+
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete worktree",
-        variant: "destructive",
-      });
-      setShowDeleteDialog(false);
+      console.error('Unexpected error during deletion:', error);
+    } finally {
+      setIsDeletionComplete(true);
       setWorktreeToDelete(null);
     }
   };
@@ -273,6 +332,19 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeletionReportingDialog
+        open={showDeletionReporting}
+        branchName={worktreeToDelete?.branch.replace('refs/heads/', '') || ''}
+        worktreePath={worktreeToDelete?.path || ''}
+        steps={deletionSteps}
+        isComplete={isDeletionComplete}
+        onClose={() => {
+          setShowDeletionReporting(false);
+          setDeletionSteps([]);
+          setIsDeletionComplete(false);
+        }}
+      />
     </div>
   );
 }

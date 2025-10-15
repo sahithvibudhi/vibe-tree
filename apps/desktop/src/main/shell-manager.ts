@@ -120,6 +120,11 @@ class DesktopShellManager {
       const success = this.sessionManager.terminateSession(processId);
       return { success };
     });
+
+    ipcMain.handle('shell:terminate-for-worktree', async (_, worktreePath: string) => {
+      const count = this.sessionManager.terminateSessionsForWorktree(worktreePath);
+      return { success: true, count };
+    });
   }
 
   // Clean up on app quit

@@ -324,23 +324,49 @@ export class ShellSessionManager {
       if (session.dataDisposable) {
         session.dataDisposable.dispose();
       }
-      
+
       // Clear listeners
       session.listeners.clear();
       session.exitListeners.clear();
-      
+
       // Kill PTY
       killPty(session.pty);
-      
+
       // Remove from sessions
       this.sessions.delete(sessionId);
-      
+
       console.log(`Terminated session ${sessionId}`);
       return true;
     } catch (error) {
       console.error('Error terminating session:', error);
       return false;
     }
+  }
+
+  /**
+   * Terminate all sessions for a worktree path
+   * Returns the number of sessions terminated
+   */
+  terminateSessionsForWorktree(worktreePath: string): number {
+    let terminated = 0;
+    const sessionsToTerminate: string[] = [];
+
+    // Find all sessions for this worktree
+    for (const [sessionId, session] of this.sessions) {
+      if (session.worktreePath === worktreePath) {
+        sessionsToTerminate.push(sessionId);
+      }
+    }
+
+    // Terminate each session
+    for (const sessionId of sessionsToTerminate) {
+      if (this.terminateSession(sessionId)) {
+        terminated++;
+      }
+    }
+
+    console.log(`Terminated ${terminated} session(s) for worktree: ${worktreePath}`);
+    return terminated;
   }
 
   /**

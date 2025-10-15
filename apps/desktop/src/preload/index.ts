@@ -16,20 +16,22 @@ const api = {
       ipcRenderer.invoke('git:diff-staged', worktreePath, filePath),
   },
   shell: {
-    start: (worktreePath: string, cols?: number, rows?: number, forceNew?: boolean, terminalId?: string) => 
+    start: (worktreePath: string, cols?: number, rows?: number, forceNew?: boolean, terminalId?: string) =>
       ipcRenderer.invoke('shell:start', worktreePath, cols, rows, forceNew, terminalId),
-    write: (processId: string, data: string) => 
+    write: (processId: string, data: string) =>
       ipcRenderer.invoke('shell:write', processId, data),
-    resize: (processId: string, cols: number, rows: number) => 
+    resize: (processId: string, cols: number, rows: number) =>
       ipcRenderer.invoke('shell:resize', processId, cols, rows),
-    status: (processId: string) => 
+    status: (processId: string) =>
       ipcRenderer.invoke('shell:status', processId),
-    getBuffer: (processId: string) => 
+    getBuffer: (processId: string) =>
       ipcRenderer.invoke('shell:get-buffer', processId),
     openExternal: (url: string) =>
       ipcRenderer.invoke('shell:open-external', url),
     terminate: (processId: string) =>
       ipcRenderer.invoke('shell:terminate', processId),
+    terminateForWorktree: (worktreePath: string) =>
+      ipcRenderer.invoke('shell:terminate-for-worktree', worktreePath),
     onOutput: (processId: string, callback: (data: string) => void) => {
       const channel = `shell:output:${processId}`;
       const listener = (_: unknown, data: string) => callback(data);
