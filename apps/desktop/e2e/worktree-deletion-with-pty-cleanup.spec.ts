@@ -400,7 +400,8 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     await page.waitForTimeout(500);
 
     // Verify error indicators (red X icons) are visible
-    const errorIcons = page.locator('svg.lucide-x-circle');
+    // Note: lucide-react uses 'lucide-xcircle' (no hyphen) for XCircle icon
+    const errorIcons = page.locator('svg.lucide-xcircle');
     await expect(errorIcons.first()).toBeVisible({ timeout: 3000 });
     const errorIconCount = await errorIcons.count();
     expect(errorIconCount).toBeGreaterThanOrEqual(1); // At least one error icon should be present
@@ -410,8 +411,8 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     await expect(page.locator('text=Cannot delete worktree directory').first()).toBeVisible();
 
     // Verify the error is shown in one of the deletion steps
-    const stepWithError = page.locator('div').filter({ hasText: /Removing worktree directory.*Permission denied/ });
-    await expect(stepWithError).toBeVisible();
+    const stepWithError = page.locator('p.text-xs.text-red-500').filter({ hasText: /Permission denied.*Cannot delete worktree directory/ });
+    await expect(stepWithError.first()).toBeVisible();
 
     // Verify the close button is enabled even with errors
     const closeButton = page.locator('button').filter({ hasText: /^Close$/ }).first();
