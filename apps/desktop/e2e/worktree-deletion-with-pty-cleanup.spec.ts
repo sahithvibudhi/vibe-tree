@@ -324,4 +324,107 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     // Verify the worktree directory still exists
     expect(fs.existsSync(testWorktreePath)).toBe(true);
   });
+
+  test('should display error in deletion dialog when folder deletion fails', async () => {
+    test.setTimeout(90000);
+
+    await page.waitForLoadState('domcontentloaded');
+
+    // Open the project
+    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    const openButton = page.locator('button', { hasText: 'Open Project Folder' });
+    await expect(openButton).toBeVisible();
+
+    await electronApp.evaluate(async ({ dialog }, repoPath) => {
+      dialog.showOpenDialog = async () => {
+        return {
+          canceled: false,
+          filePaths: [repoPath]
+        };
+      };
+    }, dummyRepoPath);
+
+    await openButton.click();
+    await page.waitForTimeout(3000);
+
+    // Click on the test-branch worktree to create a terminal
+    const testWorktreeButton = page.locator('button[data-worktree-branch="test-branch"]');
+    await expect(testWorktreeButton).toBeVisible({ timeout: 5000 });
+    await testWorktreeButton.click();
+    await page.waitForTimeout(3000);
+
+    // Wait for terminal to be ready
+    const terminalScreen = page.locator('.xterm-screen').first();
+    await expect(terminalScreen).toBeVisible({ timeout: 5000 });
+
+    // Mock the removeWorktree function to throw an error
+    await electronApp.evaluate(async ({ ipcMain }) => {
+      // Store the original handler
+      const originalHandler = ipcMain._events['git:worktree-remove'];
+
+      // Replace with a mock that throws an error
+      ipcMain.removeHandler('git:worktree-remove');
+      ipcMain.handle('git:worktree-remove', async () => {
+        throw new Error('Permission denied: Cannot delete worktree directory');
+      });
+
+      // Store the original handler to restore later (not actually used in test)
+      (global as any).__originalRemoveWorktreeHandler = originalHandler;
+    });
+
+    // Now find and click the delete button
+    const deleteButton = testWorktreeButton.locator('..').locator('button[class*="bg-red"]');
+    await expect(deleteButton).toBeVisible();
+    await deleteButton.click();
+
+    // Wait for delete confirmation dialog
+    await expect(page.locator('h2', { hasText: 'Delete Worktree' })).toBeVisible({ timeout: 3000 });
+
+    // Click "Delete Permanently" button
+    const deletePermanentlyButton = page.locator('button', { hasText: 'Delete Permanently' });
+    await expect(deletePermanentlyButton).toBeVisible();
+    await deletePermanentlyButton.click();
+
+    // Wait for deletion reporting dialog to appear
+    await page.waitForTimeout(500);
+    await expect(page.locator('h2').filter({ hasText: /Deleting Worktree|Deletion/ })).toBeVisible({ timeout: 5000 });
+
+    // Wait for the deletion process to complete
+    await expect(page.locator('h2', { hasText: /Deletion Complete|Deletion Failed/ })).toBeVisible({ timeout: 10000 });
+
+    // Verify that the dialog shows "Deletion Failed" or has error indicators
+    const dialogTitle = await page.locator('h2').filter({ hasText: /Deletion/ }).first().textContent();
+    console.log('Dialog title:', dialogTitle);
+
+    // Verify error indicators (red X icons) are visible
+    const errorIcons = page.locator('svg.lucide-x-circle');
+    const errorIconCount = await errorIcons.count();
+    expect(errorIconCount).toBeGreaterThanOrEqual(1); // At least one error icon should be present
+
+    // Verify the error message is displayed
+    await expect(page.locator('text=Permission denied').first()).toBeVisible();
+    await expect(page.locator('text=Cannot delete worktree directory').first()).toBeVisible();
+
+    // Verify the error is shown in one of the deletion steps
+    const stepWithError = page.locator('div').filter({ hasText: /Removing worktree directory.*Permission denied/ });
+    await expect(stepWithError).toBeVisible();
+
+    // Verify the close button is enabled even with errors
+    const closeButton = page.locator('button').filter({ hasText: /^Close$/ }).first();
+    await expect(closeButton).toBeVisible();
+    await expect(closeButton).toBeEnabled();
+
+    // Click close to dismiss the dialog
+    await closeButton.click();
+    await page.waitForTimeout(500);
+
+    // Verify deletion reporting dialog is closed
+    await expect(page.locator('h2', { hasText: /Deleting Worktree|Deletion/ })).not.toBeVisible();
+
+    // Verify test-branch still exists (because deletion failed)
+    await expect(testWorktreeButton).toBeVisible();
+
+    // Verify the worktree directory still exists
+    expect(fs.existsSync(testWorktreePath)).toBe(true);
+  });
 });
