@@ -84,8 +84,10 @@ function countTerminals(node: GridNode): number {
 
 export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManagerProps) {
   const [worktreeGrids, setWorktreeGrids] = useState<Map<string, WorktreeGrid>>(worktreeGridCache);
+  const [terminalsWaitingForceKill, setTerminalsWaitingForceKill] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalProcessIds = useRef<Map<string, string>>(new Map());
+  const terminalsBeingClosed = useRef<Set<string>>(new Set());
 
   // Initialize terminal controller
   const terminalControllerRef = useRef<TerminalController>();
@@ -94,11 +96,23 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
       onCleanupSuccess: (terminalId) => {
         console.log(`[TerminalGrid] PTY cleanup successful for terminal: ${terminalId}`);
         terminalProcessIds.current.delete(terminalId);
+        terminalsBeingClosed.current.delete(terminalId);
+
+        // Actually close the terminal now that process is cleaned up
+        const grid = worktreeGridCache.get(worktreePath);
+        if (grid) {
+          closeTerminalFromGrid(grid, terminalId);
+        }
       },
       onCleanupError: (terminalId, error) => {
         console.error(`[TerminalGrid] PTY cleanup failed for terminal ${terminalId}:`, error);
-        // Still remove from tracking even on error
         terminalProcessIds.current.delete(terminalId);
+        terminalsBeingClosed.current.delete(terminalId);
+      },
+      onCleanupTimeout: (terminalId, _processId) => {
+        console.log(`[TerminalGrid] PTY cleanup timed out for terminal ${terminalId}, showing force kill button`);
+        // Show force kill button for this terminal
+        setTerminalsWaitingForceKill(prev => new Set(prev).add(terminalId));
       }
     });
   }
@@ -197,20 +211,8 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
     }, 50);
   }, [worktreePath]);
 
-  // Handle terminal close
-  const handleClose = useCallback((terminalId: string) => {
-    const grid = worktreeGridCache.get(worktreePath);
-    if (!grid) return;
-
-    // Don't allow closing if it's the last terminal
-    const totalTerminals = countTerminals(grid.root);
-    if (totalTerminals <= 1) {
-      console.log('Cannot close the last terminal');
-      return;
-    }
-
-    console.log('Closing terminal:', terminalId);
-
+  // Helper function to close terminal from grid
+  const closeTerminalFromGrid = useCallback((grid: WorktreeGrid, terminalId: string) => {
     // Find the terminal node and its parent
     const result = findNodeAndParent(grid.root, terminalId);
     if (!result) return;
@@ -259,19 +261,71 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
     // Update state to trigger re-render
     setWorktreeGrids(new Map(worktreeGridCache));
 
-    // Clean up PTY process asynchronously after UI update
+    // Remove from waiting force kill set if present
+    setTerminalsWaitingForceKill(prev => {
+      const next = new Set(prev);
+      next.delete(terminalId);
+      return next;
+    });
+  }, [worktreePath]);
+
+  // Handle terminal close - initiate graceful shutdown
+  const handleClose = useCallback((terminalId: string) => {
+    const grid = worktreeGridCache.get(worktreePath);
+    if (!grid) return;
+
+    // Don't allow closing if it's the last terminal
+    const totalTerminals = countTerminals(grid.root);
+    if (totalTerminals <= 1) {
+      console.log('Cannot close the last terminal');
+      return;
+    }
+
+    // Don't allow closing if already being closed
+    if (terminalsBeingClosed.current.has(terminalId)) {
+      console.log('Terminal is already being closed:', terminalId);
+      return;
+    }
+
+    console.log('Initiating graceful close for terminal:', terminalId);
+    terminalsBeingClosed.current.add(terminalId);
+
+    // Clean up PTY process - UI will be updated when cleanup succeeds
     const processId = terminalProcessIds.current.get(terminalId);
     if (processId && terminalControllerRef.current) {
-      // Use the controller to handle PTY cleanup (async, fire and forget)
       terminalControllerRef.current.handleTerminalClose({
         terminalId,
         processId
       }).catch(error => {
-        // Error already logged by controller
-        console.warn('PTY cleanup error for terminal:', terminalId, error);
+        // Error or timeout - controller callbacks will handle UI state
+        console.warn('PTY cleanup error/timeout for terminal:', terminalId, error);
+      });
+    } else {
+      // No process ID, close immediately
+      closeTerminalFromGrid(grid, terminalId);
+      terminalsBeingClosed.current.delete(terminalId);
+    }
+  }, [worktreePath, closeTerminalFromGrid]);
+
+  // Handle force kill
+  const handleForceKill = useCallback((terminalId: string) => {
+    console.log('Force killing terminal:', terminalId);
+
+    const processId = terminalProcessIds.current.get(terminalId);
+    if (processId && terminalControllerRef.current) {
+      terminalControllerRef.current.handleForceTerminalClose({
+        terminalId,
+        processId
+      }).catch(error => {
+        console.error('Force kill error for terminal:', terminalId, error);
+        // Even on error, try to close the UI
+        const grid = worktreeGridCache.get(worktreePath);
+        if (grid) {
+          closeTerminalFromGrid(grid, terminalId);
+        }
       });
     }
-  }, [worktreePath]);
+  }, [worktreePath, closeTerminalFromGrid]);
 
   // Callback to track process IDs from terminals
   const handleTerminalProcessId = useCallback((terminalId: string, processId: string) => {
@@ -389,21 +443,61 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
       {allTerminals.map((terminal) => {
         const isCurrentTerminal = currentTerminals.some(t => t.id === terminal.id);
         const canCloseTerminal = isCurrentTerminal && currentTerminals.length > 1;
+        const needsForceKill = terminalsWaitingForceKill.has(terminal.id);
 
         return (
           <InPortal key={terminal.id} node={terminal.portalNode}>
-            <ClaudeTerminal
-              worktreePath={terminal.worktreePath}
-              projectId={projectId}
-              theme={theme}
-              terminalId={terminal.id}
-              isVisible={isCurrentTerminal}
-              onSplitVertical={() => handleSplit(terminal.id, 'vertical')}
-              onSplitHorizontal={() => handleSplit(terminal.id, 'horizontal')}
-              onClose={() => handleClose(terminal.id)}
-              canClose={canCloseTerminal}
-              onProcessIdChange={(processId) => handleTerminalProcessId(terminal.id, processId)}
-            />
+            <div className="relative w-full h-full">
+              <ClaudeTerminal
+                worktreePath={terminal.worktreePath}
+                projectId={projectId}
+                theme={theme}
+                terminalId={terminal.id}
+                isVisible={isCurrentTerminal}
+                onSplitVertical={() => handleSplit(terminal.id, 'vertical')}
+                onSplitHorizontal={() => handleSplit(terminal.id, 'horizontal')}
+                onClose={() => handleClose(terminal.id)}
+                canClose={canCloseTerminal}
+                onProcessIdChange={(processId) => handleTerminalProcessId(terminal.id, processId)}
+              />
+
+              {/* Force Kill Overlay */}
+              {needsForceKill && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
+                  <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl max-w-md mx-4">
+                    <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">
+                      Process Not Responding
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      The terminal process did not exit gracefully within 10 seconds.
+                      You can force kill the process to close this terminal.
+                    </p>
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => {
+                          // Cancel - remove from force kill set
+                          setTerminalsWaitingForceKill(prev => {
+                            const next = new Set(prev);
+                            next.delete(terminal.id);
+                            return next;
+                          });
+                          terminalsBeingClosed.current.delete(terminal.id);
+                        }}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
+                      >
+                        Wait
+                      </button>
+                      <button
+                        onClick={() => handleForceKill(terminal.id)}
+                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+                      >
+                        Force Kill
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </InPortal>
         );
       })}

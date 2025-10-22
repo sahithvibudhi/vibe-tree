@@ -117,7 +117,12 @@ class DesktopShellManager {
     });
 
     ipcMain.handle('shell:terminate', async (_, processId: string) => {
-      const success = await this.sessionManager.terminateSession(processId);
+      const result = await this.sessionManager.terminateSession(processId);
+      return result;
+    });
+
+    ipcMain.handle('shell:force-terminate', async (_, processId: string) => {
+      const success = await this.sessionManager.forceTerminateSession(processId);
       return { success };
     });
 

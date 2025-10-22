@@ -30,6 +30,8 @@ const api = {
       ipcRenderer.invoke('shell:open-external', url),
     terminate: (processId: string) =>
       ipcRenderer.invoke('shell:terminate', processId),
+    forceTerminate: (processId: string) =>
+      ipcRenderer.invoke('shell:force-terminate', processId),
     terminateForWorktree: (worktreePath: string) =>
       ipcRenderer.invoke('shell:terminate-for-worktree', worktreePath),
     onOutput: (processId: string, callback: (data: string) => void) => {

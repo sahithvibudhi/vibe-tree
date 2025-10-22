@@ -9,7 +9,8 @@ describe('TerminalController', () => {
 
   beforeEach(() => {
     mockShellAPI = {
-      terminate: vi.fn().mockResolvedValue({ success: true })
+      terminate: vi.fn().mockResolvedValue({ success: true }),
+      forceTerminate: vi.fn().mockResolvedValue({ success: true })
     };
 
     onCleanupSuccess = vi.fn();

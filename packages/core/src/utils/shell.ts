@@ -98,12 +98,83 @@ export function resizePty(ptyProcess: IPty, cols: number, rows: number): void {
 }
 
 /**
- * Kill a PTY process with graceful shutdown and forceful fallback
+ * Kill a PTY process gracefully (SIGTERM to process group)
+ * Kills the entire process group to ensure child processes are also terminated
  * @param ptyProcess - The PTY process to kill
- * @param timeoutMs - Timeout in milliseconds before force kill (default: 2000ms)
+ * @returns Promise that resolves when the process exits, or rejects on timeout
+ */
+export async function killPtyGraceful(ptyProcess: IPty, timeoutMs: number = 10000): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const pid = ptyProcess.pid;
+    let isKilled = false;
+    let exitListener: { dispose: () => void } | null = null;
+    let timeoutHandle: NodeJS.Timeout | null = null;
+
+    let cleanup = (error?: Error) => {
+      if (exitListener) {
+        exitListener.dispose();
+        exitListener = null;
+      }
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+        timeoutHandle = null;
+      }
+      if (!isKilled) {
+        isKilled = true;
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      }
+    };
+
+    // Listen for exit event
+    exitListener = ptyProcess.onExit(() => {
+      console.log(`PTY process ${pid} exited gracefully`);
+      cleanup();
+    });
+
+    // Send SIGTERM to process group for graceful shutdown
+    try {
+      if (process.platform !== 'win32') {
+        // Kill process group (negative PID) to terminate all child processes
+        try {
+          process.kill(-pid, 'SIGTERM');
+          console.log(`Sent SIGTERM to process group -${pid} (including all child processes)`);
+        } catch (pgError) {
+          // If process group kill fails, fall back to killing just the PTY process
+          console.warn(`Could not kill process group -${pid}, falling back to PTY process:`, pgError);
+          ptyProcess.kill('SIGTERM');
+          console.log(`Sent SIGTERM to PTY process ${pid}`);
+        }
+      } else {
+        // On Windows, just kill the PTY process (ConPTY handles cleanup)
+        ptyProcess.kill('SIGTERM');
+        console.log(`Sent SIGTERM to PTY process ${pid}`);
+      }
+    } catch (error) {
+      console.error(`Error sending SIGTERM to PTY process ${pid}:`, error);
+      cleanup(error as Error);
+      return;
+    }
+
+    // Set up timeout - reject if process doesn't exit in time
+    timeoutHandle = setTimeout(() => {
+      if (!isKilled) {
+        console.log(`PTY process ${pid} did not exit within ${timeoutMs}ms`);
+        cleanup(new Error(`Process ${pid} did not exit within ${timeoutMs}ms`));
+      }
+    }, timeoutMs);
+  });
+}
+
+/**
+ * Force kill a PTY process (SIGKILL to process group)
+ * @param ptyProcess - The PTY process to kill
  * @returns Promise that resolves when the process is killed
  */
-export async function killPty(ptyProcess: IPty, timeoutMs: number = 2000): Promise<void> {
+export async function killPtyForce(ptyProcess: IPty): Promise<void> {
   return new Promise<void>((resolve) => {
     const pid = ptyProcess.pid;
     let isKilled = false;
@@ -122,45 +193,53 @@ export async function killPty(ptyProcess: IPty, timeoutMs: number = 2000): Promi
 
     // Listen for exit event
     exitListener = ptyProcess.onExit(() => {
-      console.log(`PTY process ${pid} exited gracefully`);
+      console.log(`PTY process ${pid} force killed`);
       cleanup();
     });
 
-    // Try graceful shutdown first (SIGTERM)
+    // Send SIGKILL to force kill
     try {
-      ptyProcess.kill('SIGTERM');
-      console.log(`Sent SIGTERM to PTY process ${pid}`);
+      if (process.platform !== 'win32') {
+        try {
+          process.kill(-pid, 'SIGKILL');
+          console.log(`Sent SIGKILL to process group -${pid}`);
+        } catch (pgError) {
+          console.warn(`Could not kill process group -${pid}, falling back to PTY process:`, pgError);
+          ptyProcess.kill('SIGKILL');
+          console.log(`Sent SIGKILL to PTY process ${pid}`);
+        }
+      } else {
+        ptyProcess.kill('SIGKILL');
+        console.log(`Sent SIGKILL to PTY process ${pid}`);
+      }
     } catch (error) {
-      console.error(`Error sending SIGTERM to PTY process ${pid}:`, error);
+      console.error(`Error sending SIGKILL to PTY process ${pid}:`, error);
       cleanup();
       return;
     }
 
-    // Set up timeout for forceful kill
-    const forceKillTimeout = setTimeout(() => {
-      if (!isKilled) {
-        console.log(`PTY process ${pid} did not exit gracefully, sending SIGKILL`);
-        try {
-          ptyProcess.kill('SIGKILL');
-          console.log(`Sent SIGKILL to PTY process ${pid}`);
-        } catch (error) {
-          console.error(`Error sending SIGKILL to PTY process ${pid}:`, error);
-        }
-
-        // Give a small grace period for SIGKILL to take effect
-        setTimeout(() => {
-          cleanup();
-        }, 500);
-      }
-    }, timeoutMs);
-
-    // Clean up timeout if process exits before timeout
-    const originalCleanup = cleanup;
-    cleanup = () => {
-      clearTimeout(forceKillTimeout);
-      originalCleanup();
-    };
+    // Give a grace period for SIGKILL to take effect
+    setTimeout(() => {
+      cleanup();
+    }, 500);
   });
+}
+
+/**
+ * Kill a PTY process with graceful shutdown and forceful fallback
+ * Backward compatibility wrapper - tries graceful first, then forces
+ * @param ptyProcess - The PTY process to kill
+ * @param timeoutMs - Timeout in milliseconds before force kill (default: 2000ms)
+ * @returns Promise that resolves when the process is killed
+ */
+export async function killPty(ptyProcess: IPty, timeoutMs: number = 2000): Promise<void> {
+  try {
+    await killPtyGraceful(ptyProcess, timeoutMs);
+  } catch (error) {
+    // If graceful kill times out, force kill
+    console.log(`Graceful kill timed out, force killing PTY process ${ptyProcess.pid}`);
+    await killPtyForce(ptyProcess);
+  }
 }
 
 /**
