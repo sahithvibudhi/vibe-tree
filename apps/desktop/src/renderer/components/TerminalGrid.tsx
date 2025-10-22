@@ -198,7 +198,7 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
   }, [worktreePath]);
 
   // Handle terminal close
-  const handleClose = useCallback(async (terminalId: string) => {
+  const handleClose = useCallback((terminalId: string) => {
     const grid = worktreeGridCache.get(worktreePath);
     if (!grid) return;
 
@@ -210,21 +210,6 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
     }
 
     console.log('Closing terminal:', terminalId);
-
-    // Get the process ID for this terminal if it exists
-    const processId = terminalProcessIds.current.get(terminalId);
-    if (processId && terminalControllerRef.current) {
-      // Use the controller to handle PTY cleanup
-      try {
-        await terminalControllerRef.current.handleTerminalClose({
-          terminalId,
-          processId
-        });
-      } catch (error) {
-        // Error already logged by controller, just continue with UI cleanup
-        console.warn('Continuing with UI cleanup despite PTY cleanup error');
-      }
-    }
 
     // Find the terminal node and its parent
     const result = findNodeAndParent(grid.root, terminalId);
@@ -273,6 +258,19 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
 
     // Update state to trigger re-render
     setWorktreeGrids(new Map(worktreeGridCache));
+
+    // Clean up PTY process asynchronously after UI update
+    const processId = terminalProcessIds.current.get(terminalId);
+    if (processId && terminalControllerRef.current) {
+      // Use the controller to handle PTY cleanup (async, fire and forget)
+      terminalControllerRef.current.handleTerminalClose({
+        terminalId,
+        processId
+      }).catch(error => {
+        // Error already logged by controller
+        console.warn('PTY cleanup error for terminal:', terminalId, error);
+      });
+    }
   }, [worktreePath]);
 
   // Callback to track process IDs from terminals
