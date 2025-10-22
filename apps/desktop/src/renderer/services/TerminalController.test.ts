@@ -176,7 +176,7 @@ describe('TerminalController', () => {
       }));
 
       // Simulate varying response times
-      mockShellAPI.terminate = vi.fn().mockImplementation((processId: string) => {
+      mockShellAPI.terminate = vi.fn().mockImplementation(() => {
         const delay = Math.random() * 100; // Random delay up to 100ms
         return new Promise(resolve => {
           setTimeout(() => resolve({ success: true }), delay);
