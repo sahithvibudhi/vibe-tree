@@ -97,8 +97,6 @@ export function createMenu(mainWindow: BrowserWindow | null) {
                   '',
                   `Active PTY Processes: ${stats.activeProcessCount}`,
                   '',
-                  'Monitor active processes to prevent spawn errors when opening terminals.',
-                  '',
                   stats.activeProcessCount > 0 ? 'Active Sessions:' : 'No active sessions.',
                   ...stats.sessions.map((s: any) =>
                     `\n• ${s.worktreePath}\n  Created: ${new Date(s.createdAt).toLocaleString()}\n  Last Active: ${new Date(s.lastActivity).toLocaleString()}`
