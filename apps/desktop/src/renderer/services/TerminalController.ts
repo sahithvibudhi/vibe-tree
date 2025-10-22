@@ -58,7 +58,7 @@ export class TerminalController {
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       console.error(`[TerminalController] Error terminating PTY process ${processId}:`, err);
-      this.onCleanupError?.(terminalId, error);
+      this.onCleanupError?.(terminalId, err);
       throw err;
     }
   }

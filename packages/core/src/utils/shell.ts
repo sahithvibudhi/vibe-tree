@@ -98,109 +98,16 @@ export function resizePty(ptyProcess: IPty, cols: number, rows: number): void {
 }
 
 /**
- * Kill a PTY process gracefully (SIGTERM with escalation)
- * First tries to kill just the PTY process, then escalates to process group if needed
+ * Kill a PTY process gracefully - now uses force kill (SIGKILL) immediately
+ * The "graceful" approach with SIGTERM was not reliably killing child processes
  * @param ptyProcess - The PTY process to kill
- * @param timeoutMs - Total timeout in milliseconds
- * @returns Promise that resolves when the process exits, or rejects on timeout
+ * @param _timeoutMs - Kept for backwards compatibility but not used
+ * @returns Promise that resolves when the process exits
  */
-export async function killPtyGraceful(ptyProcess: IPty, timeoutMs: number = 10000): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    const pid = ptyProcess.pid;
-    let isKilled = false;
-    let exitListener: { dispose: () => void } | null = null;
-    let timeoutHandle: NodeJS.Timeout | null = null;
-    let escalationHandle: NodeJS.Timeout | null = null;
-
-    let cleanup = (error?: Error) => {
-      if (exitListener) {
-        exitListener.dispose();
-        exitListener = null;
-      }
-      if (timeoutHandle) {
-        clearTimeout(timeoutHandle);
-        timeoutHandle = null;
-      }
-      if (escalationHandle) {
-        clearTimeout(escalationHandle);
-        escalationHandle = null;
-      }
-      if (!isKilled) {
-        isKilled = true;
-        if (error) {
-          reject(error);
-        } else {
-          resolve();
-        }
-      }
-    };
-
-    // Listen for exit event
-    exitListener = ptyProcess.onExit(() => {
-      console.log(`PTY process ${pid} exited gracefully`);
-      cleanup();
-    });
-
-    // Phase 1: Send SIGTERM to the entire process group immediately
-    // This ensures all processes in the session receive the signal
-    try {
-      if (process.platform !== 'win32') {
-        // Try to kill the process group first
-        let groupKillFailed = false;
-        try {
-          process.kill(-pid, 'SIGTERM');
-          console.log(`Phase 1: Sent SIGTERM to process group -${pid} (shell and all children)`);
-        } catch (pgError) {
-          groupKillFailed = true;
-          console.warn(`Could not kill process group -${pid}:`, pgError);
-          // Fallback to killing just the PTY process
-          ptyProcess.kill('SIGTERM');
-          console.log(`Phase 1 fallback: Sent SIGTERM to PTY process ${pid}`);
-        }
-
-        // Phase 2: If process doesn't exit within half the timeout, try additional signals
-        const escalationTime = timeoutMs / 2;
-        escalationHandle = setTimeout(() => {
-          if (!isKilled) {
-            console.log(`Phase 2: PTY process ${pid} still running after ${escalationTime}ms`);
-            // If group kill worked the first time, try sending SIGTERM to shell process directly
-            if (!groupKillFailed) {
-              try {
-                ptyProcess.kill('SIGTERM');
-                console.log(`Phase 2: Sent additional SIGTERM to PTY process ${pid}`);
-              } catch (error) {
-                console.warn(`Could not send additional SIGTERM to PTY process ${pid}:`, error);
-              }
-            } else {
-              // Group kill failed, try it again
-              try {
-                process.kill(-pid, 'SIGTERM');
-                console.log(`Phase 2: Retry SIGTERM to process group -${pid}`);
-              } catch (error) {
-                console.warn(`Could not retry process group kill:`, error);
-              }
-            }
-          }
-        }, escalationTime);
-      } else {
-        // On Windows, just kill the PTY process (ConPTY handles cleanup)
-        ptyProcess.kill('SIGTERM');
-        console.log(`Sent SIGTERM to PTY process ${pid}`);
-      }
-    } catch (error) {
-      console.error(`Error sending SIGTERM to PTY process ${pid}:`, error);
-      cleanup(error as Error);
-      return;
-    }
-
-    // Set up final timeout - reject if process doesn't exit in time
-    timeoutHandle = setTimeout(() => {
-      if (!isKilled) {
-        console.log(`PTY process ${pid} did not exit within ${timeoutMs}ms after escalation`);
-        cleanup(new Error(`Process ${pid} did not exit within ${timeoutMs}ms`));
-      }
-    }, timeoutMs);
-  });
+export async function killPtyGraceful(ptyProcess: IPty, _timeoutMs?: number): Promise<void> {
+  // Graceful kill with SIGTERM doesn't work reliably for killing child processes like irb
+  // Force kill with SIGKILL to process group is the only reliable way
+  return killPtyForce(ptyProcess);
 }
 
 /**
