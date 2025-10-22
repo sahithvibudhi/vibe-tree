@@ -116,6 +116,7 @@ test.describe('Application Menu Structure', () => {
     // Verify View menu items
     const viewMenuLabels = viewMenu.submenu.map((item: MenuItem) => item.label).filter(Boolean);
     expect(viewMenuLabels).toContain('Terminal Settings...');
+    expect(viewMenuLabels).toContain('Stats...');
 
     const viewMenuRoles = viewMenu.submenu.map((item: MenuItem) => item.role?.toLowerCase()).filter(Boolean);
     expect(viewMenuRoles).toContain('reload');

@@ -82,6 +82,44 @@ export function createMenu(mainWindow: BrowserWindow | null) {
               mainWindow.webContents.send('menu:open-terminal-settings');
             }
           }
+        },
+        { type: 'separator' },
+        {
+          label: 'Stats...',
+          click: async () => {
+            if (mainWindow) {
+              try {
+                const stats = await mainWindow.webContents.executeJavaScript(`
+                  (async () => {
+                    const result = await window.electron.invoke('shell:get-stats');
+                    return result;
+                  })()
+                `);
+
+                const message = [
+                  'Process Statistics',
+                  '',
+                  `Active PTY Processes: ${stats.activeProcessCount}`,
+                  '',
+                  'This helps monitor process usage to avoid spawn errors when opening new terminal windows.',
+                  '',
+                  stats.activeProcessCount > 0 ? 'Active Sessions:' : 'No active sessions.',
+                  ...stats.sessions.map((s: any) =>
+                    `\n• ${s.worktreePath}\n  Created: ${new Date(s.createdAt).toLocaleString()}\n  Last Active: ${new Date(s.lastActivity).toLocaleString()}`
+                  )
+                ].join('\n');
+
+                dialog.showMessageBox(mainWindow, {
+                  type: 'info',
+                  title: 'Process Statistics',
+                  message: message,
+                  buttons: ['OK']
+                });
+              } catch (error) {
+                dialog.showErrorBox('Error', `Failed to fetch stats: ${error}`);
+              }
+            }
+          }
         }
       ]
     },
