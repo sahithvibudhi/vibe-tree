@@ -2,9 +2,10 @@ import * as crypto from 'crypto';
 
 // Type definitions to avoid importing node-pty directly
 export interface IPty {
+  pid: number;
   write(data: string): void;
   resize(cols: number, rows: number): void;
-  kill(): void;
+  kill(signal?: string): void;
   onData(callback: (data: string) => void): { dispose: () => void };
   onExit(callback: (event: { exitCode: number }) => void): { dispose: () => void };
 }
@@ -97,11 +98,82 @@ export function resizePty(ptyProcess: IPty, cols: number, rows: number): void {
 }
 
 /**
- * Kill a PTY process
+ * Kill a PTY process with graceful shutdown and forceful fallback
+ * @param ptyProcess - The PTY process to kill
+ * @param timeoutMs - Timeout in milliseconds before force kill (default: 2000ms)
+ * @returns Promise that resolves when the process is killed
+ */
+export async function killPty(ptyProcess: IPty, timeoutMs: number = 2000): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const pid = ptyProcess.pid;
+    let isKilled = false;
+    let exitListener: { dispose: () => void } | null = null;
+
+    let cleanup = () => {
+      if (exitListener) {
+        exitListener.dispose();
+        exitListener = null;
+      }
+      if (!isKilled) {
+        isKilled = true;
+        resolve();
+      }
+    };
+
+    // Listen for exit event
+    exitListener = ptyProcess.onExit(() => {
+      console.log(`PTY process ${pid} exited gracefully`);
+      cleanup();
+    });
+
+    // Try graceful shutdown first (SIGTERM)
+    try {
+      ptyProcess.kill('SIGTERM');
+      console.log(`Sent SIGTERM to PTY process ${pid}`);
+    } catch (error) {
+      console.error(`Error sending SIGTERM to PTY process ${pid}:`, error);
+      cleanup();
+      return;
+    }
+
+    // Set up timeout for forceful kill
+    const forceKillTimeout = setTimeout(() => {
+      if (!isKilled) {
+        console.log(`PTY process ${pid} did not exit gracefully, sending SIGKILL`);
+        try {
+          ptyProcess.kill('SIGKILL');
+          console.log(`Sent SIGKILL to PTY process ${pid}`);
+        } catch (error) {
+          console.error(`Error sending SIGKILL to PTY process ${pid}:`, error);
+        }
+
+        // Give a small grace period for SIGKILL to take effect
+        setTimeout(() => {
+          cleanup();
+        }, 500);
+      }
+    }, timeoutMs);
+
+    // Clean up timeout if process exits before timeout
+    const originalCleanup = cleanup;
+    cleanup = () => {
+      clearTimeout(forceKillTimeout);
+      originalCleanup();
+    };
+  });
+}
+
+/**
+ * Synchronous version of killPty for backward compatibility
+ * Note: This does not wait for process to exit, use killPty for robust cleanup
  * @param ptyProcess - The PTY process to kill
  */
-export function killPty(ptyProcess: IPty): void {
-  ptyProcess.kill();
+export function killPtySync(ptyProcess: IPty): void {
+  try {
+    ptyProcess.kill('SIGTERM');
+  } catch (error) {
+    console.error('Error killing PTY process:', error);
+  }
 }
 
 /**

@@ -117,8 +117,8 @@ export function setupRestRoutes(app: Express, services: Services) {
   });
 
   // Terminate a shell session (protected)
-  app.delete('/api/shells/:sessionId', authService.requireAuth, (req, res) => {
-    const success = shellManager.terminateSession(req.params.sessionId);
+  app.delete('/api/shells/:sessionId', authService.requireAuth, async (req, res) => {
+    const success = await shellManager.terminateSession(req.params.sessionId);
     if (success) {
       res.json({ success: true });
     } else {

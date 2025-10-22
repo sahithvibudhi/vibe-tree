@@ -84,12 +84,12 @@ app.whenReady().then(() => {
 });
 
 // Handle before-quit event to show confirmation
-app.on('before-quit', (event) => {
+app.on('before-quit', async (event) => {
   if (!isQuitting) {
     event.preventDefault();
     showQuitConfirmation();
   } else {
-    shellProcessManager.cleanup();
+    await shellProcessManager.cleanup();
   }
 });
 

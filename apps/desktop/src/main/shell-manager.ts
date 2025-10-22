@@ -117,19 +117,19 @@ class DesktopShellManager {
     });
 
     ipcMain.handle('shell:terminate', async (_, processId: string) => {
-      const success = this.sessionManager.terminateSession(processId);
+      const success = await this.sessionManager.terminateSession(processId);
       return { success };
     });
 
     ipcMain.handle('shell:terminate-for-worktree', async (_, worktreePath: string) => {
-      const count = this.sessionManager.terminateSessionsForWorktree(worktreePath);
+      const count = await this.sessionManager.terminateSessionsForWorktree(worktreePath);
       return { success: true, count };
     });
   }
 
   // Clean up on app quit
-  public cleanup() {
-    this.sessionManager.cleanup();
+  public async cleanup() {
+    await this.sessionManager.cleanup();
   }
 }
 

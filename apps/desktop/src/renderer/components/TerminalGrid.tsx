@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { createHtmlPortalNode, InPortal, OutPortal, HtmlPortalNode } from 'react-reverse-portal';
 import { ClaudeTerminal } from './ClaudeTerminal';
+import { TerminalController } from '../services/TerminalController';
 
 interface TerminalManagerProps {
   worktreePath: string;
@@ -85,6 +86,22 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
   const [worktreeGrids, setWorktreeGrids] = useState<Map<string, WorktreeGrid>>(worktreeGridCache);
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalProcessIds = useRef<Map<string, string>>(new Map());
+
+  // Initialize terminal controller
+  const terminalControllerRef = useRef<TerminalController>();
+  if (!terminalControllerRef.current) {
+    terminalControllerRef.current = new TerminalController(window.electronAPI.shell, {
+      onCleanupSuccess: (terminalId) => {
+        console.log(`[TerminalGrid] PTY cleanup successful for terminal: ${terminalId}`);
+        terminalProcessIds.current.delete(terminalId);
+      },
+      onCleanupError: (terminalId, error) => {
+        console.error(`[TerminalGrid] PTY cleanup failed for terminal ${terminalId}:`, error);
+        // Still remove from tracking even on error
+        terminalProcessIds.current.delete(terminalId);
+      }
+    });
+  }
 
   // Create or get grid for current worktree
   useEffect(() => {
@@ -196,14 +213,17 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
 
     // Get the process ID for this terminal if it exists
     const processId = terminalProcessIds.current.get(terminalId);
-    if (processId) {
-      console.log('Terminating PTY for terminal:', terminalId, 'processId:', processId);
+    if (processId && terminalControllerRef.current) {
+      // Use the controller to handle PTY cleanup
       try {
-        await window.electronAPI.shell.terminate(processId);
+        await terminalControllerRef.current.handleTerminalClose({
+          terminalId,
+          processId
+        });
       } catch (error) {
-        console.error('Error terminating PTY:', error);
+        // Error already logged by controller, just continue with UI cleanup
+        console.warn('Continuing with UI cleanup despite PTY cleanup error');
       }
-      terminalProcessIds.current.delete(terminalId);
     }
 
     // Find the terminal node and its parent

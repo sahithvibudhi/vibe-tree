@@ -2,7 +2,7 @@ import { app, dialog, BrowserWindow } from 'electron';
 
 export interface QuitManagerOptions {
   enableDialog?: boolean;
-  onQuitConfirmed?: () => void;
+  onQuitConfirmed?: () => void | Promise<void>;
   onQuitCancelled?: () => void;
 }
 
@@ -87,10 +87,10 @@ export class QuitManager {
   /**
    * Confirm quit and exit the application
    */
-  confirmQuit() {
+  async confirmQuit() {
     this.isQuitting = true;
     if (this.options.onQuitConfirmed) {
-      this.options.onQuitConfirmed();
+      await this.options.onQuitConfirmed();
     }
     app.quit();
   }
