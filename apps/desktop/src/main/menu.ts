@@ -1,5 +1,6 @@
 import { Menu, BrowserWindow, MenuItemConstructorOptions, dialog, app } from 'electron';
 import { recentProjectsManager } from './recent-projects';
+import { shellProcessManager } from './shell-manager';
 
 export function createMenu(mainWindow: BrowserWindow | null) {
   const recentProjects = recentProjectsManager.getRecentProjects();
@@ -86,15 +87,10 @@ export function createMenu(mainWindow: BrowserWindow | null) {
         { type: 'separator' },
         {
           label: 'Stats...',
-          click: async () => {
+          click: () => {
             if (mainWindow) {
               try {
-                const stats = await mainWindow.webContents.executeJavaScript(`
-                  (async () => {
-                    const result = await window.electron.invoke('shell:get-stats');
-                    return result;
-                  })()
-                `);
+                const stats = shellProcessManager.getStats();
 
                 const message = [
                   'Process Statistics',

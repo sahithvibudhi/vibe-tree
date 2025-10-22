@@ -32,6 +32,8 @@ const api = {
       ipcRenderer.invoke('shell:terminate', processId),
     terminateForWorktree: (worktreePath: string) =>
       ipcRenderer.invoke('shell:terminate-for-worktree', worktreePath),
+    getStats: () =>
+      ipcRenderer.invoke('shell:get-stats'),
     onOutput: (processId: string, callback: (data: string) => void) => {
       const channel = `shell:output:${processId}`;
       const listener = (_: unknown, data: string) => callback(data);
