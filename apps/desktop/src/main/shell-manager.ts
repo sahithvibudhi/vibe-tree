@@ -121,11 +121,6 @@ class DesktopShellManager {
       return result;
     });
 
-    ipcMain.handle('shell:force-terminate', async (_, processId: string) => {
-      const success = await this.sessionManager.forceTerminateSession(processId);
-      return { success };
-    });
-
     ipcMain.handle('shell:terminate-for-worktree', async (_, worktreePath: string) => {
       const count = await this.sessionManager.terminateSessionsForWorktree(worktreePath);
       return { success: true, count };

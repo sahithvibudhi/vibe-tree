@@ -315,18 +315,17 @@ export class ShellSessionManager {
   }
 
   /**
-   * Terminate session gracefully with timeout
+   * Terminate session - uses SIGKILL to ensure process and children are killed immediately
    * @param sessionId - Session ID to terminate
-   * @param graceful - If true, try graceful shutdown with 10s timeout. If false or timeout, returns sessionId for UI to show force-kill button
-   * @returns Object with success status and optionally the sessionId if graceful kill timed out
+   * @returns Object with success status
    */
-  async terminateSession(sessionId: string, graceful: boolean = true): Promise<{ success: boolean; timedOut?: boolean }> {
+  async terminateSession(sessionId: string): Promise<{ success: boolean }> {
     const session = this.sessions.get(sessionId);
     if (!session) return { success: false };
 
     try {
       const pid = session.pty.pid;
-      console.log(`Terminating session ${sessionId} (PID: ${pid})${graceful ? ' gracefully' : ' forcefully'}`);
+      console.log(`Terminating session ${sessionId} (PID: ${pid})`);
 
       // Dispose of data listener if it exists
       if (session.dataDisposable) {
@@ -337,42 +336,19 @@ export class ShellSessionManager {
       session.listeners.clear();
       session.exitListeners.clear();
 
-      if (graceful) {
-        try {
-          // Try graceful kill with 10-second timeout
-          await killPtyGraceful(session.pty, 10000);
+      // Force kill immediately - SIGTERM doesn't reliably kill child processes
+      await killPtyForce(session.pty);
 
-          // Remove from sessions only after successful graceful kill
-          this.sessions.delete(sessionId);
-          console.log(`Successfully terminated session ${sessionId} (PID: ${pid}) gracefully`);
-          return { success: true };
-        } catch (error) {
-          // Graceful kill timed out - return timedOut flag so UI can show force-kill button
-          console.log(`Session ${sessionId} (PID: ${pid}) did not exit gracefully within 10 seconds`);
-          return { success: false, timedOut: true };
-        }
-      } else {
-        // Force kill
-        await killPtyForce(session.pty);
-
-        // Remove from sessions after force kill
-        this.sessions.delete(sessionId);
-        console.log(`Successfully force-killed session ${sessionId} (PID: ${pid})`);
-        return { success: true };
-      }
+      // Remove from sessions after force kill
+      this.sessions.delete(sessionId);
+      console.log(`Successfully terminated session ${sessionId} (PID: ${pid})`);
+      return { success: true };
     } catch (error) {
       console.error(`Error terminating session ${sessionId}:`, error);
       return { success: false };
     }
   }
 
-  /**
-   * Force terminate a session that didn't exit gracefully
-   */
-  async forceTerminateSession(sessionId: string): Promise<boolean> {
-    const result = await this.terminateSession(sessionId, false);
-    return result.success;
-  }
 
   /**
    * Terminate all sessions for a worktree path
