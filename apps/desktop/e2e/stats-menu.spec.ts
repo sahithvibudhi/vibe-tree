@@ -85,24 +85,34 @@ test.describe('Stats Menu', () => {
     expect(stats.sessions).toEqual([]);
   });
 
-  test('should return stats with correct structure when sessions exist', async () => {
-    test.setTimeout(60000);
+  test('should show correct count after opening terminal', async () => {
+    test.setTimeout(90000);
 
-    // Manually start a shell session via IPC handler
-    await electronApp.evaluate(async ({ ipcMain }, repoPath) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const handlers = (ipcMain as unknown as {_invokeHandlers?: Map<string, (...args: any[]) => any>})._invokeHandlers;
-      if (handlers && handlers.get('shell:start')) {
-        const handler = handlers.get('shell:start');
-        // Start a shell session with the test repo path
-        await handler(null, repoPath, 80, 30);
-      }
+    await page.waitForLoadState('domcontentloaded');
+
+    // Open the project
+    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    const openButton = page.locator('button', { hasText: 'Open Project Folder' });
+    await expect(openButton).toBeVisible();
+
+    await electronApp.evaluate(async ({ dialog }, repoPath) => {
+      dialog.showOpenDialog = async () => {
+        return {
+          canceled: false,
+          filePaths: [repoPath]
+        };
+      };
     }, dummyRepoPath);
 
-    // Wait a bit for the session to be created
-    await page.waitForTimeout(1000);
+    await openButton.click();
+    await page.waitForTimeout(3000);
 
-    // Get stats via IPC handler
+    // Wait for terminal to be ready
+    const terminalScreen = page.locator('.xterm-screen').first();
+    await expect(terminalScreen).toBeVisible({ timeout: 10000 });
+    await page.waitForTimeout(2000);
+
+    // Get stats - should have 1 active process
     const stats = await electronApp.evaluate(async ({ ipcMain }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const handlers = (ipcMain as unknown as {_invokeHandlers?: Map<string, (...args: any[]) => any>})._invokeHandlers;
@@ -114,47 +124,49 @@ test.describe('Stats Menu', () => {
     });
 
     expect(stats).toBeDefined();
-    expect(stats.activeProcessCount).toBeGreaterThan(0);
-    expect(stats.sessions.length).toBeGreaterThan(0);
-
-    // Verify session details
-    const session = stats.sessions[0];
-    expect(session.worktreePath).toBe(dummyRepoPath);
-    expect(session.id).toBeDefined();
-    expect(session.createdAt).toBeDefined();
-    expect(session.lastActivity).toBeDefined();
-
-    // Clean up - terminate the session
-    await electronApp.evaluate(async ({ ipcMain }, repoPath) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const handlers = (ipcMain as unknown as {_invokeHandlers?: Map<string, (...args: any[]) => any>})._invokeHandlers;
-      if (handlers && handlers.get('shell:terminate-for-worktree')) {
-        const handler = handlers.get('shell:terminate-for-worktree');
-        await handler(null, repoPath);
-      }
-    }, dummyRepoPath);
+    expect(stats.activeProcessCount).toBe(1);
+    expect(stats.sessions.length).toBe(1);
+    expect(stats.sessions[0].worktreePath).toBe(dummyRepoPath);
   });
 
-  test('should show correct count with multiple sessions', async () => {
+  test('should show correct count with multiple terminals', async () => {
     test.setTimeout(90000);
 
-    // Start two shell sessions via IPC handler
-    await electronApp.evaluate(async ({ ipcMain }, repoPath) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const handlers = (ipcMain as unknown as {_invokeHandlers?: Map<string, (...args: any[]) => any>})._invokeHandlers;
-      if (handlers && handlers.get('shell:start')) {
-        const handler = handlers.get('shell:start');
-        // Start first session
-        await handler(null, repoPath, 80, 30, false, 'terminal-1');
-        // Start second session
-        await handler(null, repoPath, 80, 30, false, 'terminal-2');
-      }
+    await page.waitForLoadState('domcontentloaded');
+
+    // Open the project
+    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    const openButton = page.locator('button', { hasText: 'Open Project Folder' });
+    await expect(openButton).toBeVisible();
+
+    await electronApp.evaluate(async ({ dialog }, repoPath) => {
+      dialog.showOpenDialog = async () => {
+        return {
+          canceled: false,
+          filePaths: [repoPath]
+        };
+      };
     }, dummyRepoPath);
 
-    // Wait for sessions to be created
-    await page.waitForTimeout(1000);
+    await openButton.click();
+    await page.waitForTimeout(3000);
 
-    // Get stats via IPC handler
+    // Wait for terminal to be ready
+    const terminalScreen = page.locator('.xterm-screen').first();
+    await expect(terminalScreen).toBeVisible({ timeout: 10000 });
+    await page.waitForTimeout(2000);
+
+    // Split the terminal to create a second PTY process
+    const splitButton = page.locator('button[title="Split Terminal Vertically"]').first();
+    await expect(splitButton).toBeVisible();
+    await splitButton.click();
+    await page.waitForTimeout(2000);
+
+    // Verify we have 2 terminals
+    const terminalCount = await page.locator('.claude-terminal-root').count();
+    expect(terminalCount).toBe(2);
+
+    // Get stats - should have 2 active processes
     const stats = await electronApp.evaluate(async ({ ipcMain }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const handlers = (ipcMain as unknown as {_invokeHandlers?: Map<string, (...args: any[]) => any>})._invokeHandlers;
@@ -168,15 +180,5 @@ test.describe('Stats Menu', () => {
     expect(stats).toBeDefined();
     expect(stats.activeProcessCount).toBe(2);
     expect(stats.sessions.length).toBe(2);
-
-    // Clean up - terminate all sessions
-    await electronApp.evaluate(async ({ ipcMain }, repoPath) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const handlers = (ipcMain as unknown as {_invokeHandlers?: Map<string, (...args: any[]) => any>})._invokeHandlers;
-      if (handlers && handlers.get('shell:terminate-for-worktree')) {
-        const handler = handlers.get('shell:terminate-for-worktree');
-        await handler(null, repoPath);
-      }
-    }, dummyRepoPath);
   });
 });
