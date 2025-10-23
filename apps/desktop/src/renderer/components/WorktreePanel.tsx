@@ -3,7 +3,7 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
-import { GitBranch, Plus, RefreshCw, Trash2, Bug } from 'lucide-react';
+import { GitBranch, Plus, RefreshCw, Trash2, Bomb } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 import { isProtectedBranch } from '../utils/worktree';
 import { DeletionReportingDialog } from './DeletionReportingDialog';
@@ -68,11 +68,40 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
 
       if (result.success) {
         toast({
-          title: "Success!",
-          description: `Created stress test repo with 150 worktrees at: ${result.path}`,
+          title: "Loading worktrees...",
+          description: "Opening terminals for all worktrees...",
         });
-        // Reload the page with the new project
-        window.location.reload();
+
+        // Load worktrees from the new project
+        const trees = await window.electronAPI.git.listWorktrees(result.path);
+
+        // Open terminal for each worktree to trigger PTY spawn stress test
+        let openedCount = 0;
+        for (const worktree of trees) {
+          try {
+            await window.electronAPI.shell.start(worktree.path, 80, 30, true);
+            openedCount++;
+
+            // Update toast every 10 terminals
+            if (openedCount % 10 === 0) {
+              toast({
+                title: "Opening terminals...",
+                description: `Opened ${openedCount}/${trees.length} terminals`,
+              });
+            }
+          } catch (error) {
+            console.error(`Failed to open terminal for ${worktree.path}:`, error);
+          }
+        }
+
+        toast({
+          title: "Stress test ready!",
+          description: `Opened ${openedCount} terminals. Check for spawn errors.`,
+        });
+
+        // Switch to the new project
+        onSelectWorktree(result.path);
+        await loadWorktrees();
       } else {
         toast({
           title: "Error",
@@ -238,17 +267,15 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">Worktrees</h3>
           <div className="flex gap-2">
-            {process.env.DEBUG_LAYOUT === 'true' && (
-              <Button
-                size="icon"
-                variant="destructive"
-                onClick={handleCreateStressTest}
-                disabled={loading}
-                title="Create stress test repo with 150 worktrees"
-              >
-                <Bug className="h-4 w-4" />
-              </Button>
-            )}
+            <Button
+              size="icon"
+              variant="destructive"
+              onClick={handleCreateStressTest}
+              disabled={loading}
+              title="Create stress test repo with 150 worktrees and open all terminals (will explode!)"
+            >
+              <Bomb className="h-4 w-4" />
+            </Button>
             <Button
               size="icon"
               variant="ghost"
