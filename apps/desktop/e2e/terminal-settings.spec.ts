@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { ElectronApplication, Page, _electron as electron } from 'playwright';
+import { closeElectronApp } from './helpers/test-launcher';
 import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
@@ -86,7 +87,7 @@ test.describe('Terminal Settings', () => {
   test.afterEach(async () => {
     // Close the app
     if (electronApp) {
-      await electronApp.evaluate(() => process.exit(0));
+      await closeElectronApp(electronApp);
     }
 
     // Clean up the dummy repository

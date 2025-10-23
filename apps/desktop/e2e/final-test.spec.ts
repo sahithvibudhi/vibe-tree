@@ -1,44 +1,42 @@
 import { test, expect } from '@playwright/test';
 import { ElectronApplication, Page, _electron as electron } from 'playwright';
+import { closeElectronApp } from './helpers/test-launcher';
 import path from 'path';
 
-let electronApp: ElectronApplication;
-let page: Page;
-
-test.beforeAll(async () => {
-  // Use the test-specific main file that always loads built files
-  const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
-  console.log('Using test main file:', testMainPath);
-  
-  // In CI, we need to specify the app directory explicitly
-  const appDir = path.join(__dirname, '..');
-  
-  electronApp = await electron.launch({
-    args: [testMainPath],
-    cwd: appDir,
-    env: {
-      ...process.env,
-      NODE_ENV: 'test',
-      TEST_MODE: 'true',
-      DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
-    }
-  });
-  
-  // Wait for the first BrowserWindow to open
-  page = await electronApp.firstWindow();
-  
-  // Wait for the page to be fully loaded
-  await page.waitForLoadState('domcontentloaded');
-}, 45000);
-
-test.afterAll(async () => {
-  if (electronApp) {
-    // Force exit to bypass quit confirmation
-    await electronApp.evaluate(() => process.exit(0));
-  }
-});
-
 test.describe('VibeTree Desktop App', () => {
+  let electronApp: ElectronApplication;
+  let page: Page;
+
+  test.beforeEach(async () => {
+    // Use the test-specific main file that always loads built files
+    const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
+    console.log('Using test main file:', testMainPath);
+
+    // In CI, we need to specify the app directory explicitly
+    const appDir = path.join(__dirname, '..');
+
+    electronApp = await electron.launch({
+      args: [testMainPath],
+      cwd: appDir,
+      env: {
+        ...process.env,
+        NODE_ENV: 'test',
+        TEST_MODE: 'true',
+        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
+      }
+    });
+
+    // Wait for the first BrowserWindow to open
+    page = await electronApp.firstWindow();
+
+    // Wait for the page to be fully loaded
+    await page.waitForLoadState('domcontentloaded');
+  });
+
+  test.afterEach(async () => {
+    await closeElectronApp(electronApp);
+  });
+
   test('should launch and display project selector', async () => {
     // Verify the main heading is present
     await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible();

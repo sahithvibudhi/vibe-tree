@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { ElectronApplication, Page, _electron as electron } from 'playwright';
 import path from 'path';
 import fs from 'fs';
+import { closeElectronApp } from './helpers/test-launcher';
 
 interface MenuItem {
   label?: string;
@@ -36,9 +37,7 @@ test.describe('Application Menu Structure', () => {
   });
 
   test.afterEach(async () => {
-    if (electronApp) {
-      await electronApp.evaluate(() => process.exit(0));
-    }
+    await closeElectronApp(electronApp);
   });
 
   test('should have correct menu structure with all required items', async () => {
