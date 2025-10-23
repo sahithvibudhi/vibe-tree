@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { ElectronApplication, Page, _electron as electron } from 'playwright';
+import { closeElectronApp } from './helpers/test-launcher';
 import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
@@ -53,7 +54,7 @@ test.describe('Stats Menu', () => {
 
   test.afterEach(async () => {
     if (electronApp) {
-      await electronApp.evaluate(() => process.exit(0));
+      await closeElectronApp(electronApp);
     }
 
     // Clean up the dummy repository
@@ -195,5 +196,122 @@ test.describe('Stats Menu', () => {
     expect(stats).toBeDefined();
     expect(stats.activeProcessCount).toBe(2);
     expect(stats.sessions.length).toBe(2);
+  });
+
+  test('should display stats dialog with multiple worktrees and close properly', async () => {
+    test.setTimeout(120000);
+
+    await page.waitForLoadState('domcontentloaded');
+
+    // Create 3 worktrees
+    const worktreeNames = ['wt1', 'wt2', 'wt3'];
+    for (const wtName of worktreeNames) {
+      try {
+        const wtPath = path.join(os.tmpdir(), `${path.basename(dummyRepoPath)}-${wtName}`);
+        execSync(`git worktree add -b ${wtName} "${wtPath}"`, { cwd: dummyRepoPath });
+      } catch (e) {
+        // Worktree might already exist
+      }
+    }
+
+    // Open the project
+    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    const openButton = page.locator('button', { hasText: 'Open Project Folder' });
+    await expect(openButton).toBeVisible();
+
+    await electronApp.evaluate(async ({ dialog }, repoPath) => {
+      dialog.showOpenDialog = async () => {
+        return {
+          canceled: false,
+          filePaths: [repoPath]
+        };
+      };
+    }, dummyRepoPath);
+
+    await openButton.click();
+    await page.waitForTimeout(3000);
+
+    // Open terminals for each worktree
+    for (const wtName of worktreeNames) {
+      const worktreeButton = page.locator(`button[data-worktree-branch="${wtName}"]`);
+      await expect(worktreeButton).toBeVisible({ timeout: 5000 });
+      await worktreeButton.click();
+      await page.waitForTimeout(2000);
+
+      // Wait for terminal to be ready
+      const terminalScreen = page.locator('.xterm-screen').last();
+      await expect(terminalScreen).toBeVisible({ timeout: 10000 });
+      await page.waitForTimeout(1000);
+    }
+
+    // Open stats dialog via menu
+    await electronApp.evaluate(async ({ Menu }) => {
+      const menu = Menu.getApplicationMenu();
+      if (menu) {
+        // Find View menu
+        for (const item of menu.items) {
+          if (item.label === 'View') {
+            // Find Stats menu item
+            if (item.submenu) {
+              for (const subItem of item.submenu.items) {
+                if (subItem.label === 'Stats...') {
+                  subItem.click();
+                  break;
+                }
+              }
+            }
+            break;
+          }
+        }
+      }
+    });
+
+    await page.waitForTimeout(2000);
+
+    // Get all windows
+    const windows = electronApp.windows();
+    expect(windows.length).toBeGreaterThan(1);
+
+    // Find the stats dialog window
+    let statsWindow = null;
+    for (const win of windows) {
+      const title = await win.title();
+      if (title === 'Process Statistics') {
+        statsWindow = win;
+        break;
+      }
+    }
+
+    expect(statsWindow).toBeTruthy();
+
+    if (statsWindow) {
+      // Verify the dialog shows 3 active processes
+      const activeCount = await statsWindow.locator('#activeCount').textContent();
+      expect(activeCount).toBe('3');
+
+      // Verify 3 session items are displayed
+      const sessionItems = await statsWindow.locator('.session-item').count();
+      expect(sessionItems).toBe(3);
+
+      // Verify close button exists and is visible
+      const closeButton = statsWindow.locator('button', { hasText: 'OK' });
+      await expect(closeButton).toBeVisible();
+
+      // Click close button
+      await closeButton.click();
+      await page.waitForTimeout(1000);
+
+      // Verify dialog is closed
+      const windowsAfterClose = electronApp.windows();
+      let dialogStillOpen = false;
+      for (const win of windowsAfterClose) {
+        const title = await win.title();
+        if (title === 'Process Statistics') {
+          dialogStillOpen = true;
+          break;
+        }
+      }
+      expect(dialogStillOpen).toBe(false);
+    }
   });
 });

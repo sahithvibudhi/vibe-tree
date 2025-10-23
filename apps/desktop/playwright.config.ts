@@ -8,6 +8,8 @@ export default defineConfig({
   workers: 1, // Use only 1 worker for Electron tests
   reporter: 'html',
   timeout: 60000,
+  // Set globalTimeout to prevent worker teardown timeout issues
+  globalTimeout: process.env.CI ? 600000 : 0, // 10 minutes in CI, unlimited locally
   use: {
     trace: 'on-first-retry',
   },

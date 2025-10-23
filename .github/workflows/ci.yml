@@ -248,7 +248,15 @@ jobs:
         fi
 
     - name: Run e2e tests
-      run: xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" -- pnpm --filter @vibetree/desktop exec playwright test --reporter=list
+      run: |
+        xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" -- pnpm --filter @vibetree/desktop exec playwright test --reporter=list || TEST_EXIT_CODE=$?
+        # Kill any lingering Electron processes to prevent worker teardown timeout
+        pkill -9 -f electron || true
+        pkill -9 -f xvfb || true
+        # Wait a moment for processes to die
+        sleep 2
+        # Exit with original test exit code
+        exit ${TEST_EXIT_CODE:-0}
       env:
         CI: true
         DISPLAY: ':99.0'
