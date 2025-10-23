@@ -85,9 +85,7 @@ test.describe('Stats Menu', () => {
     expect(stats.sessions).toEqual([]);
   });
 
-  test.skip('should show correct count after opening terminal', async () => {
-    // TODO: Fix this test - it's failing because of timing issues with terminal initialization
-    // The terminal element .xterm-screen is not appearing within the timeout in CI
+  test('should show correct count after opening terminal', async () => {
     test.setTimeout(90000);
 
     await page.waitForLoadState('domcontentloaded');
@@ -109,9 +107,15 @@ test.describe('Stats Menu', () => {
     await openButton.click();
     await page.waitForTimeout(3000);
 
+    // Click on the main branch worktree to open terminal
+    const mainWorktreeButton = page.locator('button[data-worktree-branch="main"]');
+    await expect(mainWorktreeButton).toBeVisible({ timeout: 5000 });
+    await mainWorktreeButton.click();
+    await page.waitForTimeout(3000);
+
     // Wait for terminal to be ready
     const terminalScreen = page.locator('.xterm-screen').first();
-    await expect(terminalScreen).toBeVisible({ timeout: 20000 });
+    await expect(terminalScreen).toBeVisible({ timeout: 10000 });
     await page.waitForTimeout(2000);
 
     // Get stats - should have 1 active process
@@ -128,12 +132,13 @@ test.describe('Stats Menu', () => {
     expect(stats).toBeDefined();
     expect(stats.activeProcessCount).toBe(1);
     expect(stats.sessions.length).toBe(1);
-    expect(stats.sessions[0].worktreePath).toBe(dummyRepoPath);
+    // On macOS, paths may have /private prefix, so normalize for comparison
+    const normalizedSessionPath = stats.sessions[0].worktreePath.replace(/^\/private/, '');
+    const normalizedDummyPath = dummyRepoPath.replace(/^\/private/, '');
+    expect(normalizedSessionPath).toBe(normalizedDummyPath);
   });
 
-  test.skip('should show correct count with multiple terminals', async () => {
-    // TODO: Fix this test - it's failing because of timing issues with terminal initialization
-    // The terminal element .xterm-screen is not appearing within the timeout in CI
+  test('should show correct count with multiple terminals', async () => {
     test.setTimeout(90000);
 
     await page.waitForLoadState('domcontentloaded');
@@ -155,9 +160,15 @@ test.describe('Stats Menu', () => {
     await openButton.click();
     await page.waitForTimeout(3000);
 
+    // Click on the main branch worktree to open terminal
+    const mainWorktreeButton = page.locator('button[data-worktree-branch="main"]');
+    await expect(mainWorktreeButton).toBeVisible({ timeout: 5000 });
+    await mainWorktreeButton.click();
+    await page.waitForTimeout(3000);
+
     // Wait for terminal to be ready
     const terminalScreen = page.locator('.xterm-screen').first();
-    await expect(terminalScreen).toBeVisible({ timeout: 20000 });
+    await expect(terminalScreen).toBeVisible({ timeout: 10000 });
     await page.waitForTimeout(2000);
 
     // Split the terminal to create a second PTY process
