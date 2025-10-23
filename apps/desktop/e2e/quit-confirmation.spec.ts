@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { _electron as electron } from 'playwright';
+import { closeElectronApp } from './helpers/test-launcher';
 import path from 'path';
 import fs from 'fs';
 
@@ -42,7 +43,7 @@ test.describe('Quit Confirmation Dialog', () => {
     expect(quitPrevented).toBe(true);
 
     // Force cleanup by killing the process
-    await electronApp.evaluate(() => process.exit(0));
+    await closeElectronApp(electronApp);
   });
 
   test('with dialog enabled - should quit when user confirms', async () => {
@@ -100,7 +101,7 @@ test.describe('Quit Confirmation Dialog', () => {
           if (windows === 0) {
             // Windows closed, consider it a pass even if process is still running
             // This is a known issue with Electron in test environments
-            await electronApp.evaluate(() => process.exit(0));
+            await closeElectronApp(electronApp);
             return; // Test passes
           }
         } catch {
