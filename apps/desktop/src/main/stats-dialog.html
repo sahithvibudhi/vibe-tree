@@ -157,18 +157,10 @@
   </div>
 
   <div class="button-container">
-    <button onclick="closeWindow()">OK</button>
+    <button onclick="window.close()">OK</button>
   </div>
 
   <script>
-    function closeWindow() {
-      console.log('Close button clicked');
-      if (window.statsDialog && window.statsDialog.close) {
-        window.statsDialog.close();
-      } else {
-        console.error('statsDialog API not available');
-      }
-    }
 
     function updateStats(stats) {
       document.getElementById('activeCount').textContent = stats.activeProcessCount;

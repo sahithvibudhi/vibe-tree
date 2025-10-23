@@ -1,24 +1,10 @@
-import { Menu, BrowserWindow, MenuItemConstructorOptions, dialog, app, ipcMain } from 'electron';
+import { Menu, BrowserWindow, MenuItemConstructorOptions, dialog, app } from 'electron';
 import { recentProjectsManager } from './recent-projects';
 import path from 'path';
 
 let statsDialogWindow: BrowserWindow | null = null;
 
 // IPC handler 'shell:get-stats' is already registered in shell-manager.ts
-
-ipcMain.on('stats-dialog:close', () => {
-  console.log('[MENU] Received stats-dialog:close event');
-  console.log('[MENU] statsDialogWindow exists:', !!statsDialogWindow);
-  console.log('[MENU] statsDialogWindow isDestroyed:', statsDialogWindow ? statsDialogWindow.isDestroyed() : 'N/A');
-
-  if (statsDialogWindow && !statsDialogWindow.isDestroyed()) {
-    console.log('[MENU] Attempting to close statsDialogWindow');
-    statsDialogWindow.close();
-    console.log('[MENU] Close called successfully');
-  } else {
-    console.log('[MENU] Cannot close - window is null or destroyed');
-  }
-});
 
 function showStatsDialog(parentWindow: BrowserWindow) {
   // Close existing stats dialog if open
@@ -40,7 +26,7 @@ function showStatsDialog(parentWindow: BrowserWindow) {
     resizable: true,
     webPreferences: {
       preload: path.join(__dirname, 'stats-dialog-preload.js'),
-      contextIsolation: true,
+      contextIsolation: false,  // Disable for simpler IPC
       nodeIntegration: false
     }
   });
