@@ -85,7 +85,10 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     }
   });
 
-  test('should create worktrees until posix_spawnp error, then recover after deletion', async () => {
+  // Skip this stress test in CI - it's intended for manual local execution only
+  // The test successfully reproduces spawn failures at ~289 worktrees but takes 35+ minutes
+  // To run manually: Remove .skip and run: pnpm test:e2e worktree-posix-spawnp-stress-test
+  test.skip('should create worktrees until posix_spawnp error, then recover after deletion', async () => {
     test.setTimeout(600000); // 10 minutes timeout
 
     await page.waitForLoadState('domcontentloaded');
