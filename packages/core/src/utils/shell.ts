@@ -120,12 +120,21 @@ export async function killPtyForce(ptyProcess: IPty): Promise<void> {
     const pid = ptyProcess.pid;
     let isKilled = false;
     let exitListener: { dispose: () => void } | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
 
-    let cleanup = () => {
+    let cleanup = (source: 'exit' | 'timeout') => {
+      console.log(`PTY process ${pid} cleanup triggered by: ${source}`);
+
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+
       if (exitListener) {
         exitListener.dispose();
         exitListener = null;
       }
+
       if (!isKilled) {
         isKilled = true;
         resolve();
@@ -134,8 +143,8 @@ export async function killPtyForce(ptyProcess: IPty): Promise<void> {
 
     // Listen for exit event
     exitListener = ptyProcess.onExit(() => {
-      console.log(`PTY process ${pid} force killed`);
-      cleanup();
+      console.log(`PTY process ${pid} exit event fired`);
+      cleanup('exit');
     });
 
     // Send SIGKILL to force kill
@@ -156,13 +165,15 @@ export async function killPtyForce(ptyProcess: IPty): Promise<void> {
       }
     } catch (error) {
       console.error(`Error sending SIGKILL to PTY process ${pid}:`, error);
-      cleanup();
+      cleanup('timeout');
       return;
     }
 
-    // Give a grace period for SIGKILL to take effect
-    setTimeout(() => {
-      cleanup();
+    // Fallback timeout in case exit event never fires
+    // This should rarely happen with SIGKILL
+    timeoutId = setTimeout(() => {
+      console.warn(`PTY process ${pid} exit event did not fire within 500ms, forcing cleanup`);
+      cleanup('timeout');
     }, 500);
   });
 }

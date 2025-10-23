@@ -340,14 +340,10 @@ export class ShellSessionManager {
       session.exitListeners.clear();
 
       // Force kill immediately - SIGTERM doesn't reliably kill child processes
+      // killPtyForce waits for the exit event before resolving
       await killPtyForce(session.pty);
 
-      // Wait for OS to fully release PTY/file descriptor resources
-      // After SIGKILL, the process exits but the OS needs time to cleanup
-      // file descriptors, which is critical for freeing spawn slots
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Remove from sessions after force kill and OS cleanup
+      // Remove from sessions after process has exited
       this.sessions.delete(sessionId);
       console.log(`Successfully terminated session ${sessionId} (PID: ${pid})`);
       return { success: true };
