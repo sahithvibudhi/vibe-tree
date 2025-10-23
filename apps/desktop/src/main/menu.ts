@@ -1,65 +1,6 @@
-import { Menu, BrowserWindow, MenuItemConstructorOptions, dialog, app, ipcMain } from 'electron';
+import { Menu, BrowserWindow, MenuItemConstructorOptions, dialog, app } from 'electron';
 import { recentProjectsManager } from './recent-projects';
-import path from 'path';
-
-let statsDialogWindow: BrowserWindow | null = null;
-
-// IPC handler 'shell:get-stats' is already registered in shell-manager.ts
-
-ipcMain.on('stats-dialog:close', () => {
-  console.log('[MENU] Received stats-dialog:close event');
-  console.log('[MENU] statsDialogWindow exists:', !!statsDialogWindow);
-  console.log('[MENU] statsDialogWindow isDestroyed:', statsDialogWindow ? statsDialogWindow.isDestroyed() : 'N/A');
-
-  if (statsDialogWindow && !statsDialogWindow.isDestroyed()) {
-    console.log('[MENU] Attempting to close statsDialogWindow');
-    statsDialogWindow.close();
-    console.log('[MENU] Close called successfully');
-  } else {
-    console.log('[MENU] Cannot close - window is null or destroyed');
-  }
-});
-
-function showStatsDialog(parentWindow: BrowserWindow) {
-  // Close existing stats dialog if open
-  if (statsDialogWindow && !statsDialogWindow.isDestroyed()) {
-    statsDialogWindow.close();
-  }
-
-  // Create new stats dialog window
-  statsDialogWindow = new BrowserWindow({
-    width: 600,
-    height: 500,
-    minWidth: 400,
-    minHeight: 300,
-    maxWidth: 800,
-    maxHeight: 700,
-    parent: parentWindow,
-    modal: true,
-    show: false,
-    resizable: true,
-    webPreferences: {
-      preload: path.join(__dirname, 'stats-dialog-preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false
-    }
-  });
-
-  // Load the stats dialog HTML
-  statsDialogWindow.loadFile(path.join(__dirname, 'stats-dialog.html'));
-
-  // Show window when ready - stats will be fetched via IPC
-  statsDialogWindow.webContents.once('did-finish-load', () => {
-    if (statsDialogWindow) {
-      statsDialogWindow.show();
-    }
-  });
-
-  // Clean up when dialog is closed
-  statsDialogWindow.on('closed', () => {
-    statsDialogWindow = null;
-  });
-}
+import { shellProcessManager } from './shell-manager';
 
 export function createMenu(mainWindow: BrowserWindow | null) {
   const recentProjects = recentProjectsManager.getRecentProjects();
@@ -149,9 +90,27 @@ export function createMenu(mainWindow: BrowserWindow | null) {
           click: () => {
             if (mainWindow) {
               try {
-                showStatsDialog(mainWindow);
+                const stats = shellProcessManager.getStats();
+
+                const message = [
+                  'Process Statistics',
+                  '',
+                  `Active PTY Processes: ${stats.activeProcessCount}`,
+                  '',
+                  stats.activeProcessCount > 0 ? 'Active Sessions:' : 'No active sessions.',
+                  ...stats.sessions.map((s: any) =>
+                    `\n• ${s.worktreePath}\n  Created: ${new Date(s.createdAt).toLocaleString()}\n  Last Active: ${new Date(s.lastActivity).toLocaleString()}`
+                  )
+                ].join('\n');
+
+                dialog.showMessageBox(mainWindow, {
+                  type: 'info',
+                  title: 'Process Statistics',
+                  message: message,
+                  buttons: ['OK']
+                });
               } catch (error) {
-                dialog.showErrorBox('Error', `Failed to show stats dialog: ${error}`);
+                dialog.showErrorBox('Error', `Failed to fetch stats: ${error}`);
               }
             }
           }
