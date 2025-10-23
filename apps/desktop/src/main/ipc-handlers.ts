@@ -10,6 +10,9 @@ import {
 import { terminalSettingsManager } from './terminal-settings';
 import { recentProjectsManager } from './recent-projects';
 import fs from 'fs';
+import { execSync } from 'child_process';
+import * as os from 'os';
+import * as path from 'path';
 
 export function registerIpcHandlers(mainWindow: BrowserWindow | null) {
   // Git worktree operations
@@ -124,5 +127,48 @@ export function registerIpcHandlers(mainWindow: BrowserWindow | null) {
   // Open external links
   ipcMain.handle('shell:open-external', async (_, url: string) => {
     await shell.openExternal(url);
+  });
+
+  // Debug: Create test repo with many worktrees
+  ipcMain.handle('debug:create-stress-test-repo', async () => {
+    try {
+      const tmpDir = os.tmpdir();
+      const repoName = `pty-stress-test-${Date.now()}`;
+      const repoPath = path.join(tmpDir, repoName);
+
+      console.log(`Creating stress test repo at: ${repoPath}`);
+
+      // Create base repo
+      execSync(`mkdir -p "${repoPath}"`, { stdio: 'inherit' });
+      execSync('git init', { cwd: repoPath, stdio: 'inherit' });
+      execSync('git config user.email "test@test.com"', { cwd: repoPath, stdio: 'inherit' });
+      execSync('git config user.name "Test User"', { cwd: repoPath, stdio: 'inherit' });
+      execSync('echo "# PTY Stress Test" > README.md', { cwd: repoPath, stdio: 'inherit' });
+      execSync('git add .', { cwd: repoPath, stdio: 'inherit' });
+      execSync('git commit -m "Initial commit"', { cwd: repoPath, stdio: 'inherit' });
+
+      // Create 150 worktrees
+      for (let i = 1; i <= 150; i++) {
+        const branchName = `wt-${String(i).padStart(3, '0')}`;
+        const wtPath = path.join(tmpDir, `${repoName}-${branchName}`);
+        try {
+          execSync(`git worktree add -b ${branchName} "${wtPath}"`, { cwd: repoPath, stdio: 'pipe' });
+          if (i % 10 === 0) {
+            console.log(`Created ${i}/150 worktrees`);
+          }
+        } catch (e) {
+          console.error(`Failed to create worktree ${i}:`, e);
+        }
+      }
+
+      console.log(`Stress test repo created successfully at: ${repoPath}`);
+      return { success: true, path: repoPath };
+    } catch (error) {
+      console.error('Failed to create stress test repo:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
   });
 }

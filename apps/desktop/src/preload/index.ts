@@ -103,6 +103,9 @@ const api = {
     getPathForFile: (file: File) => {
       return webUtils.getPathForFile(file);
     }
+  },
+  debug: {
+    createStressTestRepo: () => ipcRenderer.invoke('debug:create-stress-test-repo')
   }
 };
 

@@ -3,7 +3,7 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
-import { GitBranch, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { GitBranch, Plus, RefreshCw, Trash2, Bug } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 import { isProtectedBranch } from '../utils/worktree';
 import { DeletionReportingDialog } from './DeletionReportingDialog';
@@ -55,6 +55,40 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
     }
     setLoading(false);
   }, [projectPath, toast, onWorktreesChange]);
+
+  const handleCreateStressTest = async () => {
+    setLoading(true);
+    try {
+      toast({
+        title: "Creating stress test repo...",
+        description: "This will create a repo with 150 worktrees. Please wait...",
+      });
+
+      const result = await window.electronAPI.debug.createStressTestRepo();
+
+      if (result.success) {
+        toast({
+          title: "Success!",
+          description: `Created stress test repo with 150 worktrees at: ${result.path}`,
+        });
+        // Reload the page with the new project
+        window.location.reload();
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to create stress test repo",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create stress test repo",
+        variant: "destructive",
+      });
+    }
+    setLoading(false);
+  };
 
   useEffect(() => {
     loadWorktrees();
@@ -204,6 +238,17 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">Worktrees</h3>
           <div className="flex gap-2">
+            {process.env.DEBUG_LAYOUT === 'true' && (
+              <Button
+                size="icon"
+                variant="destructive"
+                onClick={handleCreateStressTest}
+                disabled={loading}
+                title="Create stress test repo with 150 worktrees"
+              >
+                <Bug className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               size="icon"
               variant="ghost"
