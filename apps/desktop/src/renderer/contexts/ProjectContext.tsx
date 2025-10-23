@@ -95,9 +95,20 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     const project = projects.find(p => p.id === id);
 
     if (project) {
-      // Terminate all PTY sessions for this project
-      window.electronAPI.shell.terminateForWorktree(project.path).then((result) => {
-        console.log(`Terminated ${result.count} PTY session(s) for project: ${project.name}`);
+      // Terminate all PTY sessions for each worktree in this project
+      const worktreePaths = project.worktrees.map(w => w.path);
+
+      // Also include the main project path in case terminals were started there
+      const pathsToTerminate = [project.path, ...worktreePaths];
+
+      console.log(`Terminating PTY sessions for ${pathsToTerminate.length} paths:`, pathsToTerminate);
+
+      // Terminate sessions for each path
+      Promise.all(pathsToTerminate.map(path =>
+        window.electronAPI.shell.terminateForWorktree(path)
+      )).then((results) => {
+        const totalTerminated = results.reduce((sum, r) => sum + r.count, 0);
+        console.log(`Terminated ${totalTerminated} PTY session(s) total for project: ${project.name}`);
       }).catch((error) => {
         console.error('Error terminating PTY sessions:', error);
       });
