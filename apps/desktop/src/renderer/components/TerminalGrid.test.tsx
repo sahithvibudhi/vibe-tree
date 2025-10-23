@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 /**
  * Unit tests for TerminalGrid component focusing on the terminal close race condition bug.
@@ -21,7 +21,7 @@ describe('TerminalGrid - Close Race Condition Bug', () => {
       let cleanupCallCount = 0;
       let cleanupResolve: (() => void) | null = null;
 
-      const mockHandleTerminalClose = vi.fn(() => {
+      const mockHandleTerminalClose = vi.fn((_args: { terminalId: string; processId: string }) => {
         cleanupCallCount++;
         // Return a promise that we control when it resolves
         return new Promise<void>((resolve) => {
@@ -68,9 +68,8 @@ describe('TerminalGrid - Close Race Condition Bug', () => {
 
       // Even after first cleanup completes, the terminal is stuck if there was an error
       // Let's simulate an error scenario
-      if (cleanupResolve) {
-        cleanupResolve(); // Complete first cleanup
-      }
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      cleanupResolve!(); // Complete first cleanup
 
       await new Promise(resolve => setTimeout(resolve, 10)); // Let promises resolve
 
@@ -86,7 +85,7 @@ describe('TerminalGrid - Close Race Condition Bug', () => {
       const terminalsBeingClosed = new Set<string>();
       let onCleanupErrorCalled = false;
 
-      const mockHandleTerminalClose = vi.fn(() => {
+      const mockHandleTerminalClose = vi.fn((_args: { terminalId: string; processId: string }) => {
         return Promise.reject(new Error('PTY termination failed'));
       });
 
@@ -138,7 +137,7 @@ describe('TerminalGrid - Close Race Condition Bug', () => {
       const terminalsBeingClosed = new Set<string>();
       let attemptCount = 0;
 
-      const mockHandleTerminalClose = vi.fn(() => {
+      const mockHandleTerminalClose = vi.fn((_args: { terminalId: string; processId: string }) => {
         attemptCount++;
         if (attemptCount === 1) {
           return Promise.reject(new Error('First attempt failed'));
