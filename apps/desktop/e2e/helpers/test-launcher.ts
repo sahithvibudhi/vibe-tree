@@ -31,3 +31,19 @@ export async function launchElectronApp(options: LaunchOptions = {}): Promise<El
     cwd: options.cwd
   });
 }
+
+/**
+ * Properly close Electron app to prevent worker teardown timeout
+ * This uses electronApp.close() which is the recommended way to close Electron apps in Playwright
+ * Using process.exit() can cause worker teardown timeouts as it doesn't allow Playwright to clean up properly
+ */
+export async function closeElectronApp(electronApp: ElectronApplication | null): Promise<void> {
+  if (electronApp) {
+    try {
+      await electronApp.close();
+    } catch (error) {
+      // Ignore errors if app is already closed
+      console.warn('Error closing Electron app:', error);
+    }
+  }
+}

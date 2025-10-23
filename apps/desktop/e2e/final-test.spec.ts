@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { ElectronApplication, Page, _electron as electron } from 'playwright';
+import { closeElectronApp } from './helpers/test-launcher';
 import path from 'path';
 
 let electronApp: ElectronApplication;
@@ -34,7 +35,7 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   if (electronApp) {
     // Force exit to bypass quit confirmation
-    await electronApp.evaluate(() => process.exit(0));
+    await closeElectronApp(electronApp);
   }
 });
 
