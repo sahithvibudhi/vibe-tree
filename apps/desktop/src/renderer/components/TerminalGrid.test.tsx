@@ -21,6 +21,7 @@ describe('TerminalGrid - Close Race Condition Bug', () => {
       let cleanupCallCount = 0;
       let cleanupResolve: (() => void) | null = null;
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const mockHandleTerminalClose = vi.fn((_args: { terminalId: string; processId: string }) => {
         cleanupCallCount++;
         // Return a promise that we control when it resolves
@@ -85,6 +86,7 @@ describe('TerminalGrid - Close Race Condition Bug', () => {
       const terminalsBeingClosed = new Set<string>();
       let onCleanupErrorCalled = false;
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const mockHandleTerminalClose = vi.fn((_args: { terminalId: string; processId: string }) => {
         return Promise.reject(new Error('PTY termination failed'));
       });
@@ -137,6 +139,7 @@ describe('TerminalGrid - Close Race Condition Bug', () => {
       const terminalsBeingClosed = new Set<string>();
       let attemptCount = 0;
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const mockHandleTerminalClose = vi.fn((_args: { terminalId: string; processId: string }) => {
         attemptCount++;
         if (attemptCount === 1) {
