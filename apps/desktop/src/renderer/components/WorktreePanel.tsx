@@ -25,6 +25,7 @@ interface WorktreePanelProps {
 export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree, onWorktreesChange, initialWorktrees }: WorktreePanelProps) {
   const [worktrees, setWorktrees] = useState<Worktree[]>(initialWorktrees || []);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [showNewBranchDialog, setShowNewBranchDialog] = useState(false);
   const [newBranchName, setNewBranchName] = useState('');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -41,7 +42,7 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
   const { toast } = useToast();
 
   const loadWorktrees = useCallback(async () => {
-    setLoading(true);
+    setRefreshing(true);
     try {
       const trees = await window.electronAPI.git.listWorktrees(projectPath);
       setWorktrees(trees);
@@ -53,7 +54,7 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
         variant: "destructive",
       });
     }
-    setLoading(false);
+    setRefreshing(false);
   }, [projectPath, toast, onWorktreesChange]);
 
   const handleCreateStressTest = async () => {
@@ -279,9 +280,9 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
               size="icon"
               variant="ghost"
               onClick={loadWorktrees}
-              disabled={loading}
+              disabled={refreshing}
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             </Button>
             <Button
               size="icon"
