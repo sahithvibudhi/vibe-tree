@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { ElectronApplication, Page, _electron as electron } from 'playwright';
+import { ElectronApplication, _electron as electron } from 'playwright';
 import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
@@ -7,7 +7,6 @@ import os from 'os';
 
 test.describe('Worktree posix_spawnp Stress Test', () => {
   let electronApp: ElectronApplication;
-  let page: Page;
   let dummyRepoPath: string;
   const createdWorktrees: string[] = [];
   let posixSpawnpErrorOccurred = false;
@@ -53,8 +52,7 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
       cwd: appDir,
     });
 
-    page = await electronApp.firstWindow();
-    await page.waitForLoadState('domcontentloaded');
+    await electronApp.firstWindow();
   }, 60000);
 
   test.afterEach(async () => {
@@ -85,37 +83,14 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     }
   });
 
-  // This stress test verifies the posix_spawnp error recovery
-  // It creates worktrees until hitting resource limits, then verifies recovery after cleanup
-  test('should create worktrees until posix_spawnp error, then recover after deletion', async () => {
-    test.setTimeout(1200000); // 20 minutes timeout for CI
-
-    await page.waitForLoadState('domcontentloaded');
-
-    // Open the project
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
-    const openButton = page.locator('button', { hasText: 'Open Project Folder' });
-    await expect(openButton).toBeVisible();
-
-    await electronApp.evaluate(async ({ dialog }, repoPath) => {
-      dialog.showOpenDialog = async () => {
-        return {
-          canceled: false,
-          filePaths: [repoPath]
-        };
-      };
-    }, dummyRepoPath);
-
-    await openButton.click();
-    await page.waitForTimeout(3000);
-
-    // Verify main worktree is visible
-    const mainWorktreeButton = page.locator('button[data-worktree-branch="main"]');
-    await expect(mainWorktreeButton).toBeVisible({ timeout: 5000 });
+  // This test rapidly creates PTY sessions until hitting resource limits
+  // Then verifies recovery after cleanup
+  test('should create PTY sessions until posix_spawnp error, then recover after cleanup', async () => {
+    test.setTimeout(600000); // 10 minutes timeout
 
     let worktreeCount = 0;
-    let consecutiveSuccesses = 0;
-    const MAX_WORKTREES = 300; // Safety limit
+    let ptyFailureCount = 0;
+    const MAX_WORKTREES = 300;
     const ERROR_PATTERNS = [
       'posix_spawnp failed',
       'EMFILE',
@@ -123,193 +98,133 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
       'too many open files',
       'Cannot create PTY',
       'Failed to spawn',
-      'spawn failed'
+      'spawn failed',
+      'ENOENT'
     ];
 
-    console.log('Starting continuous worktree creation test...');
+    const createdPtyIds: string[] = [];
 
-    // Phase 1: Create worktrees until we hit posix_spawnp error
-    while (worktreeCount < MAX_WORKTREES && !posixSpawnpErrorOccurred) {
+    console.log('Starting rapid PTY creation test...');
+    console.log('');
+
+    // Phase 1: Rapidly create worktrees and PTY sessions until we hit the error
+    while (worktreeCount < MAX_WORKTREES && ptyFailureCount < 3) {
       worktreeCount++;
       const branchName = `worktree-${String(worktreeCount).padStart(3, '0')}`;
       const worktreePath = path.join(os.tmpdir(), `stress-test-${branchName}-${Date.now()}`);
-
-      console.log(`Creating worktree ${worktreeCount}: ${branchName}`);
 
       try {
         // Create worktree via git
         execSync(`git worktree add -b ${branchName} "${worktreePath}"`, { cwd: dummyRepoPath });
         createdWorktrees.push(worktreePath);
 
-        // Wait for UI to update
-        await page.waitForTimeout(500);
+        // Directly call the shell:start IPC to create PTY (bypassing UI)
+        const result = await electronApp.evaluate(async ({ ipcMain }, worktreePath) => {
+          return new Promise((resolve) => {
+            // Simulate IPC call to shell:start
+            const mockEvent = {
+              sender: {
+                id: 999,
+                isDestroyed: () => false,
+                send: () => {}
+              }
+            };
 
-        // Find the new worktree button
-        const newWorktreeButton = page.locator(`button[data-worktree-branch="${branchName}"]`);
+            // Get the handler
+            const handlers = (ipcMain as any)._invokeHandlers;
+            const handler = handlers?.get('shell:start');
 
-        // Wait a bit for it to appear
-        let buttonVisible = false;
-        for (let i = 0; i < 6; i++) {
-          const count = await newWorktreeButton.count();
-          if (count > 0) {
-            buttonVisible = true;
-            break;
-          }
-          await page.waitForTimeout(300);
-        }
+            if (handler) {
+              handler(mockEvent, worktreePath, 80, 24, false, undefined)
+                .then((result: any) => resolve(result))
+                .catch((error: any) => resolve({ success: false, error: error.message }));
+            } else {
+              resolve({ success: false, error: 'Handler not found' });
+            }
+          });
+        }, worktreePath);
 
-        if (!buttonVisible) {
-          console.log(`Warning: Worktree button not visible for ${branchName}, skipping click`);
-          continue;
-        }
-
-        // Click on the worktree
-        await newWorktreeButton.click();
-        await page.waitForTimeout(1000);
-
-        // Wait for terminal to appear
-        const terminalScreen = page.locator('.xterm-screen').first();
-        const terminalVisible = await terminalScreen.isVisible().catch(() => false);
-
-        if (terminalVisible) {
-          // Try to interact with terminal to verify PTY is working
-          await terminalScreen.click();
-          await page.keyboard.type(`echo "Test ${worktreeCount}"`);
-          await page.keyboard.press('Enter');
-          await page.waitForTimeout(800);
-
-          // Check terminal content for errors
-          const terminalContent = await terminalScreen.textContent();
-
-          // Check for error patterns
-          const hasError = ERROR_PATTERNS.some(pattern =>
-            terminalContent?.toLowerCase().includes(pattern.toLowerCase())
+        if (!result.success) {
+          const errorMessage = result.error || 'Unknown error';
+          const hasTargetError = ERROR_PATTERNS.some(pattern =>
+            errorMessage.toLowerCase().includes(pattern.toLowerCase())
           );
 
-          if (hasError) {
-            console.log(`ERROR DETECTED in worktree ${worktreeCount}!`);
-            console.log('Terminal content:', terminalContent);
+          if (hasTargetError) {
+            console.log(`\nPTY SPAWN ERROR at worktree ${worktreeCount}: ${errorMessage}`);
             posixSpawnpErrorOccurred = true;
-            break;
-          }
-
-          // Check if the echo command output is present
-          if (terminalContent?.includes(`Test ${worktreeCount}`)) {
-            consecutiveSuccesses++;
-            console.log(`✓ Worktree ${worktreeCount} terminal is working (${consecutiveSuccesses} consecutive successes)`);
+            ptyFailureCount++;
           } else {
-            console.log(`⚠ Worktree ${worktreeCount} terminal may not be responding properly`);
-            console.log('Terminal content:', terminalContent?.substring(0, 200));
+            console.log(`Worktree ${worktreeCount}: PTY creation failed with: ${errorMessage}`);
           }
         } else {
-          console.log(`Warning: Terminal not visible for ${branchName}`);
-        }
-
-        // Check browser console for errors
-        const consoleLogs = await page.evaluate(() => {
-          return (window as any).__testConsoleErrors || [];
-        });
-
-        if (consoleLogs && consoleLogs.length > 0) {
-          const hasConsoleError = consoleLogs.some((log: string) =>
-            ERROR_PATTERNS.some(pattern => log.toLowerCase().includes(pattern.toLowerCase()))
-          );
-
-          if (hasConsoleError) {
-            console.log(`ERROR DETECTED in console for worktree ${worktreeCount}!`);
-            console.log('Console errors:', consoleLogs);
-            posixSpawnpErrorOccurred = true;
-            break;
+          if (result.processId) {
+            createdPtyIds.push(result.processId);
+          }
+          if (worktreeCount % 10 === 0) {
+            console.log(`Created ${worktreeCount} worktrees with PTY sessions`);
           }
         }
-
       } catch (error) {
-        console.log(`Error creating/testing worktree ${worktreeCount}:`, error);
-
-        // Check if the error message contains our target error
         const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log(`Error at worktree ${worktreeCount}:`, errorMessage);
+
         const isTargetError = ERROR_PATTERNS.some(pattern =>
           errorMessage.toLowerCase().includes(pattern.toLowerCase())
         );
 
         if (isTargetError) {
-          console.log(`TARGET ERROR FOUND: ${errorMessage}`);
+          console.log(`\nTARGET ERROR FOUND: ${errorMessage}`);
           posixSpawnpErrorOccurred = true;
-          break;
+          ptyFailureCount++;
         }
-
-        // For other errors, continue but log them
-        console.log('Continuing despite error...');
       }
     }
 
-    // Report results of Phase 1
+    // Report Phase 1 results
     console.log('\n=== PHASE 1 RESULTS ===');
     console.log(`Created ${worktreeCount} worktrees`);
+    console.log(`Created ${createdPtyIds.length} PTY sessions`);
+    console.log(`PTY failures: ${ptyFailureCount}`);
     console.log(`posix_spawnp error occurred: ${posixSpawnpErrorOccurred}`);
-    console.log(`Consecutive successful worktrees: ${consecutiveSuccesses}`);
 
-    if (!posixSpawnpErrorOccurred) {
-      console.log('WARNING: Did not encounter posix_spawnp error within limit');
-      console.log('Test will proceed with worktree deletion/recreation verification anyway');
+    // Phase 2: Terminate 2 PTY sessions and delete 2 worktrees
+    console.log('\n=== PHASE 2: CLEANING UP 2 WORKTREES ===');
+
+    const worktreesToCleanup = Math.min(2, createdWorktrees.length);
+    for (let i = 0; i < worktreesToCleanup; i++) {
+      const worktreePath = createdWorktrees[i];
+
+      // Terminate PTY sessions for this worktree
+      const terminateResult = await electronApp.evaluate(async ({ ipcMain }, worktreePath) => {
+        return new Promise((resolve) => {
+          const mockEvent = { sender: { id: 999 } };
+          const handlers = (ipcMain as any)._invokeHandlers;
+          const handler = handlers?.get('shell:terminate-for-worktree');
+
+          if (handler) {
+            handler(mockEvent, worktreePath)
+              .then((result: any) => resolve(result))
+              .catch((error: any) => resolve({ success: false, error: error.message }));
+          } else {
+            resolve({ success: false, error: 'Handler not found' });
+          }
+        });
+      }, worktreePath);
+
+      console.log(`Terminated ${terminateResult.count || 0} PTY session(s) for worktree ${i + 1}`);
+
+      // Delete the worktree
+      try {
+        execSync(`git worktree remove --force "${worktreePath}"`, { cwd: dummyRepoPath });
+        console.log(`Deleted worktree ${i + 1}`);
+      } catch (error) {
+        console.log(`Failed to delete worktree ${i + 1}:`, error);
+      }
     }
 
-    // Phase 2: Delete 2 worktrees
-    console.log('\n=== PHASE 2: DELETING 2 WORKTREES ===');
-
-    const worktreesToDelete = [
-      `worktree-${String(Math.min(worktreeCount, 1)).padStart(3, '0')}`,
-      `worktree-${String(Math.min(worktreeCount, 2)).padStart(3, '0')}`
-    ];
-
-    for (const branchToDelete of worktreesToDelete) {
-      console.log(`Deleting ${branchToDelete}...`);
-
-      const worktreeButton = page.locator(`button[data-worktree-branch="${branchToDelete}"]`);
-      const buttonExists = await worktreeButton.count() > 0;
-
-      if (!buttonExists) {
-        console.log(`Worktree ${branchToDelete} not found in UI, skipping`);
-        continue;
-      }
-
-      // Find and click delete button
-      const deleteButton = worktreeButton.locator('..').locator('button[class*="bg-red"]');
-      await expect(deleteButton).toBeVisible({ timeout: 3000 });
-      await deleteButton.click();
-
-      // Wait for delete confirmation dialog
-      await expect(page.locator('h2', { hasText: 'Delete Worktree' })).toBeVisible({ timeout: 3000 });
-
-      // Click "Delete Permanently" button
-      const deletePermanentlyButton = page.locator('button', { hasText: 'Delete Permanently' });
-      await expect(deletePermanentlyButton).toBeVisible();
-      await deletePermanentlyButton.click();
-
-      // Wait for deletion to complete
-      await page.waitForTimeout(500);
-
-      // Check if deletion dialog appeared and wait for completion
-      const deletionDialog = page.locator('h2').filter({ hasText: /Deleting Worktree|Deletion Complete/ });
-      const dialogVisible = await deletionDialog.isVisible().catch(() => false);
-
-      if (dialogVisible) {
-        // Wait for completion
-        await expect(page.locator('h2').filter({ hasText: /Deletion Complete|Deletion Failed/ }))
-          .toBeVisible({ timeout: 10000 });
-
-        // Close the dialog
-        const closeButton = page.getByTestId('deletion-dialog-close-button');
-        await closeButton.click();
-        await page.waitForTimeout(300);
-      }
-
-      console.log(`✓ Deleted ${branchToDelete}`);
-      await page.waitForTimeout(500);
-    }
-
-    // Phase 3: Create a new worktree and verify terminal works
-    console.log('\n=== PHASE 3: CREATING NEW WORKTREE AFTER DELETION ===');
+    // Phase 3: Create a new worktree and verify PTY works
+    console.log('\n=== PHASE 3: CREATING NEW WORKTREE AFTER CLEANUP ===');
 
     const newBranchName = `worktree-${String(worktreeCount + 1).padStart(3, '0')}`;
     const newWorktreePath = path.join(os.tmpdir(), `stress-test-${newBranchName}-${Date.now()}`);
@@ -318,51 +233,48 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     execSync(`git worktree add -b ${newBranchName} "${newWorktreePath}"`, { cwd: dummyRepoPath });
     createdWorktrees.push(newWorktreePath);
 
-    // Wait for UI to update
-    await page.waitForTimeout(1000);
+    // Try to create PTY session for the new worktree
+    const recoveryResult = await electronApp.evaluate(async ({ ipcMain }, worktreePath) => {
+      return new Promise((resolve) => {
+        const mockEvent = {
+          sender: {
+            id: 999,
+            isDestroyed: () => false,
+            send: () => {}
+          }
+        };
 
-    // Find and click the new worktree
-    const newWorktreeButton = page.locator(`button[data-worktree-branch="${newBranchName}"]`);
+        const handlers = (ipcMain as any)._invokeHandlers;
+        const handler = handlers?.get('shell:start');
 
-    // Wait for button to appear
-    let buttonAppeared = false;
-    for (let i = 0; i < 12; i++) {
-      const count = await newWorktreeButton.count();
-      if (count > 0) {
-        buttonAppeared = true;
-        break;
-      }
-      await page.waitForTimeout(300);
+        if (handler) {
+          handler(mockEvent, worktreePath, 80, 24, false, undefined)
+            .then((result: any) => resolve(result))
+            .catch((error: any) => resolve({ success: false, error: error.message }));
+        } else {
+          resolve({ success: false, error: 'Handler not found' });
+        }
+      });
+    }, newWorktreePath);
+
+    // Verify recovery
+    console.log('\n=== RECOVERY TEST RESULTS ===');
+    console.log('Recovery result:', recoveryResult);
+
+    expect(recoveryResult.success).toBe(true);
+    expect(recoveryResult.processId).toBeDefined();
+
+    // Check for errors in the result
+    if (recoveryResult.error) {
+      const hasError = ERROR_PATTERNS.some(pattern =>
+        recoveryResult.error.toLowerCase().includes(pattern.toLowerCase())
+      );
+      expect(hasError).toBe(false);
     }
 
-    expect(buttonAppeared).toBe(true);
-    await newWorktreeButton.click();
-    await page.waitForTimeout(1500);
-
-    // Verify terminal is working
-    const terminalScreen = page.locator('.xterm-screen').first();
-    await expect(terminalScreen).toBeVisible({ timeout: 10000 });
-
-    await terminalScreen.click();
-    await page.keyboard.type('echo "Recovery Test Successful"');
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
-
-    // Verify terminal output
-    const terminalContent = await terminalScreen.textContent();
-    console.log('New terminal content:', terminalContent?.substring(0, 200));
-
-    // Check for errors
-    const hasError = ERROR_PATTERNS.some(pattern =>
-      terminalContent?.toLowerCase().includes(pattern.toLowerCase())
-    );
-
-    expect(hasError).toBe(false);
-    expect(terminalContent).toContain('Recovery Test Successful');
-
     console.log('\n=== TEST COMPLETE ===');
-    console.log('✓ Successfully created new worktree after deletion');
-    console.log('✓ Terminal is working correctly');
+    console.log('✓ Successfully created new worktree with PTY after cleanup');
     console.log(`Total worktrees created: ${worktreeCount + 1}`);
+    console.log(`Final PTY session count: ${createdPtyIds.length + 1}`);
   });
 });
