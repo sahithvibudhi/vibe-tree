@@ -285,9 +285,7 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
         processId
       }).catch(error => {
         console.warn('PTY cleanup error for terminal:', terminalId, error);
-        // Ensure terminal is removed from being-closed set even on unexpected errors
-        terminalsBeingClosed.current.delete(terminalId);
-        terminalProcessIds.current.delete(terminalId);
+        // BUG: Missing cleanup - terminal stays stuck in terminalsBeingClosed
       });
     } else {
       // No process ID, close immediately

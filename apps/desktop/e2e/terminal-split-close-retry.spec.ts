@@ -116,7 +116,7 @@ test.describe('Terminal Split Close Retry', () => {
     }
   });
 
-  test('should allow closing terminal even after initial close attempt', async () => {
+  test('should allow closing terminal even after PTY cleanup fails', async () => {
     test.setTimeout(60000);
 
     await page.waitForLoadState('domcontentloaded');
@@ -144,30 +144,32 @@ test.describe('Terminal Split Close Retry', () => {
     const splitTerminalCount = await page.locator('.claude-terminal-root').count();
     expect(splitTerminalCount).toBe(2);
 
-    // Try to close the first terminal
+    // Inject a failure into the shell terminate function to simulate cleanup error
+    await electronApp.evaluate(async () => {
+      const { ipcMain } = require('electron');
+      // Override the terminate handler to fail once
+      let failCount = 0;
+      ipcMain.removeHandler('shell:terminate');
+      ipcMain.handle('shell:terminate', async () => {
+        failCount++;
+        if (failCount === 1) {
+          // First call fails to simulate PTY cleanup error
+          return { success: false };
+        }
+        // Subsequent calls succeed
+        return { success: true };
+      });
+    });
+
+    // Try to close the first terminal - this will trigger the error
     const closeButton = page.locator('button[title="Close Terminal"]').first();
     await expect(closeButton).toBeVisible();
-
-    // Click close button
     await closeButton.click();
 
-    // Wait a bit for any async operations
-    await page.waitForTimeout(1000);
+    // Wait for error handling to complete (dialog is auto-closed in test mode)
+    await page.waitForTimeout(3000);
 
-    // Try clicking again if the terminal is still there
-    // This simulates a user trying to close again if the first attempt didn't work
-    const remainingTerminals = await page.locator('.claude-terminal-root').count();
-    if (remainingTerminals === 2) {
-      console.log('First close attempt did not remove terminal, trying again...');
-      // Try to click the close button again
-      const closeButtonRetry = page.locator('button[title="Close Terminal"]').first();
-      if (await closeButtonRetry.isVisible()) {
-        await closeButtonRetry.click();
-        await page.waitForTimeout(2000);
-      }
-    }
-
-    // Verify we're back to 1 terminal (the close should have succeeded)
+    // Verify the terminal was still removed despite the error
     const afterCloseCount = await page.locator('.claude-terminal-root').count();
     expect(afterCloseCount).toBe(1);
 

@@ -59,7 +59,8 @@ const api = {
     },
   },
   dialog: {
-    selectDirectory: () => ipcRenderer.invoke('dialog:select-directory')
+    selectDirectory: () => ipcRenderer.invoke('dialog:select-directory'),
+    showError: (title: string, message: string) => ipcRenderer.invoke('dialog:show-error', title, message)
   },
   project: {
     openPath: (projectPath: string) => ipcRenderer.invoke('project:open-path', projectPath),
