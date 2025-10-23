@@ -1,5 +1,6 @@
 import { Menu, BrowserWindow, MenuItemConstructorOptions, dialog, app } from 'electron';
 import { recentProjectsManager } from './recent-projects';
+import { shellProcessManager } from './shell-manager';
 
 export function createMenu(mainWindow: BrowserWindow | null) {
   const recentProjects = recentProjectsManager.getRecentProjects();
@@ -80,6 +81,37 @@ export function createMenu(mainWindow: BrowserWindow | null) {
           click: () => {
             if (mainWindow) {
               mainWindow.webContents.send('menu:open-terminal-settings');
+            }
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Stats...',
+          click: () => {
+            if (mainWindow) {
+              try {
+                const stats = shellProcessManager.getStats();
+
+                const message = [
+                  'Process Statistics',
+                  '',
+                  `Active PTY Processes: ${stats.activeProcessCount}`,
+                  '',
+                  stats.activeProcessCount > 0 ? 'Active Sessions:' : 'No active sessions.',
+                  ...stats.sessions.map((s: any) =>
+                    `\n• ${s.worktreePath}\n  Created: ${new Date(s.createdAt).toLocaleString()}\n  Last Active: ${new Date(s.lastActivity).toLocaleString()}`
+                  )
+                ].join('\n');
+
+                dialog.showMessageBox(mainWindow, {
+                  type: 'info',
+                  title: 'Process Statistics',
+                  message: message,
+                  buttons: ['OK']
+                });
+              } catch (error) {
+                dialog.showErrorBox('Error', `Failed to fetch stats: ${error}`);
+              }
             }
           }
         }

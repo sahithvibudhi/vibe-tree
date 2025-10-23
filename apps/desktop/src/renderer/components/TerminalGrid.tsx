@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { createHtmlPortalNode, InPortal, OutPortal, HtmlPortalNode } from 'react-reverse-portal';
 import { ClaudeTerminal } from './ClaudeTerminal';
+import { TerminalController } from '../services/TerminalController';
 
 interface TerminalManagerProps {
   worktreePath: string;
@@ -85,6 +86,30 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
   const [worktreeGrids, setWorktreeGrids] = useState<Map<string, WorktreeGrid>>(worktreeGridCache);
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalProcessIds = useRef<Map<string, string>>(new Map());
+  const terminalsBeingClosed = useRef<Set<string>>(new Set());
+
+  // Initialize terminal controller
+  const terminalControllerRef = useRef<TerminalController>();
+  if (!terminalControllerRef.current) {
+    terminalControllerRef.current = new TerminalController(window.electronAPI.shell, {
+      onCleanupSuccess: (terminalId) => {
+        console.log(`[TerminalGrid] PTY cleanup successful for terminal: ${terminalId}`);
+        terminalProcessIds.current.delete(terminalId);
+        terminalsBeingClosed.current.delete(terminalId);
+
+        // Actually close the terminal now that process is cleaned up
+        const grid = worktreeGridCache.get(worktreePath);
+        if (grid) {
+          closeTerminalFromGrid(grid, terminalId);
+        }
+      },
+      onCleanupError: (terminalId, error) => {
+        console.error(`[TerminalGrid] PTY cleanup failed for terminal ${terminalId}:`, error);
+        terminalProcessIds.current.delete(terminalId);
+        terminalsBeingClosed.current.delete(terminalId);
+      }
+    });
+  }
 
   // Create or get grid for current worktree
   useEffect(() => {
@@ -180,32 +205,8 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
     }, 50);
   }, [worktreePath]);
 
-  // Handle terminal close
-  const handleClose = useCallback(async (terminalId: string) => {
-    const grid = worktreeGridCache.get(worktreePath);
-    if (!grid) return;
-
-    // Don't allow closing if it's the last terminal
-    const totalTerminals = countTerminals(grid.root);
-    if (totalTerminals <= 1) {
-      console.log('Cannot close the last terminal');
-      return;
-    }
-
-    console.log('Closing terminal:', terminalId);
-
-    // Get the process ID for this terminal if it exists
-    const processId = terminalProcessIds.current.get(terminalId);
-    if (processId) {
-      console.log('Terminating PTY for terminal:', terminalId, 'processId:', processId);
-      try {
-        await window.electronAPI.shell.terminate(processId);
-      } catch (error) {
-        console.error('Error terminating PTY:', error);
-      }
-      terminalProcessIds.current.delete(terminalId);
-    }
-
+  // Helper function to close terminal from grid
+  const closeTerminalFromGrid = useCallback((grid: WorktreeGrid, terminalId: string) => {
     // Find the terminal node and its parent
     const result = findNodeAndParent(grid.root, terminalId);
     if (!result) return;
@@ -254,6 +255,43 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
     // Update state to trigger re-render
     setWorktreeGrids(new Map(worktreeGridCache));
   }, [worktreePath]);
+
+  // Handle terminal close - terminates PTY process immediately with SIGKILL
+  const handleClose = useCallback((terminalId: string) => {
+    const grid = worktreeGridCache.get(worktreePath);
+    if (!grid) return;
+
+    // Don't allow closing if it's the last terminal
+    const totalTerminals = countTerminals(grid.root);
+    if (totalTerminals <= 1) {
+      console.log('Cannot close the last terminal');
+      return;
+    }
+
+    // Don't allow closing if already being closed
+    if (terminalsBeingClosed.current.has(terminalId)) {
+      console.log('Terminal is already being closed:', terminalId);
+      return;
+    }
+
+    console.log('Initiating close for terminal:', terminalId);
+    terminalsBeingClosed.current.add(terminalId);
+
+    // Clean up PTY process - UI will be updated when cleanup succeeds
+    const processId = terminalProcessIds.current.get(terminalId);
+    if (processId && terminalControllerRef.current) {
+      terminalControllerRef.current.handleTerminalClose({
+        terminalId,
+        processId
+      }).catch(error => {
+        console.warn('PTY cleanup error for terminal:', terminalId, error);
+      });
+    } else {
+      // No process ID, close immediately
+      closeTerminalFromGrid(grid, terminalId);
+      terminalsBeingClosed.current.delete(terminalId);
+    }
+  }, [worktreePath, closeTerminalFromGrid]);
 
   // Callback to track process IDs from terminals
   const handleTerminalProcessId = useCallback((terminalId: string, processId: string) => {

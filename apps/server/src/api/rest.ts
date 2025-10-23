@@ -117,12 +117,12 @@ export function setupRestRoutes(app: Express, services: Services) {
   });
 
   // Terminate a shell session (protected)
-  app.delete('/api/shells/:sessionId', authService.requireAuth, (req, res) => {
-    const success = shellManager.terminateSession(req.params.sessionId);
-    if (success) {
-      res.json({ success: true });
+  app.delete('/api/shells/:sessionId', authService.requireAuth, async (req, res) => {
+    const result = await shellManager.terminateSession(req.params.sessionId);
+    if (result.success) {
+      res.json(result);
     } else {
-      res.status(404).json({ error: 'Session not found' });
+      res.status(404).json({ error: 'Session not found', ...result });
     }
   });
 

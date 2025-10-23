@@ -2,9 +2,10 @@ import * as crypto from 'crypto';
 
 // Type definitions to avoid importing node-pty directly
 export interface IPty {
+  pid: number;
   write(data: string): void;
   resize(cols: number, rows: number): void;
-  kill(): void;
+  kill(signal?: string): void;
   onData(callback: (data: string) => void): { dispose: () => void };
   onExit(callback: (event: { exitCode: number }) => void): { dispose: () => void };
 }
@@ -97,11 +98,103 @@ export function resizePty(ptyProcess: IPty, cols: number, rows: number): void {
 }
 
 /**
- * Kill a PTY process
+ * Kill a PTY process gracefully - now uses force kill (SIGKILL) immediately
+ * The "graceful" approach with SIGTERM was not reliably killing child processes
+ * @param ptyProcess - The PTY process to kill
+ * @param _timeoutMs - Kept for backwards compatibility but not used
+ * @returns Promise that resolves when the process exits
+ */
+export async function killPtyGraceful(ptyProcess: IPty, _timeoutMs?: number): Promise<void> {
+  // Graceful kill with SIGTERM doesn't work reliably for killing child processes like irb
+  // Force kill with SIGKILL to process group is the only reliable way
+  return killPtyForce(ptyProcess);
+}
+
+/**
+ * Force kill a PTY process (SIGKILL to process group)
+ * @param ptyProcess - The PTY process to kill
+ * @returns Promise that resolves when the process is killed
+ */
+export async function killPtyForce(ptyProcess: IPty): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const pid = ptyProcess.pid;
+    let isKilled = false;
+    let exitListener: { dispose: () => void } | null = null;
+
+    let cleanup = () => {
+      if (exitListener) {
+        exitListener.dispose();
+        exitListener = null;
+      }
+      if (!isKilled) {
+        isKilled = true;
+        resolve();
+      }
+    };
+
+    // Listen for exit event
+    exitListener = ptyProcess.onExit(() => {
+      console.log(`PTY process ${pid} force killed`);
+      cleanup();
+    });
+
+    // Send SIGKILL to force kill
+    try {
+      if (process.platform !== 'win32') {
+        // Send SIGKILL to process group to ensure all processes are killed
+        try {
+          process.kill(-pid, 'SIGKILL');
+          console.log(`Sent SIGKILL to process group -${pid}`);
+        } catch (pgError) {
+          console.warn(`Could not kill process group -${pid}, falling back to PTY process:`, pgError);
+          ptyProcess.kill('SIGKILL');
+          console.log(`Sent SIGKILL to PTY process ${pid}`);
+        }
+      } else {
+        ptyProcess.kill('SIGKILL');
+        console.log(`Sent SIGKILL to PTY process ${pid}`);
+      }
+    } catch (error) {
+      console.error(`Error sending SIGKILL to PTY process ${pid}:`, error);
+      cleanup();
+      return;
+    }
+
+    // Give a grace period for SIGKILL to take effect
+    setTimeout(() => {
+      cleanup();
+    }, 500);
+  });
+}
+
+/**
+ * Kill a PTY process with graceful shutdown and forceful fallback
+ * Backward compatibility wrapper - tries graceful first, then forces
+ * @param ptyProcess - The PTY process to kill
+ * @param timeoutMs - Timeout in milliseconds before force kill (default: 2000ms)
+ * @returns Promise that resolves when the process is killed
+ */
+export async function killPty(ptyProcess: IPty, timeoutMs: number = 2000): Promise<void> {
+  try {
+    await killPtyGraceful(ptyProcess, timeoutMs);
+  } catch (error) {
+    // If graceful kill times out, force kill
+    console.log(`Graceful kill timed out, force killing PTY process ${ptyProcess.pid}`);
+    await killPtyForce(ptyProcess);
+  }
+}
+
+/**
+ * Synchronous version of killPty for backward compatibility
+ * Note: This does not wait for process to exit, use killPty for robust cleanup
  * @param ptyProcess - The PTY process to kill
  */
-export function killPty(ptyProcess: IPty): void {
-  ptyProcess.kill();
+export function killPtySync(ptyProcess: IPty): void {
+  try {
+    ptyProcess.kill('SIGTERM');
+  } catch (error) {
+    console.error('Error killing PTY process:', error);
+  }
 }
 
 /**

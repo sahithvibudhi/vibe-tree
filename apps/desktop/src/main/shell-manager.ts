@@ -117,19 +117,46 @@ class DesktopShellManager {
     });
 
     ipcMain.handle('shell:terminate', async (_, processId: string) => {
-      const success = this.sessionManager.terminateSession(processId);
-      return { success };
+      const result = await this.sessionManager.terminateSession(processId);
+      return result;
     });
 
     ipcMain.handle('shell:terminate-for-worktree', async (_, worktreePath: string) => {
-      const count = this.sessionManager.terminateSessionsForWorktree(worktreePath);
+      const count = await this.sessionManager.terminateSessionsForWorktree(worktreePath);
       return { success: true, count };
+    });
+
+    ipcMain.handle('shell:get-stats', async () => {
+      const sessions = this.sessionManager.getAllSessions();
+      return {
+        activeProcessCount: sessions.length,
+        sessions: sessions.map(s => ({
+          id: s.id,
+          worktreePath: s.worktreePath,
+          createdAt: s.createdAt.toISOString(),
+          lastActivity: s.lastActivity.toISOString()
+        }))
+      };
     });
   }
 
+  // Get process statistics
+  public getStats() {
+    const sessions = this.sessionManager.getAllSessions();
+    return {
+      activeProcessCount: sessions.length,
+      sessions: sessions.map(s => ({
+        id: s.id,
+        worktreePath: s.worktreePath,
+        createdAt: s.createdAt.toISOString(),
+        lastActivity: s.lastActivity.toISOString()
+      }))
+    };
+  }
+
   // Clean up on app quit
-  public cleanup() {
-    this.sessionManager.cleanup();
+  public async cleanup() {
+    await this.sessionManager.cleanup();
   }
 }
 

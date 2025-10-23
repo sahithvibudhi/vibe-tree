@@ -55,8 +55,8 @@ app.whenReady().then(() => {
 
   // Initialize quit manager with cleanup callback
   quitManager.initialize(mainWindow);
-  quitManager.options.onQuitConfirmed = () => {
-    shellProcessManager.cleanup();
+  quitManager.options.onQuitConfirmed = async () => {
+    await shellProcessManager.cleanup();
   };
 });
 
