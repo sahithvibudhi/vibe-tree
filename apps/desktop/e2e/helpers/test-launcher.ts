@@ -33,9 +33,10 @@ export async function launchElectronApp(options: LaunchOptions = {}): Promise<El
 }
 
 /**
- * Properly close Electron app to prevent worker teardown timeout
- * This uses electronApp.close() which is the recommended way to close Electron apps in Playwright
- * Using process.exit() can cause worker teardown timeouts as it doesn't allow Playwright to clean up properly
+ * Close Electron app quickly using process.exit to prevent worker teardown timeout
+ * We use process.exit(0) because electronApp.close() can be too slow (>5 seconds)
+ * and cause worker teardown timeouts. The trade-off is acceptable since these are
+ * ephemeral test instances.
  */
 export async function closeElectronApp(electronApp: ElectronApplication | null): Promise<void> {
   if (!electronApp) {
@@ -43,27 +44,9 @@ export async function closeElectronApp(electronApp: ElectronApplication | null):
   }
 
   try {
-    // Close with a timeout to prevent hanging
-    const closePromise = electronApp.close();
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Close timeout')), 5000)
-    );
-
-    await Promise.race([closePromise, timeoutPromise]);
+    await electronApp.evaluate(() => process.exit(0));
   } catch (error) {
-    // If close hangs or fails, force kill the process
-    console.warn('Error closing Electron app, force killing:', error);
-    try {
-      await electronApp.evaluate(() => {
-        // Force kill all windows first
-        const { BrowserWindow } = require('electron');
-        BrowserWindow.getAllWindows().forEach(w => w.destroy());
-        // Then exit
-        process.exit(0);
-      });
-    } catch (forceKillError) {
-      // Ignore - app is likely already dead
-      console.warn('Force kill also failed (app likely already closed):', forceKillError);
-    }
+    // Ignore errors - process.exit(0) will close the connection immediately
+    // which causes Playwright to throw, but that's expected and OK
   }
 }
