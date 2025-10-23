@@ -85,11 +85,10 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     }
   });
 
-  // Skip this stress test in CI - it's intended for manual local execution only
-  // The test successfully reproduces spawn failures at ~289 worktrees but takes 35+ minutes
-  // To run manually: Remove .skip and run: pnpm test:e2e worktree-posix-spawnp-stress-test
-  test.skip('should create worktrees until posix_spawnp error, then recover after deletion', async () => {
-    test.setTimeout(600000); // 10 minutes timeout
+  // This stress test verifies the posix_spawnp error recovery
+  // It creates worktrees until hitting resource limits, then verifies recovery after cleanup
+  test('should create worktrees until posix_spawnp error, then recover after deletion', async () => {
+    test.setTimeout(1200000); // 20 minutes timeout for CI
 
     await page.waitForLoadState('domcontentloaded');
 
@@ -143,10 +142,6 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
         createdWorktrees.push(worktreePath);
 
         // Wait for UI to update
-        await page.waitForTimeout(1000);
-
-        // Refresh worktrees list to detect new worktree
-        // Try to find refresh button or just wait
         await page.waitForTimeout(500);
 
         // Find the new worktree button
@@ -154,13 +149,13 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
 
         // Wait a bit for it to appear
         let buttonVisible = false;
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 6; i++) {
           const count = await newWorktreeButton.count();
           if (count > 0) {
             buttonVisible = true;
             break;
           }
-          await page.waitForTimeout(500);
+          await page.waitForTimeout(300);
         }
 
         if (!buttonVisible) {
@@ -170,7 +165,7 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
 
         // Click on the worktree
         await newWorktreeButton.click();
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(1000);
 
         // Wait for terminal to appear
         const terminalScreen = page.locator('.xterm-screen').first();
@@ -181,7 +176,7 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
           await terminalScreen.click();
           await page.keyboard.type(`echo "Test ${worktreeCount}"`);
           await page.keyboard.press('Enter');
-          await page.waitForTimeout(1500);
+          await page.waitForTimeout(800);
 
           // Check terminal content for errors
           const terminalContent = await terminalScreen.textContent();
@@ -292,7 +287,7 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
       await deletePermanentlyButton.click();
 
       // Wait for deletion to complete
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(500);
 
       // Check if deletion dialog appeared and wait for completion
       const deletionDialog = page.locator('h2').filter({ hasText: /Deleting Worktree|Deletion Complete/ });
@@ -306,11 +301,11 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
         // Close the dialog
         const closeButton = page.getByTestId('deletion-dialog-close-button');
         await closeButton.click();
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
       }
 
       console.log(`✓ Deleted ${branchToDelete}`);
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(500);
     }
 
     // Phase 3: Create a new worktree and verify terminal works
@@ -324,25 +319,25 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     createdWorktrees.push(newWorktreePath);
 
     // Wait for UI to update
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1000);
 
     // Find and click the new worktree
     const newWorktreeButton = page.locator(`button[data-worktree-branch="${newBranchName}"]`);
 
     // Wait for button to appear
     let buttonAppeared = false;
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 12; i++) {
       const count = await newWorktreeButton.count();
       if (count > 0) {
         buttonAppeared = true;
         break;
       }
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(300);
     }
 
     expect(buttonAppeared).toBe(true);
     await newWorktreeButton.click();
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(1500);
 
     // Verify terminal is working
     const terminalScreen = page.locator('.xterm-screen').first();
@@ -351,7 +346,7 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     await terminalScreen.click();
     await page.keyboard.type('echo "Recovery Test Successful"');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1000);
 
     // Verify terminal output
     const terminalContent = await terminalScreen.textContent();
