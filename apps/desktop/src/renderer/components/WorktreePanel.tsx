@@ -61,15 +61,15 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
     try {
       toast({
         title: "Creating stress test repo...",
-        description: "This will create a repo with 150 worktrees. Please wait...",
+        description: "Creating worktrees until we hit resource limits...",
       });
 
       const result = await window.electronAPI.debug.createStressTestRepo();
 
       if (result.success) {
         toast({
-          title: "Loading worktrees...",
-          description: "Opening terminals for all worktrees...",
+          title: `Created ${result.count} worktrees!`,
+          description: "Now opening terminals for all worktrees...",
         });
 
         // Load worktrees from the new project

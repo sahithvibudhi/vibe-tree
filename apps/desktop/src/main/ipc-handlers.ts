@@ -129,7 +129,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow | null) {
     await shell.openExternal(url);
   });
 
-  // Debug: Create test repo with many worktrees
+  // Debug: Create test repo with many worktrees - keep creating until we can't anymore
   ipcMain.handle('debug:create-stress-test-repo', async () => {
     try {
       const tmpDir = os.tmpdir();
@@ -147,22 +147,32 @@ export function registerIpcHandlers(mainWindow: BrowserWindow | null) {
       execSync('git add .', { cwd: repoPath, stdio: 'inherit' });
       execSync('git commit -m "Initial commit"', { cwd: repoPath, stdio: 'inherit' });
 
-      // Create 150 worktrees
-      for (let i = 1; i <= 150; i++) {
-        const branchName = `wt-${String(i).padStart(3, '0')}`;
+      // Keep creating worktrees until we fail (likely due to resource limits)
+      let i = 1;
+      let consecutiveFailures = 0;
+      while (consecutiveFailures < 3) {  // Stop after 3 consecutive failures
+        const branchName = `wt-${String(i).padStart(4, '0')}`;
         const wtPath = path.join(tmpDir, `${repoName}-${branchName}`);
         try {
           execSync(`git worktree add -b ${branchName} "${wtPath}"`, { cwd: repoPath, stdio: 'pipe' });
+          consecutiveFailures = 0;  // Reset on success
           if (i % 10 === 0) {
-            console.log(`Created ${i}/150 worktrees`);
+            console.log(`Created ${i} worktrees so far...`);
           }
+          i++;
         } catch (e) {
-          console.error(`Failed to create worktree ${i}:`, e);
+          consecutiveFailures++;
+          console.error(`Failed to create worktree ${i} (failure ${consecutiveFailures}/3):`, e instanceof Error ? e.message : String(e));
+          if (consecutiveFailures >= 3) {
+            console.log(`Stopped after ${i - 1} worktrees due to repeated failures`);
+            break;
+          }
+          i++;
         }
       }
 
-      console.log(`Stress test repo created successfully at: ${repoPath}`);
-      return { success: true, path: repoPath };
+      console.log(`Stress test repo created with ${i - 1} worktrees at: ${repoPath}`);
+      return { success: true, path: repoPath, count: i - 1 };
     } catch (error) {
       console.error('Failed to create stress test repo:', error);
       return {
