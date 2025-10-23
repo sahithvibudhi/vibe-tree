@@ -57,16 +57,16 @@ function createMockPty(): MockIPty {
 describe('ShellSessionManager', () => {
   let manager: ShellSessionManager;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Get a fresh instance for each test
     manager = ShellSessionManager.getInstance();
     // Clean up any existing sessions
-    manager.cleanup();
+    await manager.cleanup();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     // Clean up after each test
-    manager.cleanup();
+    await manager.cleanup();
   });
 
   describe('terminateSessionsForWorktree', () => {
@@ -96,7 +96,7 @@ describe('ShellSessionManager', () => {
       expect(manager.getAllSessions().length).toBe(3);
 
       // Terminate all sessions for worktree1
-      const terminatedCount = manager.terminateSessionsForWorktree(worktreePath1);
+      const terminatedCount = await manager.terminateSessionsForWorktree(worktreePath1);
 
       // Verify that 2 sessions were terminated
       expect(terminatedCount).toBe(2);
@@ -114,11 +114,11 @@ describe('ShellSessionManager', () => {
       expect(remainingSessions[0].worktreePath).toBe(worktreePath2);
     });
 
-    it('should return 0 when no sessions exist for the worktree', () => {
+    it('should return 0 when no sessions exist for the worktree', async () => {
       const worktreePath = '/path/to/nonexistent/worktree';
 
       // Try to terminate sessions for a worktree with no sessions
-      const terminatedCount = manager.terminateSessionsForWorktree(worktreePath);
+      const terminatedCount = await manager.terminateSessionsForWorktree(worktreePath);
 
       // Should return 0
       expect(terminatedCount).toBe(0);
@@ -151,7 +151,7 @@ describe('ShellSessionManager', () => {
       expect(manager.getAllSessions().length).toBe(5);
 
       // Terminate all sessions for this worktree
-      const terminatedCount = manager.terminateSessionsForWorktree(worktreePath);
+      const terminatedCount = await manager.terminateSessionsForWorktree(worktreePath);
 
       // Verify all 5 sessions were terminated
       expect(terminatedCount).toBe(5);
@@ -197,7 +197,7 @@ describe('ShellSessionManager', () => {
       expect(outputCallback).toHaveBeenCalledWith('test data');
 
       // Terminate sessions for this worktree
-      const terminatedCount = manager.terminateSessionsForWorktree(worktreePath);
+      const terminatedCount = await manager.terminateSessionsForWorktree(worktreePath);
 
       expect(terminatedCount).toBe(1);
 
@@ -237,7 +237,7 @@ describe('ShellSessionManager', () => {
       const session3 = await manager.startSession(worktreePath3, 80, 30, mockSpawnFn, true);
 
       // Terminate sessions for worktree2
-      const terminatedCount = manager.terminateSessionsForWorktree(worktreePath2);
+      const terminatedCount = await manager.terminateSessionsForWorktree(worktreePath2);
 
       expect(terminatedCount).toBe(1);
 
@@ -255,8 +255,8 @@ describe('ShellSessionManager', () => {
       expect(manager.getAllSessions().length).toBe(2);
     });
 
-    it('should handle case where worktree path is empty string', () => {
-      const terminatedCount = manager.terminateSessionsForWorktree('');
+    it('should handle case where worktree path is empty string', async () => {
+      const terminatedCount = await manager.terminateSessionsForWorktree('');
 
       expect(terminatedCount).toBe(0);
     });
@@ -277,7 +277,7 @@ describe('ShellSessionManager', () => {
       await manager.startSession(worktreePath2, 80, 30, mockSpawnFn, true);
 
       // Terminate sessions for worktreePath1 (should not affect worktreePath2)
-      const terminatedCount = manager.terminateSessionsForWorktree(worktreePath1);
+      const terminatedCount = await manager.terminateSessionsForWorktree(worktreePath1);
 
       expect(terminatedCount).toBe(1);
       expect(mockPty1.killed).toBe(true);
@@ -308,7 +308,7 @@ describe('ShellSessionManager', () => {
       expect(manager.getAllSessions().length).toBe(2);
 
       // Cleanup all sessions
-      manager.cleanup();
+      await manager.cleanup();
 
       // Verify all PTY processes were killed
       expect(mockPty1.killed).toBe(true);
