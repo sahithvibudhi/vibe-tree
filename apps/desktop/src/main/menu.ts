@@ -26,8 +26,8 @@ function showStatsDialog(parentWindow: BrowserWindow) {
     resizable: true,
     webPreferences: {
       preload: path.join(__dirname, 'stats-dialog-preload.js'),
-      contextIsolation: false,  // Disable for simpler IPC
-      nodeIntegration: false
+      contextIsolation: false,
+      nodeIntegration: true  // Required for window.close() to work
     }
   });
 
