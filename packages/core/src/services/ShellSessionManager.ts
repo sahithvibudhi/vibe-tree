@@ -10,6 +10,8 @@ import {
   writeToPty,
   resizePty,
   killPty,
+  killPtyGraceful,
+  killPtyForce,
   onPtyData,
   onPtyExit,
   type IPty
@@ -313,13 +315,18 @@ export class ShellSessionManager {
   }
 
   /**
-   * Terminate session
+   * Terminate session - uses SIGKILL to ensure process and children are killed immediately
+   * @param sessionId - Session ID to terminate
+   * @returns Object with success status
    */
-  terminateSession(sessionId: string): boolean {
+  async terminateSession(sessionId: string): Promise<{ success: boolean }> {
     const session = this.sessions.get(sessionId);
-    if (!session) return false;
+    if (!session) return { success: false };
 
     try {
+      const pid = session.pty.pid;
+      console.log(`Terminating session ${sessionId} (PID: ${pid})`);
+
       // Dispose of data listener if it exists
       if (session.dataDisposable) {
         session.dataDisposable.dispose();
@@ -329,25 +336,25 @@ export class ShellSessionManager {
       session.listeners.clear();
       session.exitListeners.clear();
 
-      // Kill PTY
-      killPty(session.pty);
+      // Force kill immediately - SIGTERM doesn't reliably kill child processes
+      await killPtyForce(session.pty);
 
-      // Remove from sessions
+      // Remove from sessions after force kill
       this.sessions.delete(sessionId);
-
-      console.log(`Terminated session ${sessionId}`);
-      return true;
+      console.log(`Successfully terminated session ${sessionId} (PID: ${pid})`);
+      return { success: true };
     } catch (error) {
-      console.error('Error terminating session:', error);
-      return false;
+      console.error(`Error terminating session ${sessionId}:`, error);
+      return { success: false };
     }
   }
+
 
   /**
    * Terminate all sessions for a worktree path
    * Returns the number of sessions terminated
    */
-  terminateSessionsForWorktree(worktreePath: string): number {
+  async terminateSessionsForWorktree(worktreePath: string): Promise<number> {
     let terminated = 0;
     const sessionsToTerminate: string[] = [];
 
@@ -358,12 +365,14 @@ export class ShellSessionManager {
       }
     }
 
-    // Terminate each session
-    for (const sessionId of sessionsToTerminate) {
-      if (this.terminateSession(sessionId)) {
-        terminated++;
-      }
-    }
+    // Terminate each session in parallel for faster cleanup
+    const terminatePromises = sessionsToTerminate.map(async (sessionId) => {
+      const result = await this.terminateSession(sessionId);
+      return result.success ? 1 : 0;
+    });
+
+    const results = await Promise.all(terminatePromises);
+    terminated = results.reduce((sum: number, count: number) => sum + count, 0);
 
     console.log(`Terminated ${terminated} session(s) for worktree: ${worktreePath}`);
     return terminated;
@@ -386,16 +395,15 @@ export class ShellSessionManager {
   /**
    * Cleanup all sessions (for app shutdown)
    */
-  cleanup(): void {
+  async cleanup(): Promise<void> {
     // Stop cleanup timer
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
 
-    // Terminate all sessions
-    for (const sessionId of this.sessions.keys()) {
-      this.terminateSession(sessionId);
-    }
+    // Terminate all sessions in parallel
+    const sessionIds = Array.from(this.sessions.keys());
+    await Promise.all(sessionIds.map(sessionId => this.terminateSession(sessionId)));
   }
 }

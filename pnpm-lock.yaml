@@ -375,6 +375,9 @@ importers:
       esbuild:
         specifier: ^0.25.9
         version: 0.25.9
+      node-pty:
+        specifier: ^1.1.0-beta9
+        version: 1.1.0-beta9
       typescript:
         specifier: ^5.3.3
         version: 5.9.2
@@ -7696,7 +7699,6 @@ packages:
 
   /node-addon-api@7.1.1:
     resolution: {integrity: sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==}
-    dev: false
 
   /node-api-version@0.1.4:
     resolution: {integrity: sha512-KGXihXdUChwJAOHO53bv9/vXcLmdUsZ6jIptbvYvkpKfth+r7jw44JkVxQFA3kX5nQjzjmGu1uAu/xNNLNlI5g==}
@@ -7760,7 +7762,6 @@ packages:
     requiresBuild: true
     dependencies:
       node-addon-api: 7.1.1
-    dev: false
 
   /node-releases@2.0.19:
     resolution: {integrity: sha512-xxOWJsBKtzAq7DY0J+DTzuz58K8e7sJbdgwkbMWQe8UYB6ekmsQ45q0M/tJDsGaZmbC+l7n57UV8Hl5tHxO9uw==}

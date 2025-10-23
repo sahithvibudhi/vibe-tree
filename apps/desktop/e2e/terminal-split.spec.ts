@@ -5,6 +5,71 @@ import fs from 'fs';
 import { execSync } from 'child_process';
 import os from 'os';
 
+/**
+ * Helper function to create a dummy git repository for testing
+ */
+function createDummyRepo(): string {
+  const timestamp = Date.now();
+  const dummyRepoPath = path.join(os.tmpdir(), `dummy-repo-split-${timestamp}`);
+
+  // Create the directory and initialize git repo
+  fs.mkdirSync(dummyRepoPath, { recursive: true });
+  execSync('git init -q', { cwd: dummyRepoPath });
+  execSync('git config user.email "test@example.com"', { cwd: dummyRepoPath });
+  execSync('git config user.name "Test User"', { cwd: dummyRepoPath });
+
+  // Create a dummy file and make initial commit (required for branches/worktrees)
+  fs.writeFileSync(path.join(dummyRepoPath, 'README.md'), '# Test Repository\n');
+  execSync('git add .', { cwd: dummyRepoPath });
+  execSync('git commit -q -m "Initial commit"', { cwd: dummyRepoPath });
+
+  // Create main branch (some git versions don't create it by default)
+  try {
+    execSync('git branch -M main', { cwd: dummyRepoPath });
+  } catch (e) {
+    // Ignore if branch already exists
+  }
+
+  console.log('Created dummy repo at:', dummyRepoPath);
+  return dummyRepoPath;
+}
+
+/**
+ * Helper function to navigate to terminal view for a worktree
+ */
+async function navigateToWorktree(electronApp: ElectronApplication, page: Page, repoPath: string) {
+  // Verify the app launches with project selector
+  await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+
+  // Click the "Open Project Folder" button
+  const openButton = page.locator('button', { hasText: 'Open Project Folder' });
+  await expect(openButton).toBeVisible();
+
+  // Mock the Electron dialog to return our dummy repository path
+  await electronApp.evaluate(async ({ dialog }, repoPath) => {
+    dialog.showOpenDialog = async () => {
+      return {
+        canceled: false,
+        filePaths: [repoPath]
+      };
+    };
+  }, repoPath);
+
+  // Click the open button which will trigger the mocked dialog
+  await openButton.click();
+
+  // Wait for worktree list to appear
+  await page.waitForTimeout(3000);
+
+  // Find and click the worktree button
+  const worktreeButton = page.locator('button[data-worktree-branch="main"]');
+  expect(await worktreeButton.count()).toBeGreaterThan(0);
+  await worktreeButton.click();
+
+  // Wait for the terminal to load
+  await page.waitForTimeout(3000);
+}
+
 test.describe('Terminal Split Feature', () => {
   let electronApp: ElectronApplication;
   let page: Page;
@@ -12,28 +77,7 @@ test.describe('Terminal Split Feature', () => {
 
   test.beforeEach(async () => {
     // Create a dummy git repository for testing
-    const timestamp = Date.now();
-    dummyRepoPath = path.join(os.tmpdir(), `dummy-repo-split-${timestamp}`);
-
-    // Create the directory and initialize git repo
-    fs.mkdirSync(dummyRepoPath, { recursive: true });
-    execSync('git init -q', { cwd: dummyRepoPath });
-    execSync('git config user.email "test@example.com"', { cwd: dummyRepoPath });
-    execSync('git config user.name "Test User"', { cwd: dummyRepoPath });
-
-    // Create a dummy file and make initial commit (required for branches/worktrees)
-    fs.writeFileSync(path.join(dummyRepoPath, 'README.md'), '# Test Repository\n');
-    execSync('git add .', { cwd: dummyRepoPath });
-    execSync('git commit -q -m "Initial commit"', { cwd: dummyRepoPath });
-
-    // Create main branch (some git versions don't create it by default)
-    try {
-      execSync('git branch -M main', { cwd: dummyRepoPath });
-    } catch (e) {
-      // Ignore if branch already exists
-    }
-
-    console.log('Created dummy repo at:', dummyRepoPath);
+    dummyRepoPath = createDummyRepo();
 
     const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
     console.log('Using test main file:', testMainPath);
@@ -77,36 +121,8 @@ test.describe('Terminal Split Feature', () => {
 
     await page.waitForLoadState('domcontentloaded');
 
-    // Verify the app launches with project selector
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
-
-    // Click the "Open Project Folder" button
-    const openButton = page.locator('button', { hasText: 'Open Project Folder' });
-    await expect(openButton).toBeVisible();
-
-    // Mock the Electron dialog to return our dummy repository path
-    await electronApp.evaluate(async ({ dialog }, repoPath) => {
-      dialog.showOpenDialog = async () => {
-        return {
-          canceled: false,
-          filePaths: [repoPath]
-        };
-      };
-    }, dummyRepoPath);
-
-    // Click the open button which will trigger the mocked dialog
-    await openButton.click();
-
-    // Wait for worktree list to appear
-    await page.waitForTimeout(3000);
-
-    // Find and click the worktree button
-    const worktreeButton = page.locator('button[data-worktree-branch="main"]');
-    expect(await worktreeButton.count()).toBeGreaterThan(0);
-    await worktreeButton.click();
-
-    // Wait for the terminal to load
-    await page.waitForTimeout(3000);
+    // Navigate to worktree terminal
+    await navigateToWorktree(electronApp, page, dummyRepoPath);
 
     // Verify initial terminal is present
     const initialTerminal = page.locator('.claude-terminal-root').first();
@@ -182,36 +198,8 @@ test.describe('Terminal Split Feature', () => {
 
     await page.waitForLoadState('domcontentloaded');
 
-    // Verify the app launches with project selector
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
-
-    // Click the "Open Project Folder" button
-    const openButton = page.locator('button', { hasText: 'Open Project Folder' });
-    await expect(openButton).toBeVisible();
-
-    // Mock the Electron dialog to return our dummy repository path
-    await electronApp.evaluate(async ({ dialog }, repoPath) => {
-      dialog.showOpenDialog = async () => {
-        return {
-          canceled: false,
-          filePaths: [repoPath]
-        };
-      };
-    }, dummyRepoPath);
-
-    // Click the open button which will trigger the mocked dialog
-    await openButton.click();
-
-    // Wait for worktree list to appear
-    await page.waitForTimeout(3000);
-
-    // Find and click the worktree button
-    const worktreeButton = page.locator('button[data-worktree-branch="main"]');
-    expect(await worktreeButton.count()).toBeGreaterThan(0);
-    await worktreeButton.click();
-
-    // Wait for the terminal to load
-    await page.waitForTimeout(3000);
+    // Navigate to worktree terminal
+    await navigateToWorktree(electronApp, page, dummyRepoPath);
 
     // Verify initial terminal is present
     const initialTerminal = page.locator('.claude-terminal-root').first();
@@ -280,26 +268,8 @@ test.describe('Terminal Split Feature', () => {
 
     await page.waitForLoadState('domcontentloaded');
 
-    // Setup and navigate to terminal
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
-    const openButton = page.locator('button', { hasText: 'Open Project Folder' });
-    await expect(openButton).toBeVisible();
-
-    await electronApp.evaluate(async ({ dialog }, repoPath) => {
-      dialog.showOpenDialog = async () => {
-        return {
-          canceled: false,
-          filePaths: [repoPath]
-        };
-      };
-    }, dummyRepoPath);
-
-    await openButton.click();
-    await page.waitForTimeout(3000);
-
-    const worktreeButton = page.locator('button[data-worktree-branch="main"]');
-    await worktreeButton.click();
-    await page.waitForTimeout(3000);
+    // Navigate to worktree terminal
+    await navigateToWorktree(electronApp, page, dummyRepoPath);
 
     // Create a variable in the first terminal
     const firstTerminalScreen = page.locator('.xterm-screen').first();

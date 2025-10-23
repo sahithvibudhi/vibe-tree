@@ -37,11 +37,16 @@ describe('QuitManager', () => {
   });
 
   describe('showQuitConfirmation', () => {
-    it('should show dialog and quit when confirmed', () => {
+    it('should show dialog and quit when confirmed', async () => {
       vi.mocked(dialog.showMessageBoxSync).mockReturnValue(1); // OK button
 
       const mockWindow = { on: vi.fn(), isDestroyed: vi.fn(() => false) };
       const result = quitManager.showQuitConfirmation(mockWindow as unknown as BrowserWindow);
+
+      // Wait for async confirmQuit to complete
+      await vi.waitFor(() => {
+        expect(onQuitConfirmed).toHaveBeenCalled();
+      });
 
       expect(dialog.showMessageBoxSync).toHaveBeenCalledWith(
         mockWindow,
@@ -55,7 +60,6 @@ describe('QuitManager', () => {
       );
 
       expect(result).toBe(true);
-      expect(onQuitConfirmed).toHaveBeenCalled();
       expect(app.quit).toHaveBeenCalled();
       expect(quitManager.getIsQuitting()).toBe(true);
     });
@@ -72,15 +76,19 @@ describe('QuitManager', () => {
       expect(quitManager.getIsQuitting()).toBe(false);
     });
 
-    it('should quit immediately when dialog is disabled', () => {
+    it('should quit immediately when dialog is disabled', async () => {
       quitManager.setDialogEnabled(false);
 
       const mockWindow = { on: vi.fn(), isDestroyed: vi.fn(() => false) };
       const result = quitManager.showQuitConfirmation(mockWindow as unknown as BrowserWindow);
 
+      // Wait for async confirmQuit to complete
+      await vi.waitFor(() => {
+        expect(onQuitConfirmed).toHaveBeenCalled();
+      });
+
       expect(dialog.showMessageBoxSync).not.toHaveBeenCalled();
       expect(result).toBe(true);
-      expect(onQuitConfirmed).toHaveBeenCalled();
       expect(app.quit).toHaveBeenCalled();
       expect(quitManager.getIsQuitting()).toBe(true);
     });
@@ -102,8 +110,8 @@ describe('QuitManager', () => {
   });
 
   describe('confirmQuit', () => {
-    it('should set isQuitting to true and call app.quit()', () => {
-      quitManager.confirmQuit();
+    it('should set isQuitting to true and call app.quit()', async () => {
+      await quitManager.confirmQuit();
 
       expect(quitManager.getIsQuitting()).toBe(true);
       expect(onQuitConfirmed).toHaveBeenCalled();

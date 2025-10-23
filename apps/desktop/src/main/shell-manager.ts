@@ -117,12 +117,12 @@ class DesktopShellManager {
     });
 
     ipcMain.handle('shell:terminate', async (_, processId: string) => {
-      const success = this.sessionManager.terminateSession(processId);
-      return { success };
+      const result = await this.sessionManager.terminateSession(processId);
+      return result;
     });
 
     ipcMain.handle('shell:terminate-for-worktree', async (_, worktreePath: string) => {
-      const count = this.sessionManager.terminateSessionsForWorktree(worktreePath);
+      const count = await this.sessionManager.terminateSessionsForWorktree(worktreePath);
       return { success: true, count };
     });
 
@@ -155,8 +155,8 @@ class DesktopShellManager {
   }
 
   // Clean up on app quit
-  public cleanup() {
-    this.sessionManager.cleanup();
+  public async cleanup() {
+    await this.sessionManager.cleanup();
   }
 }
 

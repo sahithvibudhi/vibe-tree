@@ -1,5 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getPtyOptions, getDefaultShell } from './shell';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { getPtyOptions, getDefaultShell, killPtyGraceful, killPtyForce } from './shell';
+import * as pty from 'node-pty';
+import * as fs from 'fs';
+import * as path from 'path';
 
 describe('shell utils', () => {
   describe('getPtyOptions', () => {
@@ -117,5 +120,171 @@ describe('shell utils', () => {
       
       expect(getDefaultShell()).toBe('/bin/bash');
     });
+  });
+
+  describe('process killing', () => {
+    let testTempDir: string;
+
+    beforeEach(() => {
+      testTempDir = `/tmp/vibe-tree-test-${Date.now()}`;
+      fs.mkdirSync(testTempDir, { recursive: true });
+    });
+
+    afterEach(() => {
+      // Clean up temp directory
+      if (fs.existsSync(testTempDir)) {
+        fs.rmSync(testTempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should kill a process running in the PTY', async () => {
+      // Create a test file path
+      const testFile = path.join(testTempDir, 'timestamp.txt');
+
+      // Spawn a PTY with a script that writes timestamps
+      const ptyProcess = pty.spawn('/bin/bash', [], {
+        name: 'xterm-256color',
+        cols: 80,
+        rows: 30,
+        cwd: testTempDir,
+        env: process.env as any
+      });
+
+      // Wait for shell to be ready
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Start a loop that writes timestamps every 100ms
+      ptyProcess.write(`while true; do date +%s.%N > ${testFile}; sleep 0.1; done\r`);
+
+      // Wait for the process to start writing
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Verify file is being updated
+      const initialContent = fs.readFileSync(testFile, 'utf-8');
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const updatedContent = fs.readFileSync(testFile, 'utf-8');
+
+      expect(initialContent).not.toBe(updatedContent);
+      console.log('✓ Process is running and updating file');
+
+      // Kill the PTY gracefully
+      const killPromise = killPtyGraceful(ptyProcess, 10000);
+
+      // Wait for kill to complete
+      await killPromise;
+
+      // Wait a bit to ensure process has stopped
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Verify file is no longer being updated
+      const contentAfterKill = fs.readFileSync(testFile, 'utf-8');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const finalContent = fs.readFileSync(testFile, 'utf-8');
+
+      expect(contentAfterKill).toBe(finalContent);
+      console.log('✓ Process has stopped updating file after kill');
+    }, 15000);
+
+    it('should kill child processes when PTY is killed', async () => {
+      // Create a test file path
+      const testFile = path.join(testTempDir, 'child-timestamp.txt');
+
+      // Spawn a PTY
+      const ptyProcess = pty.spawn('/bin/bash', [], {
+        name: 'xterm-256color',
+        cols: 80,
+        rows: 30,
+        cwd: testTempDir,
+        env: process.env as any
+      });
+
+      // Wait for shell to be ready
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Start a Ruby IRB-like process in background
+      ptyProcess.write(`ruby -e "loop { File.write('${testFile}', Time.now.to_f); sleep 0.1 }" &\r`);
+
+      // Wait for the process to start writing
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Verify file exists and is being updated
+      if (!fs.existsSync(testFile)) {
+        console.warn('Test file not created, skipping test');
+        ptyProcess.kill('SIGKILL');
+        return;
+      }
+
+      const initialContent = fs.readFileSync(testFile, 'utf-8');
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const updatedContent = fs.readFileSync(testFile, 'utf-8');
+
+      expect(initialContent).not.toBe(updatedContent);
+      console.log('✓ Child process is running and updating file');
+
+      // Kill the PTY gracefully
+      const killPromise = killPtyGraceful(ptyProcess, 10000);
+
+      // Wait for kill to complete
+      await killPromise;
+
+      // Wait to ensure child process has stopped
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Verify file is no longer being updated
+      const contentAfterKill = fs.readFileSync(testFile, 'utf-8');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const finalContent = fs.readFileSync(testFile, 'utf-8');
+
+      expect(contentAfterKill).toBe(finalContent);
+      console.log('✓ Child process has stopped after PTY kill');
+    }, 15000);
+
+    it('should force kill stubborn processes', async () => {
+      // Create a test file path
+      const testFile = path.join(testTempDir, 'stubborn-timestamp.txt');
+
+      // Spawn a PTY
+      const ptyProcess = pty.spawn('/bin/bash', [], {
+        name: 'xterm-256color',
+        cols: 80,
+        rows: 30,
+        cwd: testTempDir,
+        env: process.env as any
+      });
+
+      // Wait for shell to be ready
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Start a process that ignores SIGTERM
+      ptyProcess.write(`trap '' TERM; while true; do date +%s.%N > ${testFile}; sleep 0.1; done\r`);
+
+      // Wait for the process to start writing
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Verify file is being updated
+      const initialContent = fs.readFileSync(testFile, 'utf-8');
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const updatedContent = fs.readFileSync(testFile, 'utf-8');
+
+      expect(initialContent).not.toBe(updatedContent);
+      console.log('✓ Stubborn process is running');
+
+      // Force kill the PTY
+      const killPromise = killPtyForce(ptyProcess);
+
+      // Wait for kill to complete
+      await killPromise;
+
+      // Wait to ensure process has stopped
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Verify file is no longer being updated
+      const contentAfterKill = fs.readFileSync(testFile, 'utf-8');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const finalContent = fs.readFileSync(testFile, 'utf-8');
+
+      expect(contentAfterKill).toBe(finalContent);
+      console.log('✓ Stubborn process has been force killed');
+    }, 15000);
   });
 });
