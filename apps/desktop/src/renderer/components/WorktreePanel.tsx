@@ -77,6 +77,7 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
         const trees = await window.electronAPI.git.listWorktrees(result.path);
 
         // Open terminal for each worktree to trigger PTY spawn stress test
+        // Add small delays to prevent freezing the UI
         let openedCount = 0;
         for (const worktree of trees) {
           try {
@@ -90,6 +91,9 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
                 description: `Opened ${openedCount}/${trees.length} terminals`,
               });
             }
+
+            // Small delay to let UI breathe and process events
+            await new Promise(resolve => setTimeout(resolve, 50));
           } catch (error) {
             console.error(`Failed to open terminal for ${worktree.path}:`, error);
           }
