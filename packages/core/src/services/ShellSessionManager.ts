@@ -76,8 +76,8 @@ export class ShellSessionManager {
    * Start or get existing shell session
    */
   async startSession(
-    worktreePath: string, 
-    cols = 80, 
+    worktreePath: string,
+    cols = 80,
     rows = 30,
     spawnFunction?: (shell: string, args: string[], options: any) => IPty,
     forceNew: boolean = false,
@@ -85,7 +85,7 @@ export class ShellSessionManager {
     setLocaleVariables: boolean = true
   ): Promise<ShellStartResult> {
     const sessionId = this.generateSessionId(worktreePath, terminalId, forceNew);
-    
+
     // Return existing session if available (unless forceNew is true)
     if (!forceNew) {
       const existingSession = this.sessions.get(sessionId);
@@ -99,54 +99,82 @@ export class ShellSessionManager {
       }
     }
 
-    // Create new session
-    try {
-      if (!spawnFunction) {
-        throw new Error('Spawn function must be provided for new sessions');
+    // Create new session with retry logic for spawn failures
+    const maxRetries = 3;
+    const baseDelayMs = 100;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        if (!spawnFunction) {
+          throw new Error('Spawn function must be provided for new sessions');
+        }
+
+        const shell = getDefaultShell();
+        const options = getPtyOptions(worktreePath, cols, rows, setLocaleVariables);
+        // Launch as login shell to ensure proper PATH initialization
+        // For zsh/bash, use -l flag. For other shells, keep empty args
+        const shellArgs = shell.includes('zsh') || shell.includes('bash') ? ['-l'] : [];
+
+        const ptyProcess = spawnFunction(shell, shellArgs, options);
+
+        const session: ShellSession = {
+          id: sessionId,
+          pty: ptyProcess,
+          worktreePath,
+          createdAt: new Date(),
+          lastActivity: new Date(),
+          listeners: new Map(),
+          exitListeners: new Map(),
+          outputBuffer: [],
+          maxBufferSize: 100000 // Approximately 100KB of text
+        };
+
+        // Handle PTY exit
+        onPtyExit(ptyProcess, (exitCode) => {
+          // Notify all exit listeners
+          session.exitListeners.forEach(listener => listener(exitCode));
+          // Remove session
+          this.sessions.delete(sessionId);
+        });
+
+        this.sessions.set(sessionId, session);
+
+        console.log(`Started PTY session ${sessionId} in ${worktreePath}${attempt > 0 ? ` (after ${attempt} retries)` : ''}`);
+
+        return {
+          success: true,
+          processId: sessionId,
+          isNew: true
+        };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to start shell';
+        const isResourceError = errorMessage.includes('posix_spawnp') ||
+                               errorMessage.includes('EMFILE') ||
+                               errorMessage.includes('ENFILE') ||
+                               errorMessage.includes('ENOENT');
+
+        // Only retry for resource-related errors
+        if (isResourceError && attempt < maxRetries) {
+          const delayMs = baseDelayMs * Math.pow(2, attempt);
+          console.log(`PTY spawn failed (attempt ${attempt + 1}/${maxRetries + 1}): ${errorMessage}. Retrying in ${delayMs}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+          continue;
+        }
+
+        // Out of retries or non-resource error
+        console.error(`Failed to start PTY session after ${attempt + 1} attempts: ${errorMessage}`);
+        return {
+          success: false,
+          error: errorMessage
+        };
       }
-
-      const shell = getDefaultShell();
-      const options = getPtyOptions(worktreePath, cols, rows, setLocaleVariables);
-      // Launch as login shell to ensure proper PATH initialization
-      // For zsh/bash, use -l flag. For other shells, keep empty args
-      const shellArgs = shell.includes('zsh') || shell.includes('bash') ? ['-l'] : [];
-      const ptyProcess = spawnFunction(shell, shellArgs, options);
-
-      const session: ShellSession = {
-        id: sessionId,
-        pty: ptyProcess,
-        worktreePath,
-        createdAt: new Date(),
-        lastActivity: new Date(),
-        listeners: new Map(),
-        exitListeners: new Map(),
-        outputBuffer: [],
-        maxBufferSize: 100000 // Approximately 100KB of text
-      };
-
-      // Handle PTY exit
-      onPtyExit(ptyProcess, (exitCode) => {
-        // Notify all exit listeners
-        session.exitListeners.forEach(listener => listener(exitCode));
-        // Remove session
-        this.sessions.delete(sessionId);
-      });
-
-      this.sessions.set(sessionId, session);
-      
-      console.log(`Started PTY session ${sessionId} in ${worktreePath}`);
-      
-      return {
-        success: true,
-        processId: sessionId,
-        isNew: true
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to start shell'
-      };
     }
+
+    // Should never reach here, but TypeScript needs it
+    return {
+      success: false,
+      error: 'Failed to start shell after all retries'
+    };
   }
 
   /**
