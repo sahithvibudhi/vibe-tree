@@ -257,43 +257,29 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
       });
     }, newWorktreePath);
 
-    // Verify recovery FAILS (demonstrating the bug)
+    // Verify recovery SUCCEEDS after cleanup
     console.log('\n=== RECOVERY TEST RESULTS ===');
     console.log('Recovery result:', recoveryResult);
 
-    // THE BUG: After hitting posix_spawnp error, the app cannot recover
-    // even after cleaning up worktrees. This test DOCUMENTS the bug.
-    // Once the bug is fixed, these expectations should be flipped.
+    // EXPECTED BEHAVIOR: After cleaning up worktrees and terminating PTY sessions,
+    // creating a new PTY session should succeed.
+    //
+    // Currently this will FAIL due to the bug, but once fixed, it should PASS.
 
-    if (posixSpawnpErrorOccurred) {
-      // We hit the error, so recovery should FAIL (current buggy behavior)
-      console.log('\n=== DEMONSTRATING BUG ===');
-      console.log('posix_spawnp error occurred, expecting recovery to FAIL...');
+    expect(recoveryResult.success).toBe(true);
+    expect(recoveryResult.processId).toBeDefined();
 
-      const hasRecoveryError = recoveryResult.error && ERROR_PATTERNS.some(pattern =>
+    // Verify no spawn errors in the result
+    if (recoveryResult.error) {
+      const hasError = ERROR_PATTERNS.some(pattern =>
         recoveryResult.error.toLowerCase().includes(pattern.toLowerCase())
       );
-
-      // THIS IS THE BUG: Recovery fails even after cleanup
-      if (!recoveryResult.success || hasRecoveryError) {
-        console.log('✓ BUG CONFIRMED: PTY creation still fails after cleanup');
-        console.log(`  Error: ${recoveryResult.error || 'Unknown error'}`);
-        console.log('  This is the expected BUGGY behavior that needs to be fixed.');
-      } else {
-        console.log('✗ UNEXPECTED: Recovery succeeded!');
-        console.log('  If you see this, the bug may already be fixed.');
-        console.log('  Update the test expectations accordingly.');
-      }
-
-      // For now, we just document the bug - don't fail the test
-      console.log('\n=== TEST COMPLETE ===');
-      console.log(`Total worktrees created: ${worktreeCount + 1}`);
-      console.log(`PTY sessions created: ${createdPtyIds.length}`);
-      console.log(`Bug demonstrated: ${!recoveryResult.success || hasRecoveryError ? 'YES' : 'NO'}`);
-    } else {
-      // We didn't hit the error, so we can't test recovery
-      console.log('⚠ Did not encounter posix_spawnp error');
-      console.log('Test inconclusive - may need to increase MAX_WORKTREES');
+      expect(hasError).toBe(false);
     }
+
+    console.log('\n=== TEST COMPLETE ===');
+    console.log('✓ Successfully created new worktree with PTY after cleanup');
+    console.log(`Total worktrees created: ${worktreeCount + 1}`);
+    console.log(`Final PTY session count: ${createdPtyIds.length + 1}`);
   });
 });
