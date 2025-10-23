@@ -92,11 +92,17 @@ test.describe('Project Close PTY Cleanup', () => {
     }, dummyRepoPath);
 
     await openButton.click();
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(5000);
+
+    // Click on the main worktree to ensure terminal loads
+    const mainWorktreeButton = page.locator('button[data-worktree-branch="main"]');
+    await expect(mainWorktreeButton).toBeVisible({ timeout: 10000 });
+    await mainWorktreeButton.click();
+    await page.waitForTimeout(2000);
 
     // Wait for terminal to be ready
     const terminalScreen = page.locator('.xterm-screen').first();
-    await expect(terminalScreen).toBeVisible({ timeout: 5000 });
+    await expect(terminalScreen).toBeVisible({ timeout: 10000 });
 
     // Type a command to ensure PTY is active
     await terminalScreen.click();
