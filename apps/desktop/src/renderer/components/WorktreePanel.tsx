@@ -3,7 +3,7 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
-import { GitBranch, Plus, RefreshCw, Trash2, Bomb } from 'lucide-react';
+import { GitBranch, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 import { isProtectedBranch } from '../utils/worktree';
 import { DeletionReportingDialog } from './DeletionReportingDialog';
@@ -268,13 +268,12 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
           <h3 className="font-semibold">Worktrees</h3>
           <div className="flex gap-2">
             <Button
-              size="icon"
               variant="destructive"
               onClick={handleCreateStressTest}
               disabled={loading}
-              title="Create stress test repo with 150 worktrees and open all terminals (will explode!)"
+              title="Create stress test repo and open all terminals until we hit errors"
             >
-              <Bomb className="h-4 w-4" />
+              [Explode]
             </Button>
             <Button
               size="icon"
