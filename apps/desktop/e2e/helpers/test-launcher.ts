@@ -38,12 +38,32 @@ export async function launchElectronApp(options: LaunchOptions = {}): Promise<El
  * Using process.exit() can cause worker teardown timeouts as it doesn't allow Playwright to clean up properly
  */
 export async function closeElectronApp(electronApp: ElectronApplication | null): Promise<void> {
-  if (electronApp) {
+  if (!electronApp) {
+    return;
+  }
+
+  try {
+    // Close with a timeout to prevent hanging
+    const closePromise = electronApp.close();
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Close timeout')), 5000)
+    );
+
+    await Promise.race([closePromise, timeoutPromise]);
+  } catch (error) {
+    // If close hangs or fails, force kill the process
+    console.warn('Error closing Electron app, force killing:', error);
     try {
-      await electronApp.close();
-    } catch (error) {
-      // Ignore errors if app is already closed
-      console.warn('Error closing Electron app:', error);
+      await electronApp.evaluate(() => {
+        // Force kill all windows first
+        const { BrowserWindow } = require('electron');
+        BrowserWindow.getAllWindows().forEach(w => w.destroy());
+        // Then exit
+        process.exit(0);
+      });
+    } catch (forceKillError) {
+      // Ignore - app is likely already dead
+      console.warn('Force kill also failed (app likely already closed):', forceKillError);
     }
   }
 }
