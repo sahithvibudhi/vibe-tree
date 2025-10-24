@@ -88,19 +88,19 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
   // 3. Verifying cleanup freed resources
   // 4. Verifying new PTYs can be created after cleanup
   //
-  // NOTE: CI uses ulimit -n 512 to artificially limit file descriptors,
+  // NOTE: CI uses ulimit -n 128 to artificially limit file descriptors,
   // ensuring we hit OS limits consistently (each PTY uses file descriptors)
   test('should verify PTY cleanup frees resources', async () => {
     test.setTimeout(120000); // 2 minutes timeout (with ulimit should hit error quickly)
 
     let worktreeCount = 0;
-    const MAX_WORKTREES = 1000; // With ulimit -n 512, should definitely hit error before this
+    const MAX_WORKTREES = 100; // With ulimit -n 128, should definitely hit error before this
     const createdPtyIds: string[] = [];
     let hitPosixSpawnpError = false;
 
     console.log('Starting PTY cleanup verification test...');
     console.log(`Creating up to ${MAX_WORKTREES} worktrees with PTY sessions...`);
-    console.log('(CI uses ulimit -n 512 to ensure we hit OS limits)')
+    console.log('(CI uses ulimit -n 128 to ensure we hit OS limits)')
     console.log('');
 
     // Phase 1: Create PTY sessions until hitting posix_spawnp error
@@ -167,18 +167,18 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     console.log(`Created ${createdPtyIds.length} PTY sessions`);
     console.log(`Hit posix_spawnp error: ${hitPosixSpawnpError ? 'YES' : 'NO'}`);
 
-    // With ulimit -n 512, we MUST hit the posix_spawnp error
+    // With ulimit -n 128, we MUST hit the posix_spawnp error
     if (!hitPosixSpawnpError) {
       throw new Error(
         `Test FAILED: Did not hit posix_spawnp error after creating ${createdPtyIds.length} PTY sessions. ` +
-        `This test MUST hit OS limits to verify cleanup works (CI uses ulimit -n 512).`
+        `This test MUST hit OS limits to verify cleanup works (CI uses ulimit -n 128).`
       );
     }
 
-    // Require at least 50 PTY sessions to make the test meaningful
-    if (createdPtyIds.length < 50) {
+    // Require at least 25 PTY sessions to make the test meaningful
+    if (createdPtyIds.length < 25) {
       throw new Error(
-        `Test FAILED: Only created ${createdPtyIds.length} PTY sessions (minimum: 50). ` +
+        `Test FAILED: Only created ${createdPtyIds.length} PTY sessions (minimum: 25). ` +
         `Not enough PTYs to verify cleanup logic.`
       );
     }
