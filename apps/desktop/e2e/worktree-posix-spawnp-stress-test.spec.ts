@@ -144,52 +144,21 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
         if (result.success && result.processId) {
           createdPtyIds.push(result.processId);
 
-          // Wait for terminal to output something (shell prompt or echo) before proceeding
-          // This mimics the "explode" button behavior where terminals open one by one
-          const outputReceived = await electronApp.evaluate(async ({ ipcMain }, args) => {
-            const [processId] = args;
-            return new Promise<boolean>((resolve) => {
-              const handlers = (ipcMain as any)._invokeHandlers;
-              const shellManager = (global as any).shellProcessManager;
-
-              // Set up a one-time listener for output
-              let outputHandler: ((data: string) => void) | null = null;
-              const timeout = setTimeout(() => {
-                if (outputHandler && shellManager) {
-                  shellManager.sessionManager?.removeOutputListener?.(processId, 'wait-for-output');
-                }
-                resolve(false); // Timeout after 2 seconds
-              }, 2000);
-
-              outputHandler = (data: string) => {
-                if (data && data.length > 0) {
-                  clearTimeout(timeout);
-                  if (shellManager) {
-                    shellManager.sessionManager?.removeOutputListener?.(processId, 'wait-for-output');
-                  }
-                  resolve(true);
-                }
-              };
-
-              if (shellManager?.sessionManager) {
-                shellManager.sessionManager.addOutputListener(processId, 'wait-for-output', outputHandler, true);
-              } else {
-                clearTimeout(timeout);
-                resolve(false);
-              }
-            });
-          }, [result.processId]);
-
           // Write a long-running command to keep the PTY alive and hold file descriptors
+          // This mimics the "explode" button behavior
           await electronApp.evaluate(async ({ ipcMain }, args) => {
             const [processId] = args;
-            const handlers = (ipcMain as any)._invokeHandlers;
-            const handler = handlers?.get('shell:write');
+            const handlers = (ipcMain as unknown as { _invokeHandlers?: Map<string, unknown> });
+            const handler = handlers._invokeHandlers?.get('shell:write') as ((event: unknown, processId: string, data: string) => Promise<unknown>) | undefined;
             if (handler) {
               const mockEvent = { sender: { id: 999 } };
               await handler(mockEvent, processId, 'sleep 10000\n');
             }
           }, [result.processId]);
+
+          // Small delay to allow PTY to initialize and command to start
+          // This ensures file descriptors are fully allocated before creating next PTY
+          await new Promise(resolve => setTimeout(resolve, 100));
 
           if (worktreeCount % 10 === 0) {
             console.log(`Created ${worktreeCount} worktrees with PTY sessions`);
