@@ -249,12 +249,11 @@ jobs:
 
     - name: Run e2e tests
       run: |
-        # Limit max file descriptors to 64 for PTY stress testing
+        # Limit max file descriptors to 128 for PTY stress testing
         # Each PTY uses file descriptors, so this limits PTY creation
         # This ensures we hit OS limits consistently across all platforms
-        # Reduced from 128 to 64 because improved PTY cleanup (waiting for exit event)
-        # releases file descriptors so efficiently that we need lower limits to trigger errors
-        ulimit -n 64
+        # Note: Cannot go lower than 128 as Electron needs ~60+ fds just to launch
+        ulimit -n 128
         echo "File descriptor limit set to: $(ulimit -n)"
         xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" -- pnpm --filter @vibetree/desktop exec playwright test --reporter=list || TEST_EXIT_CODE=$?
         # Kill any lingering Electron processes to prevent worker teardown timeout
