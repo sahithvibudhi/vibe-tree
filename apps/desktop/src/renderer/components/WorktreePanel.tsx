@@ -61,55 +61,19 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
     setLoading(true);
     try {
       toast({
-        title: "Creating stress test repo...",
-        description: "Will create worktrees and open terminals until we hit errors...",
+        title: "Stress test started!",
+        description: "Creating worktrees and opening terminals until we hit errors...",
       });
 
-      // Create base repo
-      const result = await window.electronAPI.debug.createStressTestRepo();
-
-      if (!result.success) {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to create stress test repo",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
-      const repoPath = result.path;
       let index = 1;
       let consecutiveFailures = 0;
-
-      // Switch to the new project immediately
-      onSelectWorktree(repoPath);
-      await loadWorktrees();
-
-      toast({
-        title: "Stress test started!",
-        description: "Creating worktrees and opening terminals...",
-      });
 
       // Keep creating worktrees and opening terminals until we hit errors
       while (consecutiveFailures < 3) {
         try {
-          // Create one worktree
-          const wtResult = await window.electronAPI.debug.addStressTestWorktree(repoPath, index);
-
-          if (!wtResult.success) {
-            consecutiveFailures++;
-            console.error(`Failed to create worktree ${index}:`, wtResult.error);
-            if (consecutiveFailures >= 3) {
-              toast({
-                title: "Worktree creation stopped",
-                description: `Created ${index - 1} worktrees total. Now opening terminals...`,
-              });
-              break;
-            }
-            index++;
-            continue;
-          }
+          // Create one worktree using the same method as the regular add button
+          const branchName = `stress-test-${String(index).padStart(4, '0')}`;
+          const wtResult = await window.electronAPI.git.addWorktree(projectPath, branchName);
 
           consecutiveFailures = 0; // Reset on success
 
@@ -117,20 +81,10 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
           onSelectWorktree(wtResult.path);
 
           // Open terminal for this worktree immediately
-          try {
-            await window.electronAPI.shell.start(wtResult.path, 80, 30, true);
+          const shellResult = await window.electronAPI.shell.start(wtResult.path, 80, 30, true);
 
-            // Update toast and reload worktrees every 10 worktrees
-            if (index % 10 === 0) {
-              toast({
-                title: "Stress test in progress...",
-                description: `Created ${index} worktrees with terminals`,
-              });
-              // Reload worktree list to show progress
-              await loadWorktrees();
-            }
-          } catch (error) {
-            console.error(`Failed to open terminal for worktree ${index}:`, error);
+          if (!shellResult.success) {
+            console.error(`Failed to open terminal for worktree ${index}:`, shellResult.error);
             toast({
               title: "PTY spawn error detected!",
               description: `Hit spawn error after ${index} terminals. Test complete.`,
@@ -141,15 +95,30 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
             return;
           }
 
+          // Update toast and reload worktrees every 10 worktrees
+          if (index % 10 === 0) {
+            toast({
+              title: "Stress test in progress...",
+              description: `Created ${index} worktrees with terminals`,
+            });
+            // Reload worktree list to show progress
+            await loadWorktrees();
+          }
+
           index++;
 
           // Small delay to let UI breathe
           await new Promise(resolve => setTimeout(resolve, 100));
 
         } catch (error) {
-          console.error(`Unexpected error at worktree ${index}:`, error);
+          console.error(`Error creating worktree ${index}:`, error);
           consecutiveFailures++;
           if (consecutiveFailures >= 3) {
+            toast({
+              title: "Worktree creation stopped",
+              description: `Hit errors after creating ${index - 1} worktrees`,
+              variant: "destructive",
+            });
             break;
           }
           index++;
