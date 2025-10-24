@@ -9,7 +9,6 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
   let electronApp: ElectronApplication;
   let dummyRepoPath: string;
   const createdWorktrees: string[] = [];
-  let posixSpawnpErrorOccurred = false;
 
   test.beforeEach(async () => {
     // Create a dummy git repository
