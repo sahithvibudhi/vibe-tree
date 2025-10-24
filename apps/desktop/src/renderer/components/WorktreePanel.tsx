@@ -290,7 +290,7 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
           <h3 className="font-semibold">Worktrees</h3>
           <div className="flex gap-2">
             <Button
-              variant="destructive"
+              variant="default"
               onClick={handleCreateStressTest}
               disabled={loading}
               title="Create stress test repo and open all terminals until we hit errors"
