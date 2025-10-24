@@ -204,11 +204,15 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     console.log(`✓ Successfully created ${createdPtyIds.length} PTY sessions`);
     console.log(`✓ Enough sessions to validate cleanup behavior (minimum: ${MIN_SUCCESSFUL_PTYS})`);
 
-    if (posixSpawnpErrorOccurred) {
-      console.log('✓ Successfully reached PTY spawn limits (expected behavior)');
-    } else {
-      console.log('⚠️  Did not hit PTY limits, but created enough sessions to test cleanup');
+    // We should have hit the error by now with 1024 attempts
+    if (!posixSpawnpErrorOccurred) {
+      throw new Error(
+        `Test FAILED: Did not hit posix_spawnp error after creating ${createdPtyIds.length} PTY sessions (${worktreeCount} worktrees attempted). ` +
+        `Expected to hit OS limits around 256-1024. This suggests PTY sessions are not being created properly.`
+      );
     }
+
+    console.log('✓ Successfully reached PTY spawn limits (expected behavior)');
 
     // Phase 2: Terminate 2 PTY sessions and delete 2 worktrees
     console.log('\n=== PHASE 2: CLEANING UP 2 WORKTREES ===');
