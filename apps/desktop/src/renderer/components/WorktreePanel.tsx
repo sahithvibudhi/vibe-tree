@@ -117,12 +117,14 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
           try {
             await window.electronAPI.shell.start(wtResult.path, 80, 30, true);
 
-            // Update toast every 10 worktrees
+            // Update toast and reload worktrees every 10 worktrees
             if (index % 10 === 0) {
               toast({
                 title: "Stress test in progress...",
                 description: `Created ${index} worktrees with terminals`,
               });
+              // Reload worktree list to show progress
+              await loadWorktrees();
             }
           } catch (error) {
             console.error(`Failed to open terminal for worktree ${index}:`, error);
