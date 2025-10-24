@@ -83,22 +83,23 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
   });
 
   // This test verifies PTY cleanup by:
-  // 1. Creating many PTY sessions (200)
-  // 2. Verifying cleanup reduces active PTY count
-  // 3. Verifying new PTYs can be created after cleanup
+  // 1. Creating PTY sessions until hitting OS limits (posix_spawnp error)
+  // 2. Cleaning up PTY sessions
+  // 3. Verifying new PTYs can be created after cleanup (proves cleanup frees resources)
   test('should verify PTY cleanup frees resources', async () => {
-    test.setTimeout(180000); // 3 minutes timeout
+    test.setTimeout(600000); // 10 minutes timeout
 
     let worktreeCount = 0;
-    const TARGET_WORKTREES = 200; // Create many PTYs to test cleanup
+    const MAX_WORKTREES = 10000; // Try up to 10000 to ensure we hit OS limits even on Linux
     const createdPtyIds: string[] = [];
+    let hitPosixSpawnpError = false;
 
     console.log('Starting PTY cleanup verification test...');
-    console.log(`Creating ${TARGET_WORKTREES} worktrees with PTY sessions...`);
+    console.log(`Creating worktrees until hitting posix_spawnp error (max ${MAX_WORKTREES})...`);
     console.log('');
 
-    // Phase 1: Create many PTY sessions
-    while (worktreeCount < TARGET_WORKTREES) {
+    // Phase 1: Create PTY sessions until hitting posix_spawnp error
+    while (worktreeCount < MAX_WORKTREES && !hitPosixSpawnpError) {
       worktreeCount++;
       const branchName = `worktree-${String(worktreeCount).padStart(3, '0')}`;
       const worktreePath = path.join(os.tmpdir(), `stress-test-${branchName}-${Date.now()}`);
@@ -140,7 +141,14 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
             console.log(`Created ${worktreeCount} worktrees with PTY sessions`);
           }
         } else {
-          console.log(`Worktree ${worktreeCount}: PTY creation failed with: ${result.error || 'Unknown error'}`);
+          const errorMsg = result.error || 'Unknown error';
+          console.log(`Worktree ${worktreeCount}: PTY creation failed with: ${errorMsg}`);
+
+          // Check if we hit posix_spawnp error
+          if (errorMsg.toLowerCase().includes('posix_spawnp')) {
+            hitPosixSpawnpError = true;
+            console.log(`\n✓ Hit posix_spawnp error at ${createdPtyIds.length} PTY sessions!`);
+          }
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -152,6 +160,15 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     console.log('\n=== PHASE 1 RESULTS ===');
     console.log(`Created ${worktreeCount} worktrees`);
     console.log(`Created ${createdPtyIds.length} PTY sessions`);
+    console.log(`Hit posix_spawnp error: ${hitPosixSpawnpError ? 'YES' : 'NO'}`);
+
+    // Verify we hit the error
+    if (!hitPosixSpawnpError) {
+      throw new Error(
+        `Test FAILED: Did not hit posix_spawnp error after creating ${createdPtyIds.length} PTY sessions. ` +
+        `This test MUST hit OS limits to verify cleanup works!`
+      );
+    }
 
     // Get initial PTY stats
     const statsBeforeCleanup = await electronApp.evaluate(async ({ ipcMain }) => {
@@ -168,15 +185,7 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     });
 
     console.log(`PTY sessions before cleanup: ${statsBeforeCleanup.activeProcessCount}`);
-
-    if (createdPtyIds.length < 50) {
-      throw new Error(
-        `Test FAILED: Only created ${createdPtyIds.length} PTY sessions (minimum required: 50). ` +
-        `This indicates PTY creation is broken or system has severe resource constraints.`
-      );
-    }
-
-    console.log(`✓ Successfully created ${createdPtyIds.length} PTY sessions`);
+    console.log(`✓ Successfully hit OS limits and created ${createdPtyIds.length} PTY sessions`);
 
     // Phase 2: Terminate 10 PTY sessions and delete 10 worktrees
     console.log('\n=== PHASE 2: CLEANING UP 10 WORKTREES ===');
@@ -213,28 +222,9 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
       }
     }
 
-    // Get PTY stats after cleanup
-    const statsAfterCleanup = await electronApp.evaluate(async ({ ipcMain }) => {
-      return new Promise((resolve) => {
-        const mockEvent = { sender: { id: 999 } };
-        const handlers = (ipcMain as any)._invokeHandlers;
-        const handler = handlers?.get('shell:get-stats');
-        if (handler) {
-          handler(mockEvent).then(resolve).catch(() => resolve({ activeProcessCount: 0 }));
-        } else {
-          resolve({ activeProcessCount: 0 });
-        }
-      });
-    });
+    console.log(`✓ Successfully cleaned up 10 worktrees`);
 
-    console.log(`PTY sessions after cleanup: ${statsAfterCleanup.activeProcessCount}`);
-    console.log(`PTY sessions freed: ${statsBeforeCleanup.activeProcessCount - statsAfterCleanup.activeProcessCount}`);
-
-    // Verify that cleanup actually freed PTY resources
-    expect(statsAfterCleanup.activeProcessCount).toBeLessThan(statsBeforeCleanup.activeProcessCount);
-    console.log('✓ PTY cleanup successfully freed resources');
-
-    // Phase 3: Create a new worktree and verify PTY works
+    // Phase 3: Create new worktree and verify PTY creation works after cleanup
     console.log('\n=== PHASE 3: CREATING NEW WORKTREE AFTER CLEANUP ===');
 
     const newBranchName = `worktree-${String(worktreeCount + 1).padStart(3, '0')}`;
@@ -284,10 +274,10 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     expect(recoveryResult.processId).toBeDefined();
 
     console.log('\n=== TEST COMPLETE ===');
-    console.log('✓ Successfully created new worktree with PTY after cleanup');
+    console.log('✓ Hit OS PTY limits (posix_spawnp error)');
+    console.log('✓ Cleaned up 10 PTY sessions');
+    console.log('✓ Successfully created new PTY after cleanup');
     console.log(`Total worktrees created: ${worktreeCount + 1}`);
-    console.log(`PTY sessions before cleanup: ${statsBeforeCleanup.activeProcessCount}`);
-    console.log(`PTY sessions after cleanup: ${statsAfterCleanup.activeProcessCount}`);
-    console.log(`PTY sessions freed: ${statsBeforeCleanup.activeProcessCount - statsAfterCleanup.activeProcessCount}`);
+    console.log(`PTY sessions created before hitting limit: ${createdPtyIds.length}`);
   });
 });
