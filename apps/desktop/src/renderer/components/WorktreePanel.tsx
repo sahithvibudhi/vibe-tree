@@ -113,6 +113,9 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
 
           consecutiveFailures = 0; // Reset on success
 
+          // Switch to this worktree to activate it and show the terminal
+          onSelectWorktree(wtResult.path);
+
           // Open terminal for this worktree immediately
           try {
             await window.electronAPI.shell.start(wtResult.path, 80, 30, true);
