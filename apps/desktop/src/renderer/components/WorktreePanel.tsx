@@ -62,62 +62,105 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
     try {
       toast({
         title: "Creating stress test repo...",
-        description: "Creating worktrees until we hit resource limits...",
+        description: "Will create worktrees and open terminals until we hit errors...",
       });
 
+      // Create base repo
       const result = await window.electronAPI.debug.createStressTestRepo();
 
-      if (result.success) {
-        toast({
-          title: `Created ${result.count} worktrees!`,
-          description: "Now opening terminals for all worktrees...",
-        });
-
-        // Load worktrees from the new project
-        const trees = await window.electronAPI.git.listWorktrees(result.path);
-
-        // Open terminal for each worktree to trigger PTY spawn stress test
-        // Add small delays to prevent freezing the UI
-        let openedCount = 0;
-        for (const worktree of trees) {
-          try {
-            await window.electronAPI.shell.start(worktree.path, 80, 30, true);
-            openedCount++;
-
-            // Update toast every 10 terminals
-            if (openedCount % 10 === 0) {
-              toast({
-                title: "Opening terminals...",
-                description: `Opened ${openedCount}/${trees.length} terminals`,
-              });
-            }
-
-            // Small delay to let UI breathe and process events
-            await new Promise(resolve => setTimeout(resolve, 50));
-          } catch (error) {
-            console.error(`Failed to open terminal for ${worktree.path}:`, error);
-          }
-        }
-
-        toast({
-          title: "Stress test ready!",
-          description: `Opened ${openedCount} terminals. Check for spawn errors.`,
-        });
-
-        // Switch to the new project
-        onSelectWorktree(result.path);
-        await loadWorktrees();
-      } else {
+      if (!result.success) {
         toast({
           title: "Error",
           description: result.error || "Failed to create stress test repo",
           variant: "destructive",
         });
+        setLoading(false);
+        return;
       }
+
+      const repoPath = result.path;
+      let index = 1;
+      let consecutiveFailures = 0;
+
+      // Switch to the new project immediately
+      onSelectWorktree(repoPath);
+      await loadWorktrees();
+
+      toast({
+        title: "Stress test started!",
+        description: "Creating worktrees and opening terminals...",
+      });
+
+      // Keep creating worktrees and opening terminals until we hit errors
+      while (consecutiveFailures < 3) {
+        try {
+          // Create one worktree
+          const wtResult = await window.electronAPI.debug.addStressTestWorktree(repoPath, index);
+
+          if (!wtResult.success) {
+            consecutiveFailures++;
+            console.error(`Failed to create worktree ${index}:`, wtResult.error);
+            if (consecutiveFailures >= 3) {
+              toast({
+                title: "Worktree creation stopped",
+                description: `Created ${index - 1} worktrees total. Now opening terminals...`,
+              });
+              break;
+            }
+            index++;
+            continue;
+          }
+
+          consecutiveFailures = 0; // Reset on success
+
+          // Open terminal for this worktree immediately
+          try {
+            await window.electronAPI.shell.start(wtResult.path, 80, 30, true);
+
+            // Update toast every 10 worktrees
+            if (index % 10 === 0) {
+              toast({
+                title: "Stress test in progress...",
+                description: `Created ${index} worktrees with terminals`,
+              });
+            }
+          } catch (error) {
+            console.error(`Failed to open terminal for worktree ${index}:`, error);
+            toast({
+              title: "PTY spawn error detected!",
+              description: `Hit spawn error after ${index} terminals. Test complete.`,
+              variant: "destructive",
+            });
+            setLoading(false);
+            await loadWorktrees();
+            return;
+          }
+
+          index++;
+
+          // Small delay to let UI breathe
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+        } catch (error) {
+          console.error(`Unexpected error at worktree ${index}:`, error);
+          consecutiveFailures++;
+          if (consecutiveFailures >= 3) {
+            break;
+          }
+          index++;
+        }
+      }
+
+      toast({
+        title: "Stress test complete!",
+        description: `Created ${index - 1} worktrees with terminals`,
+      });
+
+      await loadWorktrees();
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create stress test repo",
+        description: error instanceof Error ? error.message : "Failed to run stress test",
         variant: "destructive",
       });
     }

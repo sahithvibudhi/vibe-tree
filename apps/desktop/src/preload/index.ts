@@ -105,7 +105,8 @@ const api = {
     }
   },
   debug: {
-    createStressTestRepo: () => ipcRenderer.invoke('debug:create-stress-test-repo')
+    createStressTestRepo: () => ipcRenderer.invoke('debug:create-stress-test-repo'),
+    addStressTestWorktree: (repoPath: string, index: number) => ipcRenderer.invoke('debug:add-stress-test-worktree', repoPath, index)
   }
 };
 
