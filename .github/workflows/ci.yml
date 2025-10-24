@@ -249,6 +249,10 @@ jobs:
 
     - name: Run e2e tests
       run: |
+        # Limit max user processes to 256 for PTY stress testing
+        # This ensures we hit OS limits consistently across all platforms
+        ulimit -u 256
+        echo "Process limit set to: $(ulimit -u)"
         xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" -- pnpm --filter @vibetree/desktop exec playwright test --reporter=list || TEST_EXIT_CODE=$?
         # Kill any lingering Electron processes to prevent worker teardown timeout
         pkill -9 -f electron || true

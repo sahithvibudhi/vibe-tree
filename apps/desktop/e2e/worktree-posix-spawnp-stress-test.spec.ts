@@ -83,20 +83,24 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
   });
 
   // This test verifies PTY cleanup by:
-  // 1. Creating many PTY sessions (until hitting error OR 300 max for time)
+  // 1. Creating many PTY sessions until hitting posix_spawnp error
   // 2. Cleaning up PTY sessions
-  // 3. Verifying cleanup freed resources (stats decreased)
+  // 3. Verifying cleanup freed resources
   // 4. Verifying new PTYs can be created after cleanup
+  //
+  // NOTE: CI uses ulimit -u 256 to artificially limit processes,
+  // ensuring we hit OS limits consistently on all platforms
   test('should verify PTY cleanup frees resources', async () => {
-    test.setTimeout(300000); // 5 minutes timeout
+    test.setTimeout(120000); // 2 minutes timeout (with ulimit should hit error quickly)
 
     let worktreeCount = 0;
-    const MAX_WORKTREES = 300; // Create up to 300 (enough to likely hit macOS limits, but time-bound for Linux)
+    const MAX_WORKTREES = 250; // With ulimit -u 256, will hit error around 150-200
     const createdPtyIds: string[] = [];
     let hitPosixSpawnpError = false;
 
     console.log('Starting PTY cleanup verification test...');
     console.log(`Creating up to ${MAX_WORKTREES} worktrees with PTY sessions...`);
+    console.log('(CI uses ulimit -u 256 to ensure we hit OS limits)')
     console.log('');
 
     // Phase 1: Create PTY sessions until hitting posix_spawnp error
@@ -161,7 +165,15 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     console.log('\n=== PHASE 1 RESULTS ===');
     console.log(`Created ${worktreeCount} worktrees`);
     console.log(`Created ${createdPtyIds.length} PTY sessions`);
-    console.log(`Hit posix_spawnp error: ${hitPosixSpawnpError ? 'YES (macOS)' : 'NO (Linux with high limits)'}`);
+    console.log(`Hit posix_spawnp error: ${hitPosixSpawnpError ? 'YES' : 'NO'}`);
+
+    // With ulimit -u 256, we MUST hit the posix_spawnp error
+    if (!hitPosixSpawnpError) {
+      throw new Error(
+        `Test FAILED: Did not hit posix_spawnp error after creating ${createdPtyIds.length} PTY sessions. ` +
+        `This test MUST hit OS limits to verify cleanup works (CI uses ulimit -u 256).`
+      );
+    }
 
     // Require at least 50 PTY sessions to make the test meaningful
     if (createdPtyIds.length < 50) {
@@ -275,14 +287,10 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     expect(recoveryResult.processId).toBeDefined();
 
     console.log('\n=== TEST COMPLETE ===');
-    if (hitPosixSpawnpError) {
-      console.log('✓ Hit OS PTY limits (posix_spawnp error) - macOS scenario');
-    } else {
-      console.log('✓ Created many PTY sessions without hitting limits - Linux scenario');
-    }
+    console.log('✓ Hit OS PTY limits (posix_spawnp error)');
     console.log('✓ Cleaned up 10 PTY sessions');
     console.log('✓ Successfully created new PTY after cleanup');
     console.log(`Total worktrees created: ${worktreeCount + 1}`);
-    console.log(`PTY sessions created: ${createdPtyIds.length}`);
+    console.log(`PTY sessions created before hitting limit: ${createdPtyIds.length}`);
   });
 });
