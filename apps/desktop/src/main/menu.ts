@@ -21,10 +21,11 @@ function createStatsWindow(parentWindow: BrowserWindow) {
     minimizable: false,
     maximizable: false,
     fullscreenable: false,
+    closable: true,
     webPreferences: {
       preload: path.join(__dirname, '../preload/stats-dialog-preload.js'),
-      nodeIntegration: false,
-      contextIsolation: true
+      nodeIntegration: true,
+      contextIsolation: false
     }
   });
 

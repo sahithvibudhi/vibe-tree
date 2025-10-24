@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline' 'self'">
   <title>Process Statistics</title>
   <style>
     * {
@@ -165,7 +165,7 @@
   </div>
 
   <div class="button-container">
-    <button onclick="window.statsDialog.closeWindow()">OK</button>
+    <button id="closeButton">OK</button>
   </div>
 
   <script>
@@ -211,24 +211,42 @@
       }
     }
 
-    // Request stats data on load
-    window.addEventListener('DOMContentLoaded', async () => {
-      console.log('[HTML] DOMContentLoaded event fired');
-      console.log('[HTML] window.statsDialog:', window.statsDialog);
+    // Initialize the dialog
+    async function initDialog() {
       try {
         if (window.statsDialog && window.statsDialog.getStats) {
-          console.log('[HTML] Calling getStats()');
           const stats = await window.statsDialog.getStats();
-          console.log('[HTML] Received stats:', stats);
           updateStats(stats);
-        } else {
-          console.error('[HTML] statsDialog API not available');
-          console.error('[HTML] window.statsDialog:', window.statsDialog);
         }
       } catch (error) {
-        console.error('[HTML] Failed to load stats:', error);
+        console.error('Failed to load stats:', error);
       }
-    });
+
+      // Setup close button handler
+      const closeButton = document.getElementById('closeButton');
+      if (closeButton) {
+        closeButton.addEventListener('click', () => {
+          try {
+            if (window.statsDialog && window.statsDialog.closeWindow) {
+              window.statsDialog.closeWindow();
+            } else if (window.require) {
+              const { ipcRenderer } = window.require('electron');
+              ipcRenderer.send('stats-dialog:close');
+            }
+          } catch (error) {
+            console.error('Error closing window:', error);
+          }
+        });
+      }
+    }
+
+    // Run initialization when DOM is ready
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', initDialog);
+    } else {
+      // DOM already loaded, run immediately
+      initDialog();
+    }
   </script>
 </body>
 </html>
