@@ -54,6 +54,21 @@ export function registerIpcHandlers(mainWindow: BrowserWindow | null) {
     return result.filePaths[0];
   });
 
+  ipcMain.handle('dialog:show-error', async (_, title: string, message: string) => {
+    // In test mode (NODE_ENV=test), skip showing the dialog
+    if (process.env.NODE_ENV === 'test') {
+      console.error(`[TEST MODE] Error dialog: ${title} - ${message}`);
+      return;
+    }
+
+    await dialog.showMessageBox({
+      type: 'error',
+      title,
+      message,
+      buttons: ['OK']
+    });
+  });
+
   // Project opening
   ipcMain.handle('project:open-path', async (_, projectPath: string) => {
     if (!projectPath) {

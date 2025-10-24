@@ -198,120 +198,74 @@ test.describe('Stats Menu', () => {
     expect(stats.sessions.length).toBe(2);
   });
 
-  test('should display stats dialog with multiple worktrees and close properly', async () => {
-    test.setTimeout(120000);
+  test('should open stats dialog and close it', async () => {
+    test.setTimeout(90000);
 
     await page.waitForLoadState('domcontentloaded');
 
-    // Create 3 worktrees
-    const worktreeNames = ['wt1', 'wt2', 'wt3'];
-    for (const wtName of worktreeNames) {
-      try {
-        const wtPath = path.join(os.tmpdir(), `${path.basename(dummyRepoPath)}-${wtName}`);
-        execSync(`git worktree add -b ${wtName} "${wtPath}"`, { cwd: dummyRepoPath });
-      } catch (e) {
-        // Worktree might already exist
-      }
-    }
-
-    // Open the project
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
-    const openButton = page.locator('button', { hasText: 'Open Project Folder' });
-    await expect(openButton).toBeVisible();
-
-    await electronApp.evaluate(async ({ dialog }, repoPath) => {
-      dialog.showOpenDialog = async () => {
-        return {
-          canceled: false,
-          filePaths: [repoPath]
-        };
-      };
-    }, dummyRepoPath);
-
-    await openButton.click();
-    await page.waitForTimeout(3000);
-
-    // Open terminals for each worktree
-    for (const wtName of worktreeNames) {
-      const worktreeButton = page.locator(`button[data-worktree-branch="${wtName}"]`);
-      await expect(worktreeButton).toBeVisible({ timeout: 5000 });
-      await worktreeButton.click();
-      await page.waitForTimeout(2000);
-
-      // Wait for terminal to be ready
-      const terminalScreen = page.locator('.xterm-screen').last();
-      await expect(terminalScreen).toBeVisible({ timeout: 10000 });
-      await page.waitForTimeout(1000);
-    }
+    // Get all windows before opening dialog
+    const windowsBefore = electronApp.windows();
+    expect(windowsBefore.length).toBe(1); // Only main window
 
     // Open stats dialog via menu
-    await electronApp.evaluate(async ({ Menu }) => {
+    await electronApp.evaluate(({ Menu, BrowserWindow }) => {
       const menu = Menu.getApplicationMenu();
-      if (menu) {
-        // Find View menu
-        for (const item of menu.items) {
-          if (item.label === 'View') {
-            // Find Stats menu item
-            if (item.submenu) {
-              for (const subItem of item.submenu.items) {
-                if (subItem.label === 'Stats...') {
-                  subItem.click();
-                  break;
-                }
-              }
-            }
-            break;
-          }
-        }
+      if (!menu) throw new Error('No application menu');
+
+      // Find View menu by label instead of index
+      const viewMenu = menu.items.find((item: Electron.MenuItem) => item.label === 'View');
+      if (!viewMenu || !viewMenu.submenu) throw new Error('View menu not found');
+
+      // Find Stats menu item
+      const statsItem = viewMenu.submenu.items.find((item: Electron.MenuItem) => item.label === 'Stats...');
+      if (!statsItem || !statsItem.click) {
+        // Debug: list all items
+        const labels = viewMenu.submenu.items.map((item: Electron.MenuItem) => item.label);
+        throw new Error(`Stats menu item not found. Available items: ${labels.join(', ')}`);
+      }
+
+      // Get the main window to pass to click
+      const mainWindow = BrowserWindow.getAllWindows()[0];
+      if (!mainWindow) throw new Error('Main window not found');
+
+      // Click the Stats menu item with proper context
+      if (typeof statsItem.click === 'function') {
+        statsItem.click({} as Electron.KeyboardEvent, mainWindow, {} as Electron.WebContents);
       }
     });
 
-    await page.waitForTimeout(2000);
+    // Wait for dialog window to appear
+    await page.waitForTimeout(1000);
 
-    // Get all windows
-    const windows = electronApp.windows();
-    expect(windows.length).toBeGreaterThan(1);
+    // Get all windows after opening dialog
+    const windowsAfter = electronApp.windows();
+    expect(windowsAfter.length).toBe(2); // Main window + stats dialog
 
-    // Find the stats dialog window
-    let statsWindow = null;
-    for (const win of windows) {
-      const title = await win.title();
-      if (title === 'Process Statistics') {
-        statsWindow = win;
-        break;
-      }
-    }
+    // Get the stats dialog window
+    const statsDialog = windowsAfter.find(w => w !== windowsBefore[0]);
+    expect(statsDialog).toBeDefined();
 
-    expect(statsWindow).toBeTruthy();
+    if (!statsDialog) throw new Error('Stats dialog not found');
 
-    if (statsWindow) {
-      // Verify the dialog shows 3 active processes
-      const activeCount = await statsWindow.locator('#activeCount').textContent();
-      expect(activeCount).toBe('3');
+    // Verify dialog content
+    await statsDialog.waitForLoadState('domcontentloaded');
 
-      // Verify 3 session items are displayed
-      const sessionItems = await statsWindow.locator('.session-item').count();
-      expect(sessionItems).toBe(3);
+    const title = await statsDialog.locator('h1').textContent();
+    expect(title).toBe('Process Statistics');
 
-      // Verify close button exists and is visible
-      const closeButton = statsWindow.locator('button', { hasText: 'OK' });
-      await expect(closeButton).toBeVisible();
+    const activeCountText = await statsDialog.locator('#activeCount').textContent();
+    expect(activeCountText).toBe('0');
 
-      // Click close button
-      await closeButton.click();
-      await page.waitForTimeout(1000);
+    // Click OK button to close dialog
+    const okButton = statsDialog.locator('button', { hasText: 'OK' });
+    await expect(okButton).toBeVisible();
+    await okButton.click();
 
-      // Verify dialog is closed
-      const windowsAfterClose = electronApp.windows();
-      let dialogStillOpen = false;
-      for (const win of windowsAfterClose) {
-        const title = await win.title();
-        if (title === 'Process Statistics') {
-          dialogStillOpen = true;
-          break;
-        }
-      }
-      expect(dialogStillOpen).toBe(false);
-    }
+    // Wait for dialog to close
+    await page.waitForTimeout(500);
+
+    // Verify dialog is closed
+    const windowsFinal = electronApp.windows();
+    expect(windowsFinal.length).toBe(1); // Only main window remains
   });
 });

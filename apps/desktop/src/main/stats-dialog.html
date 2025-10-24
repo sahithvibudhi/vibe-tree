@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline' 'self'">
   <title>Process Statistics</title>
   <style>
     * {
@@ -20,6 +20,7 @@
       height: 100vh;
       display: flex;
       flex-direction: column;
+      max-height: 600px;
     }
 
     h1 {
@@ -27,6 +28,7 @@
       font-weight: 600;
       margin-bottom: 16px;
       color: #1a1a1a;
+      flex-shrink: 0;
     }
 
     .summary {
@@ -35,6 +37,7 @@
       background: #f5f5f5;
       border-radius: 6px;
       font-size: 14px;
+      flex-shrink: 0;
     }
 
     .summary-label {
@@ -53,13 +56,17 @@
       font-weight: 600;
       margin-bottom: 12px;
       color: #555;
+      flex-shrink: 0;
     }
 
     .sessions-container {
       flex: 1;
       overflow-y: auto;
+      overflow-x: hidden;
       padding-right: 8px;
       margin-bottom: 16px;
+      min-height: 0;
+      max-height: 400px;
     }
 
     .sessions-container::-webkit-scrollbar {
@@ -119,6 +126,7 @@
       justify-content: flex-end;
       padding-top: 12px;
       border-top: 1px solid #e0e0e0;
+      flex-shrink: 0;
     }
 
     button {
@@ -157,18 +165,10 @@
   </div>
 
   <div class="button-container">
-    <button onclick="closeWindow()">OK</button>
+    <button id="closeButton">OK</button>
   </div>
 
   <script>
-    function closeWindow() {
-      console.log('Close button clicked');
-      if (window.statsDialog && window.statsDialog.close) {
-        window.statsDialog.close();
-      } else {
-        console.error('statsDialog API not available');
-      }
-    }
 
     function updateStats(stats) {
       document.getElementById('activeCount').textContent = stats.activeProcessCount;
@@ -211,24 +211,42 @@
       }
     }
 
-    // Request stats data on load
-    window.addEventListener('DOMContentLoaded', async () => {
-      console.log('[HTML] DOMContentLoaded event fired');
-      console.log('[HTML] window.statsDialog:', window.statsDialog);
+    // Initialize the dialog
+    async function initDialog() {
       try {
         if (window.statsDialog && window.statsDialog.getStats) {
-          console.log('[HTML] Calling getStats()');
           const stats = await window.statsDialog.getStats();
-          console.log('[HTML] Received stats:', stats);
           updateStats(stats);
-        } else {
-          console.error('[HTML] statsDialog API not available');
-          console.error('[HTML] window.statsDialog:', window.statsDialog);
         }
       } catch (error) {
-        console.error('[HTML] Failed to load stats:', error);
+        console.error('Failed to load stats:', error);
       }
-    });
+
+      // Setup close button handler
+      const closeButton = document.getElementById('closeButton');
+      if (closeButton) {
+        closeButton.addEventListener('click', () => {
+          try {
+            if (window.statsDialog && window.statsDialog.closeWindow) {
+              window.statsDialog.closeWindow();
+            } else if (window.require) {
+              const { ipcRenderer } = window.require('electron');
+              ipcRenderer.send('stats-dialog:close');
+            }
+          } catch (error) {
+            console.error('Error closing window:', error);
+          }
+        });
+      }
+    }
+
+    // Run initialization when DOM is ready
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', initDialog);
+    } else {
+      // DOM already loaded, run immediately
+      initDialog();
+    }
   </script>
 </body>
 </html>

@@ -2,64 +2,53 @@ import { Menu, BrowserWindow, MenuItemConstructorOptions, dialog, app, ipcMain }
 import { recentProjectsManager } from './recent-projects';
 import path from 'path';
 
-let statsDialogWindow: BrowserWindow | null = null;
+let statsWindow: BrowserWindow | null = null;
 
-// IPC handler 'shell:get-stats' is already registered in shell-manager.ts
-
-ipcMain.on('stats-dialog:close', () => {
-  console.log('[MENU] Received stats-dialog:close event');
-  console.log('[MENU] statsDialogWindow exists:', !!statsDialogWindow);
-  console.log('[MENU] statsDialogWindow isDestroyed:', statsDialogWindow ? statsDialogWindow.isDestroyed() : 'N/A');
-
-  if (statsDialogWindow && !statsDialogWindow.isDestroyed()) {
-    console.log('[MENU] Attempting to close statsDialogWindow');
-    statsDialogWindow.close();
-    console.log('[MENU] Close called successfully');
-  } else {
-    console.log('[MENU] Cannot close - window is null or destroyed');
-  }
-});
-
-function showStatsDialog(parentWindow: BrowserWindow) {
-  // Close existing stats dialog if open
-  if (statsDialogWindow && !statsDialogWindow.isDestroyed()) {
-    statsDialogWindow.close();
+function createStatsWindow(parentWindow: BrowserWindow) {
+  // Close existing stats window if it exists
+  if (statsWindow && !statsWindow.isDestroyed()) {
+    statsWindow.focus();
+    return;
   }
 
-  // Create new stats dialog window
-  statsDialogWindow = new BrowserWindow({
+  statsWindow = new BrowserWindow({
     width: 600,
-    height: 500,
-    minWidth: 400,
-    minHeight: 300,
-    maxWidth: 800,
-    maxHeight: 700,
+    height: 600,
     parent: parentWindow,
     modal: true,
     show: false,
-    resizable: true,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    closable: true,
     webPreferences: {
-      preload: path.join(__dirname, 'stats-dialog-preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false
+      preload: path.join(__dirname, '../preload/stats-dialog-preload.js'),
+      nodeIntegration: true,
+      contextIsolation: false
     }
   });
 
-  // Load the stats dialog HTML
-  statsDialogWindow.loadFile(path.join(__dirname, 'stats-dialog.html'));
+  statsWindow.setMenu(null);
 
-  // Show window when ready - stats will be fetched via IPC
-  statsDialogWindow.webContents.once('did-finish-load', () => {
-    if (statsDialogWindow) {
-      statsDialogWindow.show();
-    }
+  const htmlPath = path.join(__dirname, 'stats-dialog.html');
+  statsWindow.loadFile(htmlPath);
+
+  statsWindow.once('ready-to-show', () => {
+    statsWindow?.show();
   });
 
-  // Clean up when dialog is closed
-  statsDialogWindow.on('closed', () => {
-    statsDialogWindow = null;
+  statsWindow.on('closed', () => {
+    statsWindow = null;
   });
 }
+
+// Handle stats dialog close request
+ipcMain.on('stats-dialog:close', () => {
+  if (statsWindow && !statsWindow.isDestroyed()) {
+    statsWindow.close();
+  }
+});
 
 export function createMenu(mainWindow: BrowserWindow | null) {
   const recentProjects = recentProjectsManager.getRecentProjects();
@@ -149,9 +138,9 @@ export function createMenu(mainWindow: BrowserWindow | null) {
           click: () => {
             if (mainWindow) {
               try {
-                showStatsDialog(mainWindow);
+                createStatsWindow(mainWindow);
               } catch (error) {
-                dialog.showErrorBox('Error', `Failed to show stats dialog: ${error}`);
+                dialog.showErrorBox('Error', `Failed to open stats window: ${error}`);
               }
             }
           }

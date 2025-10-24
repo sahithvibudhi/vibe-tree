@@ -44,6 +44,7 @@ export interface ElectronAPI {
   };
   dialog: {
     selectDirectory: () => Promise<string | undefined>;
+    showError: (title: string, message: string) => Promise<void>;
   };
   recentProjects: {
     get: () => Promise<Array<{
