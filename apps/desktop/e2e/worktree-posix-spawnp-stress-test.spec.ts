@@ -188,6 +188,18 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     console.log(`PTY failures: ${ptyFailureCount}`);
     console.log(`posix_spawnp error occurred: ${posixSpawnpErrorOccurred}`);
 
+    // FAIL the test if we didn't hit the error - something is wrong
+    if (!posixSpawnpErrorOccurred) {
+      throw new Error(
+        `Test FAILED: Did not hit posix_spawnp error after creating ${worktreeCount} worktrees. ` +
+        `This likely means PTY sessions are not being created properly. ` +
+        `Expected to hit OS spawn limits around 200-250 worktrees on macOS.`
+      );
+    }
+
+    // Verify we actually created a significant number of PTYs
+    expect(createdPtyIds.length).toBeGreaterThan(50);
+
     // Phase 2: Terminate 2 PTY sessions and delete 2 worktrees
     console.log('\n=== PHASE 2: CLEANING UP 2 WORKTREES ===');
 
