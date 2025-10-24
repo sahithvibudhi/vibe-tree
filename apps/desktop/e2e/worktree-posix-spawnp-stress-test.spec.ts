@@ -144,7 +144,8 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
         if (result.success && result.processId) {
           createdPtyIds.push(result.processId);
 
-          // Write a long-running command to keep the PTY alive and hold file descriptors
+          // Write `cat` command to keep the PTY alive and hold file descriptors
+          // `cat` will block waiting for input indefinitely, keeping the shell and PTY alive
           // This mimics the "explode" button behavior
           await electronApp.evaluate(async ({ ipcMain }, args) => {
             const [processId] = args;
@@ -152,13 +153,14 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
             const handler = handlers._invokeHandlers?.get('shell:write') as ((event: unknown, processId: string, data: string) => Promise<unknown>) | undefined;
             if (handler) {
               const mockEvent = { sender: { id: 999 } };
-              await handler(mockEvent, processId, 'sleep 10000\n');
+              // Use `cat` instead of `sleep` - it blocks waiting for stdin, keeping the process alive
+              await handler(mockEvent, processId, 'cat\n');
             }
           }, [result.processId]);
 
           // Small delay to allow PTY to initialize and command to start
           // This ensures file descriptors are fully allocated before creating next PTY
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 200));
 
           if (worktreeCount % 10 === 0) {
             console.log(`Created ${worktreeCount} worktrees with PTY sessions`);
