@@ -83,15 +83,15 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     }
   });
 
-  // This test rapidly creates PTY sessions to stress test PTY cleanup
-  // It attempts to hit OS resource limits, then verifies recovery after cleanup
-  // On systems with high PTY limits (e.g., Linux CI), it may not hit errors but still tests cleanup
+  // This test rapidly creates PTY sessions until hitting OS resource limits
+  // Creates up to 1024 worktrees to ensure we hit limits even on Linux (typical limit: ~1024)
+  // Then verifies that PTY cleanup works and recovery is possible after cleanup
   test('should stress test PTY creation and verify recovery after cleanup', async () => {
     test.setTimeout(600000); // 10 minutes timeout
 
     let worktreeCount = 0;
     let ptyFailureCount = 0;
-    const MAX_WORKTREES = 300;
+    const MAX_WORKTREES = 1024; // High enough to hit limits even on Linux systems
     const ERROR_PATTERNS = [
       'posix_spawnp failed',
       'EMFILE',
@@ -189,13 +189,22 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     console.log(`PTY failures: ${ptyFailureCount}`);
     console.log(`posix_spawnp error occurred: ${posixSpawnpErrorOccurred}`);
 
-    // The test's main goal is to verify PTY cleanup and recovery works.
-    // On some systems (especially CI environments with Linux), we may not hit
-    // posix_spawnp errors even after 300 PTYs. This is OK - we just test cleanup.
+    // We should hit the error by creating up to 1024 PTYs
+    // If we don't hit it, something might be wrong with PTY creation
     if (!posixSpawnpErrorOccurred) {
-      console.log('\n⚠️  NOTE: Did not hit posix_spawnp error within limit.');
-      console.log('This is expected on systems with high PTY limits (e.g., Linux CI).');
-      console.log('Proceeding to test PTY cleanup behavior without error condition.');
+      console.log('\n⚠️  WARNING: Did not hit posix_spawnp error after 1024 worktrees');
+      console.log('This is unexpected - most systems have PTY limits around 256-1024');
+      console.log('PTY sessions might not be getting created properly');
+      console.log(`Created ${createdPtyIds.length} PTY sessions out of ${worktreeCount} worktrees`);
+
+      // If we created very few PTYs compared to worktrees, something is wrong
+      if (createdPtyIds.length < worktreeCount * 0.5) {
+        throw new Error(
+          `Test FAILED: Created only ${createdPtyIds.length} PTY sessions out of ${worktreeCount} worktrees. ` +
+          `This suggests PTY sessions are not being created properly.`
+        );
+      }
+      console.log('Proceeding with recovery test despite not hitting error...');
     }
 
     // If we hit the error too early (e.g., < 10 PTYs), it likely means other apps are consuming slots
