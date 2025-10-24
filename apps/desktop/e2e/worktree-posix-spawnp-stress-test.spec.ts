@@ -94,7 +94,7 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     test.setTimeout(120000); // 2 minutes timeout (with ulimit should hit error quickly)
 
     let worktreeCount = 0;
-    const MAX_WORKTREES = 250; // With ulimit -n 512, will hit error fairly quickly
+    const MAX_WORKTREES = 1000; // With ulimit -n 512, should definitely hit error before this
     const createdPtyIds: string[] = [];
     let hitPosixSpawnpError = false;
 
