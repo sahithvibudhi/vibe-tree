@@ -289,14 +289,17 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">Worktrees</h3>
           <div className="flex gap-2">
-            <Button
-              variant="default"
-              onClick={handleCreateStressTest}
-              disabled={loading}
-              title="Create stress test repo and open all terminals until we hit errors"
-            >
-              [Explode]
-            </Button>
+            {/* DEBUG only: Stress test button to create worktrees until hitting errors */}
+            {process.env.NODE_ENV === 'development' && (
+              <Button
+                variant="default"
+                onClick={handleCreateStressTest}
+                disabled={loading}
+                title="Create stress test repo and open all terminals until we hit errors"
+              >
+                [Explode]
+              </Button>
+            )}
             <Button
               size="icon"
               variant="ghost"
