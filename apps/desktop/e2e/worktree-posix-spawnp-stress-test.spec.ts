@@ -195,13 +195,10 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     console.log(`\n✓ Created ${createdPtyIds.length} PTY sessions successfully`);
 
     if (createdPtyIds.length < MIN_SUCCESSFUL_PTYS) {
-      console.log(`\n⚠️  WARNING: Only created ${createdPtyIds.length} PTY sessions (needed ${MIN_SUCCESSFUL_PTYS})`);
-      console.log('This likely means:');
-      console.log('  - System is under heavy load with many PTY slots already in use');
-      console.log('  - PTY creation is failing for some reason');
-      console.log('Test cannot reliably validate PTY cleanup with so few sessions.');
-      console.log('Skipping recovery test - system constraints prevent proper validation.');
-      return; // Exit early but don't fail - might just be a crowded environment
+      throw new Error(
+        `Test FAILED: Only created ${createdPtyIds.length} PTY sessions out of ${worktreeCount} attempts (minimum required: ${MIN_SUCCESSFUL_PTYS}). ` +
+        `This indicates PTY creation is broken or system has severe resource constraints.`
+      );
     }
 
     console.log(`✓ Successfully created ${createdPtyIds.length} PTY sessions`);
