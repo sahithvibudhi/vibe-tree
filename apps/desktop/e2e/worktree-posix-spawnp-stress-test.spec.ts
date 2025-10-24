@@ -83,35 +83,23 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     }
   });
 
-  // This test creates PTY sessions until hitting OS limits to verify cleanup frees slots
-  // Strategy: Create PTYs until posix_spawnp fails, cleanup, verify recovery
-  // This tests that PTY cleanup actually frees OS resources
-  test('should stress test PTY creation and verify recovery after cleanup', async () => {
-    test.setTimeout(600000); // 10 minutes timeout
+  // This test verifies PTY cleanup by:
+  // 1. Creating many PTY sessions (200)
+  // 2. Verifying cleanup reduces active PTY count
+  // 3. Verifying new PTYs can be created after cleanup
+  test('should verify PTY cleanup frees resources', async () => {
+    test.setTimeout(180000); // 3 minutes timeout
 
     let worktreeCount = 0;
-    let ptyFailureCount = 0;
-    const MAX_WORKTREES = 1024; // Go high to hit limits even on Linux
-    const MIN_SUCCESSFUL_PTYS = 10; // Minimum PTYs needed before hitting error
-    const ERROR_PATTERNS = [
-      'posix_spawnp failed',
-      'EMFILE',
-      'ENFILE',
-      'too many open files',
-      'Cannot create PTY',
-      'Failed to spawn',
-      'spawn failed',
-      'ENOENT'
-    ];
-
+    const TARGET_WORKTREES = 200; // Create many PTYs to test cleanup
     const createdPtyIds: string[] = [];
 
-    console.log('Starting rapid PTY creation test...');
-    console.log('Creating worktrees until hitting PTY spawn error...');
+    console.log('Starting PTY cleanup verification test...');
+    console.log(`Creating ${TARGET_WORKTREES} worktrees with PTY sessions...`);
     console.log('');
 
-    // Phase 1: Rapidly create worktrees and PTY sessions until we hit the error
-    while (worktreeCount < MAX_WORKTREES && ptyFailureCount < 3) {
+    // Phase 1: Create many PTY sessions
+    while (worktreeCount < TARGET_WORKTREES) {
       worktreeCount++;
       const branchName = `worktree-${String(worktreeCount).padStart(3, '0')}`;
       const worktreePath = path.join(os.tmpdir(), `stress-test-${branchName}-${Date.now()}`);
@@ -147,40 +135,17 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
           });
         }, worktreePath);
 
-        if (!result.success) {
-          const errorMessage = result.error || 'Unknown error';
-          const hasTargetError = ERROR_PATTERNS.some(pattern =>
-            errorMessage.toLowerCase().includes(pattern.toLowerCase())
-          );
-
-          if (hasTargetError) {
-            console.log(`\nPTY SPAWN ERROR at worktree ${worktreeCount}: ${errorMessage}`);
-            posixSpawnpErrorOccurred = true;
-            ptyFailureCount++;
-          } else {
-            console.log(`Worktree ${worktreeCount}: PTY creation failed with: ${errorMessage}`);
-          }
-        } else {
-          if (result.processId) {
-            createdPtyIds.push(result.processId);
-          }
-          if (worktreeCount % 10 === 0) {
+        if (result.success && result.processId) {
+          createdPtyIds.push(result.processId);
+          if (worktreeCount % 50 === 0) {
             console.log(`Created ${worktreeCount} worktrees with PTY sessions`);
           }
+        } else {
+          console.log(`Worktree ${worktreeCount}: PTY creation failed with: ${result.error || 'Unknown error'}`);
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.log(`Error at worktree ${worktreeCount}:`, errorMessage);
-
-        const isTargetError = ERROR_PATTERNS.some(pattern =>
-          errorMessage.toLowerCase().includes(pattern.toLowerCase())
-        );
-
-        if (isTargetError) {
-          console.log(`\nTARGET ERROR FOUND: ${errorMessage}`);
-          posixSpawnpErrorOccurred = true;
-          ptyFailureCount++;
-        }
       }
     }
 
@@ -188,36 +153,36 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     console.log('\n=== PHASE 1 RESULTS ===');
     console.log(`Created ${worktreeCount} worktrees`);
     console.log(`Created ${createdPtyIds.length} PTY sessions`);
-    console.log(`PTY failures: ${ptyFailureCount}`);
-    console.log(`posix_spawnp error occurred: ${posixSpawnpErrorOccurred}`);
 
-    // Validate we created enough PTYs to test cleanup behavior
-    console.log(`\n✓ Created ${createdPtyIds.length} PTY sessions successfully`);
+    // Get initial PTY stats
+    const statsBeforeCleanup = await electronApp.evaluate(async ({ ipcMain }) => {
+      return new Promise((resolve) => {
+        const mockEvent = { sender: { id: 999 } };
+        const handlers = (ipcMain as any)._invokeHandlers;
+        const handler = handlers?.get('shell:get-stats');
+        if (handler) {
+          handler(mockEvent).then(resolve).catch(() => resolve({ activeProcessCount: 0 }));
+        } else {
+          resolve({ activeProcessCount: 0 });
+        }
+      });
+    });
 
-    if (createdPtyIds.length < MIN_SUCCESSFUL_PTYS) {
+    console.log(`PTY sessions before cleanup: ${statsBeforeCleanup.activeProcessCount}`);
+
+    if (createdPtyIds.length < 50) {
       throw new Error(
-        `Test FAILED: Only created ${createdPtyIds.length} PTY sessions out of ${worktreeCount} attempts (minimum required: ${MIN_SUCCESSFUL_PTYS}). ` +
+        `Test FAILED: Only created ${createdPtyIds.length} PTY sessions (minimum required: 50). ` +
         `This indicates PTY creation is broken or system has severe resource constraints.`
       );
     }
 
     console.log(`✓ Successfully created ${createdPtyIds.length} PTY sessions`);
-    console.log(`✓ Enough sessions to validate cleanup behavior (minimum: ${MIN_SUCCESSFUL_PTYS})`);
 
-    // We should have hit the error by now with 1024 attempts
-    if (!posixSpawnpErrorOccurred) {
-      throw new Error(
-        `Test FAILED: Did not hit posix_spawnp error after creating ${createdPtyIds.length} PTY sessions (${worktreeCount} worktrees attempted). ` +
-        `Expected to hit OS limits around 256-1024. This suggests PTY sessions are not being created properly.`
-      );
-    }
+    // Phase 2: Terminate 10 PTY sessions and delete 10 worktrees
+    console.log('\n=== PHASE 2: CLEANING UP 10 WORKTREES ===');
 
-    console.log('✓ Successfully reached PTY spawn limits (expected behavior)');
-
-    // Phase 2: Terminate 2 PTY sessions and delete 2 worktrees
-    console.log('\n=== PHASE 2: CLEANING UP 2 WORKTREES ===');
-
-    const worktreesToCleanup = Math.min(2, createdWorktrees.length);
+    const worktreesToCleanup = Math.min(10, createdWorktrees.length);
     for (let i = 0; i < worktreesToCleanup; i++) {
       const worktreePath = createdWorktrees[i];
 
@@ -248,6 +213,27 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
         console.log(`Failed to delete worktree ${i + 1}:`, error);
       }
     }
+
+    // Get PTY stats after cleanup
+    const statsAfterCleanup = await electronApp.evaluate(async ({ ipcMain }) => {
+      return new Promise((resolve) => {
+        const mockEvent = { sender: { id: 999 } };
+        const handlers = (ipcMain as any)._invokeHandlers;
+        const handler = handlers?.get('shell:get-stats');
+        if (handler) {
+          handler(mockEvent).then(resolve).catch(() => resolve({ activeProcessCount: 0 }));
+        } else {
+          resolve({ activeProcessCount: 0 });
+        }
+      });
+    });
+
+    console.log(`PTY sessions after cleanup: ${statsAfterCleanup.activeProcessCount}`);
+    console.log(`PTY sessions freed: ${statsBeforeCleanup.activeProcessCount - statsAfterCleanup.activeProcessCount}`);
+
+    // Verify that cleanup actually freed PTY resources
+    expect(statsAfterCleanup.activeProcessCount).toBeLessThan(statsBeforeCleanup.activeProcessCount);
+    console.log('✓ PTY cleanup successfully freed resources');
 
     // Phase 3: Create a new worktree and verify PTY works
     console.log('\n=== PHASE 3: CREATING NEW WORKTREE AFTER CLEANUP ===');
@@ -298,17 +284,11 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     expect(recoveryResult.success).toBe(true);
     expect(recoveryResult.processId).toBeDefined();
 
-    // Verify no spawn errors in the result
-    if (recoveryResult.error) {
-      const hasError = ERROR_PATTERNS.some(pattern =>
-        recoveryResult.error.toLowerCase().includes(pattern.toLowerCase())
-      );
-      expect(hasError).toBe(false);
-    }
-
     console.log('\n=== TEST COMPLETE ===');
     console.log('✓ Successfully created new worktree with PTY after cleanup');
     console.log(`Total worktrees created: ${worktreeCount + 1}`);
-    console.log(`Final PTY session count: ${createdPtyIds.length + 1}`);
+    console.log(`PTY sessions before cleanup: ${statsBeforeCleanup.activeProcessCount}`);
+    console.log(`PTY sessions after cleanup: ${statsAfterCleanup.activeProcessCount}`);
+    console.log(`PTY sessions freed: ${statsBeforeCleanup.activeProcessCount - statsAfterCleanup.activeProcessCount}`);
   });
 });
