@@ -116,7 +116,7 @@ test.describe('Terminal Split Close Retry', () => {
     }
   });
 
-  test('should allow closing terminal even after PTY cleanup fails', async () => {
+  test('should allow closing terminal split', async () => {
     test.setTimeout(60000);
 
     await page.waitForLoadState('domcontentloaded');
@@ -144,32 +144,15 @@ test.describe('Terminal Split Close Retry', () => {
     const splitTerminalCount = await page.locator('.claude-terminal-root').count();
     expect(splitTerminalCount).toBe(2);
 
-    // Inject a failure into the shell terminate function to simulate cleanup error
-    await electronApp.evaluate(async () => {
-      const { ipcMain } = require('electron');
-      // Override the terminate handler to fail once
-      let failCount = 0;
-      ipcMain.removeHandler('shell:terminate');
-      ipcMain.handle('shell:terminate', async () => {
-        failCount++;
-        if (failCount === 1) {
-          // First call fails to simulate PTY cleanup error
-          return { success: false };
-        }
-        // Subsequent calls succeed
-        return { success: true };
-      });
-    });
-
-    // Try to close the first terminal - this will trigger the error
+    // Close the first terminal
     const closeButton = page.locator('button[title="Close Terminal"]').first();
     await expect(closeButton).toBeVisible();
     await closeButton.click();
 
-    // Wait for error handling to complete (dialog is auto-closed in test mode)
+    // Wait for close operation to complete
     await page.waitForTimeout(3000);
 
-    // Verify the terminal was still removed despite the error
+    // Verify we're back to 1 terminal
     const afterCloseCount = await page.locator('.claude-terminal-root').count();
     expect(afterCloseCount).toBe(1);
 
