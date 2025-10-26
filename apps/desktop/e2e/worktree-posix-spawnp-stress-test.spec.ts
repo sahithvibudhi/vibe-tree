@@ -94,7 +94,7 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
     test.setTimeout(120000); // 2 minutes timeout
 
     let worktreeCount = 0;
-    const MAX_WORKTREES = 100; // With ulimit -n 128, should hit error before this
+    const MAX_WORKTREES = 1000; // Keep trying until we hit the error - ulimit will stop us
     const createdPtyIds: string[] = [];
     let hitPosixSpawnpError = false;
 
@@ -168,8 +168,14 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.log(`Error at worktree ${worktreeCount}:`, errorMessage);
+        // Continue trying even if git worktree creation fails
+        // We want to keep going until we hit posix_spawnp error
       }
     }
+
+    console.log(`\n=== LOOP ENDED ===`);
+    console.log(`Loop stopped after ${worktreeCount} iterations`);
+    console.log(`Hit posix_spawnp error: ${hitPosixSpawnpError ? 'YES' : 'NO'}`);
 
     // Report Phase 1 results
     console.log('\n=== PHASE 1 RESULTS ===');
