@@ -1,6 +1,54 @@
-import { Menu, BrowserWindow, MenuItemConstructorOptions, dialog, app } from 'electron';
+import { Menu, BrowserWindow, MenuItemConstructorOptions, dialog, app, ipcMain } from 'electron';
 import { recentProjectsManager } from './recent-projects';
-import { shellProcessManager } from './shell-manager';
+import path from 'path';
+
+let statsWindow: BrowserWindow | null = null;
+
+function createStatsWindow(parentWindow: BrowserWindow) {
+  // Close existing stats window if it exists
+  if (statsWindow && !statsWindow.isDestroyed()) {
+    statsWindow.focus();
+    return;
+  }
+
+  statsWindow = new BrowserWindow({
+    width: 600,
+    height: 600,
+    parent: parentWindow,
+    modal: true,
+    show: false,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    closable: true,
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/stats-dialog-preload.js'),
+      nodeIntegration: true,
+      contextIsolation: false
+    }
+  });
+
+  statsWindow.setMenu(null);
+
+  const htmlPath = path.join(__dirname, 'stats-dialog.html');
+  statsWindow.loadFile(htmlPath);
+
+  statsWindow.once('ready-to-show', () => {
+    statsWindow?.show();
+  });
+
+  statsWindow.on('closed', () => {
+    statsWindow = null;
+  });
+}
+
+// Handle stats dialog close request
+ipcMain.on('stats-dialog:close', () => {
+  if (statsWindow && !statsWindow.isDestroyed()) {
+    statsWindow.close();
+  }
+});
 
 export function createMenu(mainWindow: BrowserWindow | null) {
   const recentProjects = recentProjectsManager.getRecentProjects();
@@ -90,27 +138,9 @@ export function createMenu(mainWindow: BrowserWindow | null) {
           click: () => {
             if (mainWindow) {
               try {
-                const stats = shellProcessManager.getStats();
-
-                const message = [
-                  'Process Statistics',
-                  '',
-                  `Active PTY Processes: ${stats.activeProcessCount}`,
-                  '',
-                  stats.activeProcessCount > 0 ? 'Active Sessions:' : 'No active sessions.',
-                  ...stats.sessions.map((s: any) =>
-                    `\n• ${s.worktreePath}\n  Created: ${new Date(s.createdAt).toLocaleString()}\n  Last Active: ${new Date(s.lastActivity).toLocaleString()}`
-                  )
-                ].join('\n');
-
-                dialog.showMessageBox(mainWindow, {
-                  type: 'info',
-                  title: 'Process Statistics',
-                  message: message,
-                  buttons: ['OK']
-                });
+                createStatsWindow(mainWindow);
               } catch (error) {
-                dialog.showErrorBox('Error', `Failed to fetch stats: ${error}`);
+                dialog.showErrorBox('Error', `Failed to open stats window: ${error}`);
               }
             }
           }
