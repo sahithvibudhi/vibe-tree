@@ -159,10 +159,10 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
           const errorMsg = result.error || 'Unknown error';
           console.log(`Worktree ${worktreeCount}: PTY creation failed with: ${errorMsg}`);
 
-          // Check if we hit posix_spawnp error
-          if (errorMsg.toLowerCase().includes('posix_spawnp')) {
+          // Check if we hit PTY spawn error (posix_spawnp or forkpty failure)
+          if (errorMsg.toLowerCase().includes('posix_spawnp') || errorMsg.toLowerCase().includes('forkpty')) {
             hitPosixSpawnpError = true;
-            console.log(`\n✓ Hit posix_spawnp error at ${createdPtyIds.length} PTY sessions!`);
+            console.log(`\n✓ Hit PTY spawn error (${errorMsg}) at ${createdPtyIds.length} PTY sessions!`);
           }
         }
       } catch (error) {
