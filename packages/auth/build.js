@@ -14,7 +14,7 @@ await build({
   format: 'esm',
   platform: 'browser',
   target: 'es2020',
-  external: ['react', 'react-dom'],
+  external: ['react', 'react-dom', 'clsx'],
   sourcemap: true,
 });
 
@@ -27,7 +27,7 @@ await build({
   format: 'cjs',
   platform: 'browser',
   target: 'es2020',
-  external: ['react', 'react-dom'],
+  external: ['react', 'react-dom', 'clsx'],
   sourcemap: true,
 });
 

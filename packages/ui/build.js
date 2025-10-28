@@ -14,7 +14,7 @@ await build({
   format: 'esm',
   platform: 'browser',
   target: 'es2020',
-  external: ['react', 'react-dom', '@xterm/xterm', '@xterm/addon-fit', '@xterm/addon-serialize', '@xterm/addon-unicode11', '@xterm/addon-web-links', 'clsx'],
+  external: ['react', 'react-dom', '@vibetree/core', '@xterm/xterm', '@xterm/addon-fit', '@xterm/addon-search', '@xterm/addon-serialize', '@xterm/addon-unicode11', '@xterm/addon-web-links', 'clsx'],
   sourcemap: true,
 });
 
@@ -27,7 +27,7 @@ await build({
   format: 'cjs',
   platform: 'browser',
   target: 'es2020',
-  external: ['react', 'react-dom', '@xterm/xterm', '@xterm/addon-fit', '@xterm/addon-serialize', '@xterm/addon-unicode11', '@xterm/addon-web-links', 'clsx'],
+  external: ['react', 'react-dom', '@vibetree/core', '@xterm/xterm', '@xterm/addon-fit', '@xterm/addon-search', '@xterm/addon-serialize', '@xterm/addon-unicode11', '@xterm/addon-web-links', 'clsx'],
   sourcemap: true,
 });
 
