@@ -53,6 +53,8 @@ Download the latest release for your platform from the [Releases page](https://g
 - **Windows**: Download `.exe` installer
 - **Linux**: Download `.AppImage` or `.deb` file
 
+**Build custom versions** (macOS): `./build-custom-mac-version.sh [VARIATION_NAME]` to create a custom build with the variation name included in both the app file name and displayed app name (e.g., `./build-custom-mac-version.sh Nov2` creates VibeTreeNov2.app which displays as "VibeTreeNov2" when opened)
+
 ### Web/Mobile Access
 
 1. Start services: `pnpm dev:all`
