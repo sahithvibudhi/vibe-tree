@@ -47,8 +47,12 @@ export class TerminalController {
       const result = await this.shellAPI.terminate(processId);
 
       if (!result.success) {
-        const error = new Error(`Failed to terminate PTY process ${processId}`);
-        console.error(`[TerminalController] ${error.message}`);
+        // Include the specific error message from the API if available
+        const errorMsg = result.error
+          ? `Failed to terminate PTY process ${processId}: ${result.error}`
+          : `Failed to terminate PTY process ${processId}`;
+        const error = new Error(errorMsg);
+        console.error(`[TerminalController] ${error.message}\n${error.stack}`);
         this.onCleanupError?.(terminalId, error);
         throw error;
       }
@@ -57,7 +61,8 @@ export class TerminalController {
       this.onCleanupSuccess?.(terminalId);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      console.error(`[TerminalController] Error terminating PTY process ${processId}:`, err);
+      // Log the full error with stack trace for debugging
+      console.error(`[TerminalController] Error terminating PTY process ${processId}:\n${err.stack || err.message}`);
       this.onCleanupError?.(terminalId, err);
       throw err;
     }

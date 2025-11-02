@@ -17,11 +17,13 @@ function createDummyRepo(): string {
   execSync('git init -q', { cwd: dummyRepoPath });
   execSync('git config user.email "test@example.com"', { cwd: dummyRepoPath });
   execSync('git config user.name "Test User"', { cwd: dummyRepoPath });
+  // Disable all hooks for this test repo
+  execSync('git config core.hooksPath /dev/null', { cwd: dummyRepoPath });
 
   // Create a dummy file and make initial commit (required for branches/worktrees)
   fs.writeFileSync(path.join(dummyRepoPath, 'README.md'), '# Test Repository\n');
   execSync('git add .', { cwd: dummyRepoPath });
-  execSync('git commit -q -m "Initial commit"', { cwd: dummyRepoPath });
+  execSync('git commit -q -m "Initial commit" --no-verify', { cwd: dummyRepoPath });
 
   // Create main branch (some git versions don't create it by default)
   try {
@@ -208,5 +210,108 @@ test.describe('Terminal Split Close Retry', () => {
     const disabledCloseButton = page.locator('button[title="Cannot close last terminal"]').first();
     await expect(disabledCloseButton).toBeVisible();
     await expect(disabledCloseButton).toBeDisabled();
+  });
+
+  test('should display detailed backtrace when terminal close fails', async () => {
+    test.setTimeout(60000);
+
+    await page.waitForLoadState('domcontentloaded');
+
+    // Collect console messages from both renderer and main process
+    const consoleMessages: string[] = [];
+
+    // Renderer process console
+    page.on('console', msg => {
+      if (msg.type() === 'error') {
+        consoleMessages.push(msg.text());
+      }
+    });
+
+    // Main process console (includes [TEST MODE] Error dialog messages)
+    const mainConsoleMessages: string[] = [];
+    electronApp.on('console', (msg) => {
+      const text = msg.text();
+      mainConsoleMessages.push(text);
+    });
+
+    // Navigate to worktree terminal
+    await navigateToWorktree(electronApp, page, dummyRepoPath);
+
+    // Split the terminal to create a second one
+    const splitButton = page.locator('button[title="Split Terminal Vertically"]').first();
+    await expect(splitButton).toBeVisible();
+    await splitButton.click();
+
+    // Wait for the new terminal to appear
+    await page.waitForTimeout(2000);
+
+    // Verify we have 2 terminals
+    let terminalCount = await page.locator('.claude-terminal-root').count();
+    expect(terminalCount).toBe(2);
+
+    // Mock the shell terminate handler to fail with a specific error message
+    await electronApp.evaluate(({ ipcMain }) => {
+      // Store the original handler
+      const originalHandler = ipcMain.listeners('shell:terminate')[0];
+
+      // Remove the original handler
+      ipcMain.removeHandler('shell:terminate');
+
+      // Add a handler that will fail with a specific error message
+      ipcMain.handle('shell:terminate', async () => {
+        // Return success: false with a specific error message
+        return { success: false, error: 'Process is locked and cannot be terminated (EPERM)' };
+      });
+
+      // Store the original handler so we can restore it later
+      (global as any).__originalTerminateHandler = originalHandler;
+    });
+
+    // Clear previous console messages
+    consoleMessages.length = 0;
+    mainConsoleMessages.length = 0;
+
+    // Try to close the first terminal - this should fail and show error with backtrace
+    const closeButton = page.locator('button[title="Close Terminal"]').first();
+    await expect(closeButton).toBeVisible();
+    await closeButton.click();
+
+    // Wait for error handling to complete
+    await page.waitForTimeout(3000);
+
+    // Restore the original handler
+    await electronApp.evaluate(({ ipcMain }) => {
+      ipcMain.removeHandler('shell:terminate');
+      if ((global as any).__originalTerminateHandler) {
+        ipcMain.handle('shell:terminate', (global as any).__originalTerminateHandler);
+      }
+    });
+
+    // Combine all console messages
+    const allMessages = [...consoleMessages, ...mainConsoleMessages].join('\n');
+
+    // Should contain the specific error message from the API
+    expect(allMessages).toContain('Process is locked and cannot be terminated (EPERM)');
+
+    // Should contain error about failing to terminate with the specific reason
+    expect(allMessages).toContain('Failed to terminate PTY process');
+
+    // Should contain stack trace elements (at least one stack frame with "at")
+    // The error.stack should include the stack trace with "at" prefix
+    const hasStackTrace = allMessages.includes('at ') &&
+                         (allMessages.includes('handleTerminalClose') ||
+                          allMessages.includes('TerminalController'));
+
+    // The key validation: error logs should contain detailed information
+    expect(allMessages).toContain('TerminalController');
+    expect(hasStackTrace).toBe(true);
+
+    // Verify error was logged (even if stack trace format varies)
+    console.log('Console messages captured:', allMessages);
+
+    // The terminal should still be removed from UI despite the error
+    await page.waitForTimeout(1000);
+    terminalCount = await page.locator('.claude-terminal-root').count();
+    expect(terminalCount).toBe(1);
   });
 });

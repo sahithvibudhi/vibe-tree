@@ -284,13 +284,19 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
         terminalId,
         processId
       }).catch(async (error) => {
-        console.warn('PTY cleanup error for terminal:', terminalId, error);
+        console.error('PTY cleanup error for terminal:', terminalId, error);
 
-        // Show error dialog to user and wait for them to acknowledge
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        // Show error dialog to user with detailed backtrace and wait for them to acknowledge
+        let errorDetails = '';
+        if (error instanceof Error) {
+          errorDetails = error.stack || error.message;
+        } else {
+          errorDetails = String(error);
+        }
+
         await window.electronAPI.dialog.showError(
           'Terminal Close Error',
-          `Failed to close terminal cleanly:\n\n${errorMessage}\n\nThe terminal will be removed from the UI.`
+          `Failed to close terminal cleanly:\n\n${errorDetails}\n\nThe terminal will be removed from the UI.`
         );
 
         // After user acknowledges the error, proceed with cleanup

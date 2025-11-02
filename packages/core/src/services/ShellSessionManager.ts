@@ -322,9 +322,11 @@ export class ShellSessionManager {
    * @param sessionId - Session ID to terminate
    * @returns Object with success status
    */
-  async terminateSession(sessionId: string): Promise<{ success: boolean }> {
+  async terminateSession(sessionId: string): Promise<{ success: boolean; error?: string }> {
     const session = this.sessions.get(sessionId);
-    if (!session) return { success: false };
+    if (!session) {
+      return { success: false, error: `Session ${sessionId} not found` };
+    }
 
     try {
       const pid = session.pty.pid;
@@ -348,8 +350,10 @@ export class ShellSessionManager {
       console.log(`Successfully terminated session ${sessionId} (PID: ${pid})`);
       return { success: true };
     } catch (error) {
-      console.error(`Error terminating session ${sessionId}:`, error);
-      return { success: false };
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      console.error(`Error terminating session ${sessionId}:`, errorStack || errorMessage);
+      return { success: false, error: errorMessage };
     }
   }
 
