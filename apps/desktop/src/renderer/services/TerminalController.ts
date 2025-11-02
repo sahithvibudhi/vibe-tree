@@ -8,7 +8,7 @@
  */
 
 export interface IShellAPI {
-  terminate(processId: string): Promise<{ success: boolean }>;
+  terminate(processId: string): Promise<{ success: boolean; error?: string }>;
 }
 
 export interface TerminalCloseEvent {

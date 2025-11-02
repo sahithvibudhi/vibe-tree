@@ -215,24 +215,24 @@ test.describe('Terminal Split Close Retry', () => {
   test('should display detailed backtrace when terminal close fails', async () => {
     test.setTimeout(60000);
 
-    await page.waitForLoadState('domcontentloaded');
-
     // Collect console messages from both renderer and main process
+    // Set up listeners BEFORE any navigation to catch all messages
     const consoleMessages: string[] = [];
+    const mainConsoleMessages: string[] = [];
 
-    // Renderer process console
-    page.on('console', msg => {
-      if (msg.type() === 'error') {
-        consoleMessages.push(msg.text());
-      }
-    });
+    // Renderer process console - capture ALL console output first
+    const consoleHandler = (msg: any) => {
+      consoleMessages.push(msg.text());
+    };
+    page.on('console', consoleHandler);
 
     // Main process console (includes [TEST MODE] Error dialog messages)
-    const mainConsoleMessages: string[] = [];
-    electronApp.on('console', (msg) => {
-      const text = msg.text();
-      mainConsoleMessages.push(text);
-    });
+    const mainConsoleHandler = (msg: any) => {
+      mainConsoleMessages.push(msg.text());
+    };
+    electronApp.on('console', mainConsoleHandler);
+
+    await page.waitForLoadState('domcontentloaded');
 
     // Navigate to worktree terminal
     await navigateToWorktree(electronApp, page, dummyRepoPath);
@@ -313,5 +313,9 @@ test.describe('Terminal Split Close Retry', () => {
     await page.waitForTimeout(1000);
     terminalCount = await page.locator('.claude-terminal-root').count();
     expect(terminalCount).toBe(1);
+
+    // Clean up event listeners
+    page.off('console', consoleHandler);
+    electronApp.off('console', mainConsoleHandler);
   });
 });
