@@ -28,6 +28,8 @@ interface ShellSession {
   dataDisposable?: { dispose: () => void }; // Store the PTY data listener disposable
   outputBuffer: string[]; // Buffer to store terminal output for replay
   maxBufferSize: number; // Maximum buffer size in characters
+  isTerminating: boolean; // Track if session is currently being terminated
+  isTerminated: boolean; // Track if session has been terminated
 }
 
 /**
@@ -122,7 +124,9 @@ export class ShellSessionManager {
         listeners: new Map(),
         exitListeners: new Map(),
         outputBuffer: [],
-        maxBufferSize: 100000 // Approximately 100KB of text
+        maxBufferSize: 100000, // Approximately 100KB of text
+        isTerminating: false,
+        isTerminated: false
       };
 
       // Handle PTY exit
@@ -325,8 +329,20 @@ export class ShellSessionManager {
   async terminateSession(sessionId: string): Promise<{ success: boolean; error?: string }> {
     const session = this.sessions.get(sessionId);
     if (!session) {
-      return { success: false, error: `Session ${sessionId} not found` };
+      // Session not found - this is OK, it means the session already exited naturally
+      // This commonly happens when PTY exits before user clicks close
+      console.log(`Session ${sessionId} already terminated or not found`);
+      return { success: true };
     }
+
+    // Check if already terminating or terminated to prevent double-termination
+    if (session.isTerminating || session.isTerminated) {
+      console.log(`Session ${sessionId} already ${session.isTerminated ? 'terminated' : 'terminating'}`);
+      return { success: true };
+    }
+
+    // Mark as terminating to prevent concurrent termination attempts
+    session.isTerminating = true;
 
     try {
       const pid = session.pty.pid;
@@ -345,6 +361,9 @@ export class ShellSessionManager {
       // killPtyForce waits for the exit event before resolving
       await killPtyForce(session.pty);
 
+      // Mark as terminated
+      session.isTerminated = true;
+
       // Remove from sessions after process has exited
       this.sessions.delete(sessionId);
       console.log(`Successfully terminated session ${sessionId} (PID: ${pid})`);
@@ -353,6 +372,8 @@ export class ShellSessionManager {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
       console.error(`Error terminating session ${sessionId}:`, errorStack || errorMessage);
+      // Reset terminating flag on error so retry is possible
+      session.isTerminating = false;
       return { success: false, error: errorMessage };
     }
   }

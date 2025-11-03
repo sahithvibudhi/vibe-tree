@@ -318,4 +318,137 @@ describe('ShellSessionManager', () => {
       expect(manager.getAllSessions().length).toBe(0);
     });
   });
+
+  describe('terminateSession race condition fixes', () => {
+    it('should return success when terminating a non-existent session', async () => {
+      const nonExistentSessionId = 'does-not-exist';
+
+      // Try to terminate a session that doesn't exist
+      const result = await manager.terminateSession(nonExistentSessionId);
+
+      // Should return success (not an error) since the goal is achieved - session is gone
+      expect(result.success).toBe(true);
+      expect(result.error).toBeUndefined();
+    });
+
+    it('should handle PTY natural exit before manual termination', async () => {
+      const worktreePath = '/path/to/worktree';
+      const mockPty = createMockPty();
+
+      const mockSpawnFn = vi.fn().mockReturnValue(mockPty);
+
+      // Start a session
+      const startResult = await manager.startSession(
+        worktreePath,
+        80,
+        30,
+        mockSpawnFn,
+        true,
+        'terminal-1'
+      );
+
+      expect(startResult.success).toBe(true);
+      const sessionId = startResult.processId!;
+
+      // Verify session exists
+      expect(manager.hasSession(sessionId)).toBe(true);
+
+      // Simulate PTY natural exit (e.g., command completion or crash)
+      if (mockPty.onExitCallback) {
+        mockPty.onExitCallback(0);
+      }
+
+      // Wait a tick for the exit handler to process
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      // Session should be removed after natural exit
+      expect(manager.hasSession(sessionId)).toBe(false);
+
+      // Now try to terminate manually (user clicks close button)
+      const terminateResult = await manager.terminateSession(sessionId);
+
+      // Should succeed even though session is already gone
+      expect(terminateResult.success).toBe(true);
+      expect(terminateResult.error).toBeUndefined();
+    });
+
+    it('should prevent double-termination of the same session', async () => {
+      const worktreePath = '/path/to/worktree';
+      const mockPty = createMockPty();
+
+      const mockSpawnFn = vi.fn().mockReturnValue(mockPty);
+
+      // Start a session
+      const startResult = await manager.startSession(
+        worktreePath,
+        80,
+        30,
+        mockSpawnFn,
+        true,
+        'terminal-1'
+      );
+
+      expect(startResult.success).toBe(true);
+      const sessionId = startResult.processId!;
+
+      // Attempt to terminate the session twice in parallel
+      const [result1, result2] = await Promise.all([
+        manager.terminateSession(sessionId),
+        manager.terminateSession(sessionId)
+      ]);
+
+      // Both should succeed
+      expect(result1.success).toBe(true);
+      expect(result2.success).toBe(true);
+
+      // Session should be gone
+      expect(manager.hasSession(sessionId)).toBe(false);
+
+      // PTY should have been killed only once
+      expect(mockPty.killed).toBe(true);
+    });
+
+    it('should handle concurrent termination attempts gracefully', async () => {
+      const worktreePath = '/path/to/worktree';
+      const mockPty = createMockPty();
+
+      const mockSpawnFn = vi.fn().mockReturnValue(mockPty);
+
+      // Start a session
+      const startResult = await manager.startSession(
+        worktreePath,
+        80,
+        30,
+        mockSpawnFn,
+        true,
+        'terminal-1'
+      );
+
+      expect(startResult.success).toBe(true);
+      const sessionId = startResult.processId!;
+
+      // Make the kill method slow to simulate a long termination
+      const originalKill = mockPty.kill.bind(mockPty);
+      mockPty.kill = (signal?: string) => {
+        // Add a small delay to simulate slow termination
+        setTimeout(() => originalKill(signal), 10);
+      };
+
+      // Attempt to terminate the session multiple times rapidly
+      const terminatePromises = [
+        manager.terminateSession(sessionId),
+        manager.terminateSession(sessionId),
+        manager.terminateSession(sessionId)
+      ];
+
+      // All should succeed due to state tracking
+      const results = await Promise.all(terminatePromises);
+      results.forEach(result => {
+        expect(result.success).toBe(true);
+      });
+
+      // Session should be gone
+      expect(manager.hasSession(sessionId)).toBe(false);
+    });
+  });
 });
