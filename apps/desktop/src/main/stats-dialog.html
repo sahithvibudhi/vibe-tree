@@ -49,6 +49,8 @@
       font-size: 13px;
       flex-shrink: 0;
       display: none;
+      max-height: 150px;
+      overflow-y: auto;
     }
 
     .warning-section.visible {
@@ -104,6 +106,8 @@
     .diagnostics-content {
       display: none;
       margin-top: 8px;
+      max-height: 200px;
+      overflow-y: auto;
     }
 
     .diagnostics-content.visible {
@@ -130,6 +134,8 @@
       font-size: 13px;
       flex-shrink: 0;
       display: none;
+      max-height: 200px;
+      overflow-y: auto;
     }
 
     .error-section.visible {
@@ -203,12 +209,31 @@
       margin-top: 8px;
       font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
       font-size: 11px;
-      max-height: 300px;
+      max-height: 250px;
       overflow-y: auto;
+      overflow-x: hidden;
     }
 
     .child-processes-content.visible {
       display: block;
+    }
+
+    .child-processes-content::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .child-processes-content::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+
+    .child-processes-content::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 4px;
+    }
+
+    .child-processes-content::-webkit-scrollbar-thumb:hover {
+      background: #555;
     }
 
     .process-tree-item {
