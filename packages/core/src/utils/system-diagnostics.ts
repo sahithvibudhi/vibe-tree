@@ -4,6 +4,18 @@ import * as os from 'os';
 
 const execAsync = promisify(exec);
 
+export interface ChildProcessInfo {
+  pid: number;
+  ppid: number;
+  state: string;
+  stateDescription: string;
+  command: string;
+  startTime: string;
+  cpuTime: string;
+  children: ChildProcessInfo[];
+  level: number;
+}
+
 export interface SystemDiagnostics {
   // File descriptor information
   fileDescriptorLimit: {
@@ -15,6 +27,10 @@ export interface SystemDiagnostics {
   // Process information
   processLimit: number | null;
   currentProcessCount: number | null;
+
+  // Child processes
+  childProcesses: ChildProcessInfo[];
+  zombieProcessCount: number;
 
   // System information
   platform: string;
@@ -103,6 +119,131 @@ async function getCurrentProcessCount(): Promise<number | null> {
 }
 
 /**
+ * Get state description from ps state code
+ */
+function getStateDescription(state: string): string {
+  const stateMap: Record<string, string> = {
+    'R': 'Running',
+    'S': 'Sleeping',
+    'I': 'Idle',
+    'T': 'Stopped',
+    'Z': 'Zombie',
+    'D': 'Uninterruptible',
+    'U': 'Uninterruptible'
+  };
+
+  // Handle composite states like 'R+', 'S+', etc.
+  const baseState = state.charAt(0);
+  const description = stateMap[baseState] || 'Unknown';
+
+  // Add additional indicators
+  if (state.includes('+')) {
+    return `${description} (foreground)`;
+  } else if (state.includes('<')) {
+    return `${description} (high priority)`;
+  } else if (state.includes('N')) {
+    return `${description} (low priority)`;
+  }
+
+  return description;
+}
+
+/**
+ * Get all child processes of the current process (recursive) as a tree
+ */
+async function getChildProcesses(): Promise<ChildProcessInfo[]> {
+  try {
+    const currentPid = process.pid;
+
+    if (process.platform === 'darwin' || process.platform === 'linux') {
+      // Get all processes with their parent PIDs
+      // Format: PID PPID STATE STARTED TIME COMMAND
+      const { stdout } = await execAsync(`ps -A -o pid,ppid,state,lstart,time,command | grep -v 'PID' || true`);
+
+      if (!stdout.trim()) {
+        return [];
+      }
+
+      const lines = stdout.trim().split('\n');
+      const allProcesses = new Map<number, ChildProcessInfo>();
+
+      // Parse all processes
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        // Parse the line - format is complex due to LSTART
+        const match = trimmed.match(/^\s*(\d+)\s+(\d+)\s+(\S+)\s+(\w+\s+\w+\s+\d+\s+\d+:\d+:\d+\s+\d+)\s+(\S+)\s+(.+)$/);
+        if (!match) continue;
+
+        const [, pidStr, ppidStr, state, startTime, cpuTime, command] = match;
+        const pid = parseInt(pidStr, 10);
+        const ppid = parseInt(ppidStr, 10);
+
+        allProcesses.set(pid, {
+          pid,
+          ppid,
+          state,
+          stateDescription: getStateDescription(state),
+          command: command.trim(),
+          startTime,
+          cpuTime,
+          children: [],
+          level: 0
+        });
+      }
+
+      // Build tree structure
+      function buildTree(parentPid: number, level: number): ChildProcessInfo[] {
+        const children: ChildProcessInfo[] = [];
+
+        for (const [pid, proc] of allProcesses) {
+          if (proc.ppid === parentPid) {
+            proc.level = level;
+            proc.children = buildTree(pid, level + 1);
+            children.push(proc);
+          }
+        }
+
+        return children;
+      }
+
+      return buildTree(currentPid, 0);
+    }
+
+    return [];
+  } catch (error) {
+    console.error('Error getting child processes:', error);
+    return [];
+  }
+}
+
+/**
+ * Count total processes in tree (including nested children)
+ */
+function countProcessesInTree(processes: ChildProcessInfo[]): number {
+  let count = processes.length;
+  for (const proc of processes) {
+    count += countProcessesInTree(proc.children);
+  }
+  return count;
+}
+
+/**
+ * Count zombie processes in tree
+ */
+function countZombiesInTree(processes: ChildProcessInfo[]): number {
+  let count = 0;
+  for (const proc of processes) {
+    if (proc.state.startsWith('Z')) {
+      count++;
+    }
+    count += countZombiesInTree(proc.children);
+  }
+  return count;
+}
+
+/**
  * Generate warnings based on system diagnostics
  */
 function generateWarnings(diagnostics: SystemDiagnostics): string[] {
@@ -137,6 +278,17 @@ function generateWarnings(diagnostics: SystemDiagnostics): string[] {
     warnings.push(`System memory is critically low: ${memoryUsagePercent.toFixed(1)}% used`);
   }
 
+  // Check for zombie processes
+  if (diagnostics.zombieProcessCount > 0) {
+    warnings.push(`Found ${diagnostics.zombieProcessCount} zombie process${diagnostics.zombieProcessCount > 1 ? 'es' : ''} - these may hold file descriptors`);
+  }
+
+  // Check for high child process count
+  const totalChildren = countProcessesInTree(diagnostics.childProcesses);
+  if (totalChildren > 50) {
+    warnings.push(`High number of child processes: ${totalChildren} - potential process leak`);
+  }
+
   return warnings;
 }
 
@@ -144,18 +296,23 @@ function generateWarnings(diagnostics: SystemDiagnostics): string[] {
  * Collect comprehensive system diagnostics
  */
 export async function getSystemDiagnostics(): Promise<SystemDiagnostics> {
-  const [fdLimits, openFds, processLimit, processCount] = await Promise.all([
+  const [fdLimits, openFds, processLimit, processCount, childProcesses] = await Promise.all([
     getFileDescriptorLimits(),
     getOpenFileDescriptors(),
     getProcessLimit(),
-    getCurrentProcessCount()
+    getCurrentProcessCount(),
+    getChildProcesses()
   ]);
+
+  const zombieCount = countZombiesInTree(childProcesses);
 
   const diagnostics: SystemDiagnostics = {
     fileDescriptorLimit: fdLimits,
     openFileDescriptors: openFds,
     processLimit,
     currentProcessCount: processCount,
+    childProcesses,
+    zombieProcessCount: zombieCount,
     platform: process.platform,
     totalMemory: os.totalmem(),
     freeMemory: os.freemem(),

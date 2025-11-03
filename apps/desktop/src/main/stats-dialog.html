@@ -166,6 +166,91 @@
       word-break: break-all;
     }
 
+    .child-processes-section {
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #f5f5f5;
+      border-radius: 6px;
+      font-size: 13px;
+      flex-shrink: 0;
+      display: none;
+    }
+
+    .child-processes-section.visible {
+      display: block;
+    }
+
+    .child-processes-header {
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .child-processes-header::before {
+      content: '▶ ';
+      display: inline-block;
+      transition: transform 0.2s;
+    }
+
+    .child-processes-header.expanded::before {
+      transform: rotate(90deg);
+    }
+
+    .child-processes-content {
+      display: none;
+      margin-top: 8px;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      font-size: 11px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .child-processes-content.visible {
+      display: block;
+    }
+
+    .process-tree-item {
+      margin: 2px 0;
+      padding: 4px;
+      white-space: nowrap;
+      overflow-x: auto;
+    }
+
+    .process-tree-item:hover {
+      background: #e8e8e8;
+    }
+
+    .process-tree-prefix {
+      color: #999;
+      user-select: none;
+    }
+
+    .process-pid {
+      color: #0066cc;
+      font-weight: 500;
+    }
+
+    .process-state {
+      color: #666;
+      font-weight: 500;
+    }
+
+    .process-state-zombie {
+      color: #c62828;
+      font-weight: 700;
+    }
+
+    .process-command {
+      color: #333;
+    }
+
+    .process-time {
+      color: #888;
+      font-size: 10px;
+    }
+
     .summary-label {
       font-weight: 600;
       color: #555;
@@ -302,6 +387,12 @@
     <div class="diagnostics-content" id="diagnosticsContent"></div>
   </div>
 
+  <!-- Child Processes Section -->
+  <div class="child-processes-section" id="childProcessesSection">
+    <div class="child-processes-header" id="childProcessesHeader">Child Processes</div>
+    <div class="child-processes-content" id="childProcessesContent"></div>
+  </div>
+
   <div class="sessions-header" id="sessionsHeader">Active Sessions:</div>
 
   <div class="sessions-container" id="sessionsContainer">
@@ -313,6 +404,47 @@
   </div>
 
   <script>
+
+    /**
+     * Render process tree recursively
+     */
+    function renderProcessTree(processes, prefix = '', isLast = true) {
+      let html = '';
+
+      processes.forEach((proc, index) => {
+        const isLastChild = index === processes.length - 1;
+        const connector = isLastChild ? '└─' : '├─';
+        const childPrefix = isLastChild ? '  ' : '│ ';
+
+        // Truncate command if too long
+        const maxCommandLength = 80;
+        let command = proc.command;
+        if (command.length > maxCommandLength) {
+          command = command.substring(0, maxCommandLength) + '...';
+        }
+
+        // Highlight zombie processes
+        const stateClass = proc.state.startsWith('Z') ? 'process-state-zombie' : 'process-state';
+        const stateText = proc.state.startsWith('Z') ? `[${proc.state}] ${proc.stateDescription} ⚠️` : `[${proc.state}] ${proc.stateDescription}`;
+
+        html += `
+          <div class="process-tree-item">
+            <span class="process-tree-prefix">${prefix}${connector} </span>
+            <span class="process-pid">PID:${proc.pid}</span>
+            <span class="${stateClass}"> ${stateText}</span>
+            <span class="process-time"> (${proc.cpuTime})</span>
+            <span class="process-command"> ${command}</span>
+          </div>
+        `;
+
+        // Recursively render children
+        if (proc.children && proc.children.length > 0) {
+          html += renderProcessTree(proc.children, prefix + childPrefix, false);
+        }
+      });
+
+      return html;
+    }
 
     function updateStats(stats) {
       document.getElementById('activeCount').textContent = stats.activeProcessCount;
@@ -395,6 +527,33 @@
         `;
       }
 
+      // Update child processes section
+      const childProcessesSection = document.getElementById('childProcessesSection');
+      const childProcessesContent = document.getElementById('childProcessesContent');
+      const childProcessesHeader = document.getElementById('childProcessesHeader');
+
+      if (stats.systemDiagnostics && stats.systemDiagnostics.childProcesses && stats.systemDiagnostics.childProcesses.length > 0) {
+        childProcessesSection.classList.add('visible');
+
+        // Count total processes
+        function countTotal(procs) {
+          let count = procs.length;
+          procs.forEach(p => {
+            if (p.children) count += countTotal(p.children);
+          });
+          return count;
+        }
+
+        const totalCount = countTotal(stats.systemDiagnostics.childProcesses);
+        const zombieCount = stats.systemDiagnostics.zombieProcessCount || 0;
+        const zombieText = zombieCount > 0 ? ` (${zombieCount} zombie${zombieCount > 1 ? 's' : ''})` : '';
+
+        childProcessesHeader.textContent = `Child Processes (${totalCount}${zombieText})`;
+        childProcessesContent.innerHTML = renderProcessTree(stats.systemDiagnostics.childProcesses);
+      } else {
+        childProcessesSection.classList.remove('visible');
+      }
+
       const container = document.getElementById('sessionsContainer');
       const noSessions = document.getElementById('noSessions');
       const header = document.getElementById('sessionsHeader');
@@ -451,6 +610,16 @@
         diagnosticsHeader.addEventListener('click', () => {
           diagnosticsHeader.classList.toggle('expanded');
           diagnosticsContent.classList.toggle('visible');
+        });
+      }
+
+      // Setup child processes toggle
+      const childProcessesHeader = document.getElementById('childProcessesHeader');
+      const childProcessesContent = document.getElementById('childProcessesContent');
+      if (childProcessesHeader && childProcessesContent) {
+        childProcessesHeader.addEventListener('click', () => {
+          childProcessesHeader.classList.toggle('expanded');
+          childProcessesContent.classList.toggle('visible');
         });
       }
 
