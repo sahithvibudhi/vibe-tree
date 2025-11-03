@@ -13,6 +13,7 @@ export * from './utils/shell';
 export * from './utils/git';
 export * from './utils/network';
 export * from './utils/shell-escape';
+export * from './utils/system-diagnostics';
 
 // Version info
 export const VERSION = '0.0.1';

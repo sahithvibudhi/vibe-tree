@@ -40,6 +40,132 @@
       flex-shrink: 0;
     }
 
+    .warning-section {
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 6px;
+      font-size: 13px;
+      flex-shrink: 0;
+      display: none;
+    }
+
+    .warning-section.visible {
+      display: block;
+    }
+
+    .warning-header {
+      font-weight: 600;
+      color: #856404;
+      margin-bottom: 8px;
+    }
+
+    .warning-item {
+      color: #856404;
+      margin: 4px 0;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .warning-item::before {
+      content: '⚠️';
+      position: absolute;
+      left: 0;
+    }
+
+    .diagnostics-section {
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #f5f5f5;
+      border-radius: 6px;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .diagnostics-header {
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .diagnostics-header::before {
+      content: '▶ ';
+      display: inline-block;
+      transition: transform 0.2s;
+    }
+
+    .diagnostics-header.expanded::before {
+      transform: rotate(90deg);
+    }
+
+    .diagnostics-content {
+      display: none;
+      margin-top: 8px;
+    }
+
+    .diagnostics-content.visible {
+      display: block;
+    }
+
+    .diagnostics-item {
+      margin: 4px 0;
+      color: #666;
+      font-size: 12px;
+    }
+
+    .diagnostics-label {
+      font-weight: 500;
+      color: #555;
+    }
+
+    .error-section {
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      border-radius: 6px;
+      font-size: 13px;
+      flex-shrink: 0;
+      display: none;
+    }
+
+    .error-section.visible {
+      display: block;
+    }
+
+    .error-header {
+      font-weight: 600;
+      color: #721c24;
+      margin-bottom: 8px;
+    }
+
+    .error-item {
+      margin: 8px 0;
+      padding: 8px;
+      background: #fff;
+      border-radius: 4px;
+      color: #721c24;
+      font-size: 12px;
+    }
+
+    .error-time {
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .error-code {
+      font-weight: 600;
+      color: #c62828;
+    }
+
+    .error-path {
+      color: #666;
+      word-break: break-all;
+    }
+
     .summary-label {
       font-weight: 600;
       color: #555;
@@ -158,6 +284,24 @@
     <span class="summary-value" id="activeCount">0</span>
   </div>
 
+  <!-- Warnings Section -->
+  <div class="warning-section" id="warningSection">
+    <div class="warning-header">⚠️ System Warnings</div>
+    <div id="warningsList"></div>
+  </div>
+
+  <!-- Recent Spawn Errors Section -->
+  <div class="error-section" id="errorSection">
+    <div class="error-header">Recent Spawn Errors</div>
+    <div id="errorsList"></div>
+  </div>
+
+  <!-- System Diagnostics Section -->
+  <div class="diagnostics-section">
+    <div class="diagnostics-header" id="diagnosticsHeader">System Diagnostics</div>
+    <div class="diagnostics-content" id="diagnosticsContent"></div>
+  </div>
+
   <div class="sessions-header" id="sessionsHeader">Active Sessions:</div>
 
   <div class="sessions-container" id="sessionsContainer">
@@ -172,6 +316,84 @@
 
     function updateStats(stats) {
       document.getElementById('activeCount').textContent = stats.activeProcessCount;
+
+      // Update warnings section
+      const warningSection = document.getElementById('warningSection');
+      const warningsList = document.getElementById('warningsList');
+      if (stats.systemDiagnostics && stats.systemDiagnostics.warnings && stats.systemDiagnostics.warnings.length > 0) {
+        warningSection.classList.add('visible');
+        warningsList.innerHTML = stats.systemDiagnostics.warnings.map(w =>
+          `<div class="warning-item">${w}</div>`
+        ).join('');
+      } else {
+        warningSection.classList.remove('visible');
+      }
+
+      // Update spawn errors section
+      const errorSection = document.getElementById('errorSection');
+      const errorsList = document.getElementById('errorsList');
+      if (stats.spawnErrors && stats.spawnErrors.length > 0) {
+        errorSection.classList.add('visible');
+        errorsList.innerHTML = stats.spawnErrors.map(e => {
+          const time = new Date(e.timestamp).toLocaleString();
+          const errorCodeText = e.errorCode ? ` <span class="error-code">[${e.errorCode}]</span>` : '';
+          return `
+            <div class="error-item">
+              <div class="error-time">${time}</div>
+              <div>${e.error}${errorCodeText}</div>
+              <div class="error-path">${e.worktreePath}</div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        errorSection.classList.remove('visible');
+      }
+
+      // Update system diagnostics section
+      if (stats.systemDiagnostics) {
+        const diag = stats.systemDiagnostics;
+        const diagContent = document.getElementById('diagnosticsContent');
+
+        const fdDisplay = diag.openFileDescriptors !== null && diag.fileDescriptorLimit.soft !== null
+          ? `${diag.openFileDescriptors} / ${diag.fileDescriptorLimit.soft}`
+          : diag.openFileDescriptors !== null
+            ? `${diag.openFileDescriptors}`
+            : 'Unknown';
+
+        const processDisplay = diag.currentProcessCount !== null && diag.processLimit !== null
+          ? `${diag.currentProcessCount} / ${diag.processLimit}`
+          : diag.currentProcessCount !== null
+            ? `${diag.currentProcessCount}`
+            : 'Unknown';
+
+        const memUsage = ((1 - diag.freeMemory / diag.totalMemory) * 100).toFixed(1);
+
+        diagContent.innerHTML = `
+          <div class="diagnostics-item">
+            <span class="diagnostics-label">Platform:</span> ${diag.platform}
+          </div>
+          <div class="diagnostics-item">
+            <span class="diagnostics-label">File Descriptors:</span>
+            <div style="margin-left: 16px;">
+              ${fdDisplay}
+            </div>
+          </div>
+          <div class="diagnostics-item">
+            <span class="diagnostics-label">Processes:</span>
+            <div style="margin-left: 16px;">
+              ${processDisplay}
+            </div>
+          </div>
+          <div class="diagnostics-item">
+            <span class="diagnostics-label">Memory:</span>
+            <div style="margin-left: 16px;">
+              Total: ${(diag.totalMemory / (1024 ** 3)).toFixed(2)} GB<br>
+              Free: ${(diag.freeMemory / (1024 ** 3)).toFixed(2)} GB<br>
+              Used: ${memUsage}%
+            </div>
+          </div>
+        `;
+      }
 
       const container = document.getElementById('sessionsContainer');
       const noSessions = document.getElementById('noSessions');
@@ -220,6 +442,16 @@
         }
       } catch (error) {
         console.error('Failed to load stats:', error);
+      }
+
+      // Setup diagnostics toggle
+      const diagnosticsHeader = document.getElementById('diagnosticsHeader');
+      const diagnosticsContent = document.getElementById('diagnosticsContent');
+      if (diagnosticsHeader && diagnosticsContent) {
+        diagnosticsHeader.addEventListener('click', () => {
+          diagnosticsHeader.classList.toggle('expanded');
+          diagnosticsContent.classList.toggle('visible');
+        });
       }
 
       // Setup close button handler

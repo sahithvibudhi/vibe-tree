@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
 import * as pty from 'node-pty';
-import { ShellSessionManager } from '@vibetree/core';
+import { ShellSessionManager, getSystemDiagnostics } from '@vibetree/core';
 import { terminalSettingsManager } from './terminal-settings';
 
 /**
@@ -128,6 +128,9 @@ class DesktopShellManager {
 
     ipcMain.handle('shell:get-stats', async () => {
       const sessions = this.sessionManager.getAllSessions();
+      const spawnErrors = this.sessionManager.getSpawnErrors();
+      const systemDiagnostics = await getSystemDiagnostics();
+
       return {
         activeProcessCount: sessions.length,
         sessions: sessions.map(s => ({
@@ -135,14 +138,24 @@ class DesktopShellManager {
           worktreePath: s.worktreePath,
           createdAt: s.createdAt.toISOString(),
           lastActivity: s.lastActivity.toISOString()
-        }))
+        })),
+        spawnErrors: spawnErrors.map(e => ({
+          timestamp: e.timestamp.toISOString(),
+          worktreePath: e.worktreePath,
+          error: e.error,
+          errorCode: e.errorCode
+        })),
+        systemDiagnostics
       };
     });
   }
 
   // Get process statistics
-  public getStats() {
+  public async getStats() {
     const sessions = this.sessionManager.getAllSessions();
+    const spawnErrors = this.sessionManager.getSpawnErrors();
+    const systemDiagnostics = await getSystemDiagnostics();
+
     return {
       activeProcessCount: sessions.length,
       sessions: sessions.map(s => ({
@@ -150,7 +163,14 @@ class DesktopShellManager {
         worktreePath: s.worktreePath,
         createdAt: s.createdAt.toISOString(),
         lastActivity: s.lastActivity.toISOString()
-      }))
+      })),
+      spawnErrors: spawnErrors.map(e => ({
+        timestamp: e.timestamp.toISOString(),
+        worktreePath: e.worktreePath,
+        error: e.error,
+        errorCode: e.errorCode
+      })),
+      systemDiagnostics
     };
   }
 

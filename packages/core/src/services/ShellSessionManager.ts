@@ -30,6 +30,13 @@ interface ShellSession {
   maxBufferSize: number; // Maximum buffer size in characters
 }
 
+interface SpawnError {
+  timestamp: Date;
+  worktreePath: string;
+  error: string;
+  errorCode?: string;
+}
+
 /**
  * Unified shell session manager for all platforms
  * Manages PTY sessions with shared state across desktop, server, and web
@@ -39,6 +46,8 @@ export class ShellSessionManager {
   private sessions: Map<string, ShellSession> = new Map();
   private sessionTimeoutMs = 30 * 60 * 1000; // 30 minutes
   private cleanupInterval: NodeJS.Timeout | null = null;
+  private spawnErrors: SpawnError[] = []; // Track recent spawn errors
+  private maxSpawnErrors = 10; // Keep last 10 errors
 
   private constructor() {
     // Cleanup timer disabled - keep sessions alive for Claude feedback
@@ -53,6 +62,38 @@ export class ShellSessionManager {
       ShellSessionManager.instance = new ShellSessionManager();
     }
     return ShellSessionManager.instance;
+  }
+
+  /**
+   * Track a spawn error for diagnostics
+   */
+  private trackSpawnError(worktreePath: string, errorMessage: string, error: unknown): void {
+    // Extract error code if available (e.g., EMFILE, ENFILE, EAGAIN)
+    let errorCode: string | undefined;
+    if (error instanceof Error) {
+      // Check if error has a code property (common in Node.js errors)
+      const nodeError = error as NodeJS.ErrnoException;
+      errorCode = nodeError.code;
+    }
+
+    this.spawnErrors.push({
+      timestamp: new Date(),
+      worktreePath,
+      error: errorMessage,
+      errorCode
+    });
+
+    // Keep only the last N errors
+    if (this.spawnErrors.length > this.maxSpawnErrors) {
+      this.spawnErrors.shift();
+    }
+  }
+
+  /**
+   * Get recent spawn errors
+   */
+  getSpawnErrors(): SpawnError[] {
+    return [...this.spawnErrors];
   }
 
   /**
@@ -145,6 +186,10 @@ export class ShellSessionManager {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to start shell';
       console.error(`Failed to start PTY session: ${errorMessage}`);
+
+      // Track spawn error for diagnostics
+      this.trackSpawnError(worktreePath, errorMessage, error);
+
       return {
         success: false,
         error: errorMessage
