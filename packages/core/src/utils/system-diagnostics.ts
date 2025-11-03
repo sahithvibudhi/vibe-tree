@@ -12,6 +12,8 @@ export interface ChildProcessInfo {
   command: string;
   startTime: string;
   cpuTime: string;
+  memoryRSS: number; // Resident Set Size in KB
+  memoryVSZ: number; // Virtual Size in KB
   children: ChildProcessInfo[];
   level: number;
 }
@@ -31,6 +33,14 @@ export interface SystemDiagnostics {
   // Child processes
   childProcesses: ChildProcessInfo[];
   zombieProcessCount: number;
+
+  // Memory information for process tree
+  processTreeMemory: {
+    currentProcessRSS: number; // Current process RSS in KB
+    currentProcessVSZ: number; // Current process VSZ in KB
+    totalTreeRSS: number; // Total RSS of current process + all children in KB
+    totalTreeVSZ: number; // Total VSZ of current process + all children in KB
+  };
 
   // System information
   platform: string;
@@ -156,9 +166,10 @@ async function getChildProcesses(): Promise<ChildProcessInfo[]> {
     const currentPid = process.pid;
 
     if (process.platform === 'darwin' || process.platform === 'linux') {
-      // Get all processes with their parent PIDs
-      // Format: PID PPID STATE STARTED TIME COMMAND
-      const { stdout } = await execAsync(`ps -A -o pid,ppid,state,lstart,time,command | grep -v 'PID' || true`);
+      // Get all processes with their parent PIDs and memory info
+      // Format: PID PPID RSS VSZ STATE STARTED TIME COMMAND
+      // RSS and VSZ are in KB
+      const { stdout } = await execAsync(`ps -A -o pid,ppid,rss,vsz,state,lstart,time,command | grep -v 'PID' || true`);
 
       if (!stdout.trim()) {
         return [];
@@ -173,12 +184,15 @@ async function getChildProcesses(): Promise<ChildProcessInfo[]> {
         if (!trimmed) continue;
 
         // Parse the line - format is complex due to LSTART
-        const match = trimmed.match(/^\s*(\d+)\s+(\d+)\s+(\S+)\s+(\w+\s+\w+\s+\d+\s+\d+:\d+:\d+\s+\d+)\s+(\S+)\s+(.+)$/);
+        // PID PPID RSS VSZ STATE LSTART(5 fields) TIME COMMAND
+        const match = trimmed.match(/^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(\w+\s+\w+\s+\d+\s+\d+:\d+:\d+\s+\d+)\s+(\S+)\s+(.+)$/);
         if (!match) continue;
 
-        const [, pidStr, ppidStr, state, startTime, cpuTime, command] = match;
+        const [, pidStr, ppidStr, rssStr, vszStr, state, startTime, cpuTime, command] = match;
         const pid = parseInt(pidStr, 10);
         const ppid = parseInt(ppidStr, 10);
+        const rss = parseInt(rssStr, 10);
+        const vsz = parseInt(vszStr, 10);
 
         allProcesses.set(pid, {
           pid,
@@ -188,6 +202,8 @@ async function getChildProcesses(): Promise<ChildProcessInfo[]> {
           command: command.trim(),
           startTime,
           cpuTime,
+          memoryRSS: rss,
+          memoryVSZ: vsz,
           children: [],
           level: 0
         });
@@ -219,6 +235,29 @@ async function getChildProcesses(): Promise<ChildProcessInfo[]> {
 }
 
 /**
+ * Get memory info for current process
+ */
+async function getCurrentProcessMemory(): Promise<{ rss: number; vsz: number } | null> {
+  try {
+    const currentPid = process.pid;
+
+    if (process.platform === 'darwin' || process.platform === 'linux') {
+      const { stdout } = await execAsync(`ps -p ${currentPid} -o rss,vsz | tail -1`);
+      const parts = stdout.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        return {
+          rss: parseInt(parts[0], 10),
+          vsz: parseInt(parts[1], 10)
+        };
+      }
+    }
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
  * Count total processes in tree (including nested children)
  */
 function countProcessesInTree(processes: ChildProcessInfo[]): number {
@@ -241,6 +280,40 @@ function countZombiesInTree(processes: ChildProcessInfo[]): number {
     count += countZombiesInTree(proc.children);
   }
   return count;
+}
+
+/**
+ * Calculate total memory (RSS and VSZ) for process tree
+ */
+function calculateTreeMemory(processes: ChildProcessInfo[]): { rss: number; vsz: number } {
+  let totalRSS = 0;
+  let totalVSZ = 0;
+
+  for (const proc of processes) {
+    totalRSS += proc.memoryRSS;
+    totalVSZ += proc.memoryVSZ;
+
+    if (proc.children.length > 0) {
+      const childMemory = calculateTreeMemory(proc.children);
+      totalRSS += childMemory.rss;
+      totalVSZ += childMemory.vsz;
+    }
+  }
+
+  return { rss: totalRSS, vsz: totalVSZ };
+}
+
+/**
+ * Format memory size in KB to human-readable format
+ */
+export function formatMemorySize(kb: number): string {
+  if (kb < 1024) {
+    return `${kb.toFixed(0)} KB`;
+  } else if (kb < 1024 * 1024) {
+    return `${(kb / 1024).toFixed(1)} MB`;
+  } else {
+    return `${(kb / (1024 * 1024)).toFixed(2)} GB`;
+  }
 }
 
 /**
@@ -296,15 +369,23 @@ function generateWarnings(diagnostics: SystemDiagnostics): string[] {
  * Collect comprehensive system diagnostics
  */
 export async function getSystemDiagnostics(): Promise<SystemDiagnostics> {
-  const [fdLimits, openFds, processLimit, processCount, childProcesses] = await Promise.all([
+  const [fdLimits, openFds, processLimit, processCount, childProcesses, currentProcessMemory] = await Promise.all([
     getFileDescriptorLimits(),
     getOpenFileDescriptors(),
     getProcessLimit(),
     getCurrentProcessCount(),
-    getChildProcesses()
+    getChildProcesses(),
+    getCurrentProcessMemory()
   ]);
 
   const zombieCount = countZombiesInTree(childProcesses);
+  const childrenMemory = calculateTreeMemory(childProcesses);
+
+  // Calculate total tree memory (current process + all children)
+  const currentRSS = currentProcessMemory?.rss || 0;
+  const currentVSZ = currentProcessMemory?.vsz || 0;
+  const totalTreeRSS = currentRSS + childrenMemory.rss;
+  const totalTreeVSZ = currentVSZ + childrenMemory.vsz;
 
   const diagnostics: SystemDiagnostics = {
     fileDescriptorLimit: fdLimits,
@@ -313,6 +394,12 @@ export async function getSystemDiagnostics(): Promise<SystemDiagnostics> {
     currentProcessCount: processCount,
     childProcesses,
     zombieProcessCount: zombieCount,
+    processTreeMemory: {
+      currentProcessRSS: currentRSS,
+      currentProcessVSZ: currentVSZ,
+      totalTreeRSS: totalTreeRSS,
+      totalTreeVSZ: totalTreeVSZ
+    },
     platform: process.platform,
     totalMemory: os.totalmem(),
     freeMemory: os.freemem(),

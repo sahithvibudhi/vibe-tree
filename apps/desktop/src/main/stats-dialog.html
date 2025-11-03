@@ -406,6 +406,19 @@
   <script>
 
     /**
+     * Format memory size in KB to human-readable format
+     */
+    function formatMemory(kb) {
+      if (kb < 1024) {
+        return kb.toFixed(0) + ' KB';
+      } else if (kb < 1024 * 1024) {
+        return (kb / 1024).toFixed(1) + ' MB';
+      } else {
+        return (kb / (1024 * 1024)).toFixed(2) + ' GB';
+      }
+    }
+
+    /**
      * Render process tree recursively
      */
     function renderProcessTree(processes, prefix = '', isLast = true) {
@@ -417,7 +430,7 @@
         const childPrefix = isLastChild ? '  ' : '│ ';
 
         // Truncate command if too long
-        const maxCommandLength = 80;
+        const maxCommandLength = 60;
         let command = proc.command;
         if (command.length > maxCommandLength) {
           command = command.substring(0, maxCommandLength) + '...';
@@ -427,12 +440,16 @@
         const stateClass = proc.state.startsWith('Z') ? 'process-state-zombie' : 'process-state';
         const stateText = proc.state.startsWith('Z') ? `[${proc.state}] ${proc.stateDescription} ⚠️` : `[${proc.state}] ${proc.stateDescription}`;
 
+        // Format memory
+        const memoryText = formatMemory(proc.memoryRSS);
+
         html += `
           <div class="process-tree-item">
             <span class="process-tree-prefix">${prefix}${connector} </span>
             <span class="process-pid">PID:${proc.pid}</span>
             <span class="${stateClass}"> ${stateText}</span>
-            <span class="process-time"> (${proc.cpuTime})</span>
+            <span class="process-time"> (CPU:${proc.cpuTime})</span>
+            <span class="process-time"> [MEM:${memoryText}]</span>
             <span class="process-command"> ${command}</span>
           </div>
         `;
@@ -500,6 +517,18 @@
 
         const memUsage = ((1 - diag.freeMemory / diag.totalMemory) * 100).toFixed(1);
 
+        const processTreeMemDisplay = diag.processTreeMemory
+          ? `
+            <div class="diagnostics-item">
+              <span class="diagnostics-label">Process Tree Memory:</span>
+              <div style="margin-left: 16px;">
+                Current Process: ${formatMemory(diag.processTreeMemory.currentProcessRSS)}<br>
+                Total (with children): ${formatMemory(diag.processTreeMemory.totalTreeRSS)}
+              </div>
+            </div>
+          `
+          : '';
+
         diagContent.innerHTML = `
           <div class="diagnostics-item">
             <span class="diagnostics-label">Platform:</span> ${diag.platform}
@@ -516,8 +545,9 @@
               ${processDisplay}
             </div>
           </div>
+          ${processTreeMemDisplay}
           <div class="diagnostics-item">
-            <span class="diagnostics-label">Memory:</span>
+            <span class="diagnostics-label">System Memory:</span>
             <div style="margin-left: 16px;">
               Total: ${(diag.totalMemory / (1024 ** 3)).toFixed(2)} GB<br>
               Free: ${(diag.freeMemory / (1024 ** 3)).toFixed(2)} GB<br>
@@ -548,7 +578,20 @@
         const zombieCount = stats.systemDiagnostics.zombieProcessCount || 0;
         const zombieText = zombieCount > 0 ? ` (${zombieCount} zombie${zombieCount > 1 ? 's' : ''})` : '';
 
-        childProcessesHeader.textContent = `Child Processes (${totalCount}${zombieText})`;
+        // Calculate total memory of children (excluding current process)
+        function calculateMemory(procs) {
+          let total = 0;
+          procs.forEach(p => {
+            total += p.memoryRSS;
+            if (p.children) total += calculateMemory(p.children);
+          });
+          return total;
+        }
+
+        const childrenMemory = calculateMemory(stats.systemDiagnostics.childProcesses);
+        const memoryText = childrenMemory > 0 ? ` - ${formatMemory(childrenMemory)}` : '';
+
+        childProcessesHeader.textContent = `Child Processes (${totalCount}${zombieText}${memoryText})`;
         childProcessesContent.innerHTML = renderProcessTree(stats.systemDiagnostics.childProcesses);
       } else {
         childProcessesSection.classList.remove('visible');
