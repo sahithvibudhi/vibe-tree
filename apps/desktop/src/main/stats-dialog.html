@@ -31,32 +31,6 @@
       flex-shrink: 0;
     }
 
-    .content-wrapper {
-      flex: 1;
-      overflow-y: auto;
-      overflow-x: hidden;
-      min-height: 0;
-      margin-bottom: 16px;
-    }
-
-    .content-wrapper::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    .content-wrapper::-webkit-scrollbar-track {
-      background: #f1f1f1;
-      border-radius: 4px;
-    }
-
-    .content-wrapper::-webkit-scrollbar-thumb {
-      background: #888;
-      border-radius: 4px;
-    }
-
-    .content-wrapper::-webkit-scrollbar-thumb:hover {
-      background: #555;
-    }
-
     .summary {
       margin-bottom: 16px;
       padding: 12px;
@@ -66,6 +40,76 @@
       flex-shrink: 0;
     }
 
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+      border-bottom: 2px solid #e0e0e0;
+      flex-shrink: 0;
+    }
+
+    .tab-button {
+      padding: 10px 20px;
+      background: transparent;
+      color: #666;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-radius: 0;
+    }
+
+    .tab-button:hover {
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    .tab-button.active {
+      background: transparent;
+      color: #007aff;
+      border-bottom-color: #007aff;
+    }
+
+    .tab-content-wrapper {
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
+      position: relative;
+    }
+
+    .tab-panel {
+      display: none;
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 8px;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .tab-panel::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .tab-panel::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+
+    .tab-panel::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 4px;
+    }
+
+    .tab-panel::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+
     .warning-section {
       margin-bottom: 16px;
       padding: 12px;
@@ -73,14 +117,10 @@
       border: 1px solid #ffc107;
       border-radius: 6px;
       font-size: 13px;
-      flex-shrink: 0;
-      display: none;
-      max-height: 150px;
-      overflow-y: auto;
     }
 
-    .warning-section.visible {
-      display: block;
+    .warning-section.hidden {
+      display: none;
     }
 
     .warning-header {
@@ -108,36 +148,16 @@
       background: #f5f5f5;
       border-radius: 6px;
       font-size: 13px;
-      flex-shrink: 0;
     }
 
     .diagnostics-header {
       font-weight: 600;
       color: #555;
       margin-bottom: 8px;
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .diagnostics-header::before {
-      content: '▶ ';
-      display: inline-block;
-      transition: transform 0.2s;
-    }
-
-    .diagnostics-header.expanded::before {
-      transform: rotate(90deg);
     }
 
     .diagnostics-content {
-      display: none;
       margin-top: 8px;
-      max-height: 200px;
-      overflow-y: auto;
-    }
-
-    .diagnostics-content.visible {
-      display: block;
     }
 
     .diagnostics-item {
@@ -158,14 +178,10 @@
       border: 1px solid #f5c6cb;
       border-radius: 6px;
       font-size: 13px;
-      flex-shrink: 0;
-      display: none;
-      max-height: 200px;
-      overflow-y: auto;
     }
 
-    .error-section.visible {
-      display: block;
+    .error-section.hidden {
+      display: none;
     }
 
     .error-header {
@@ -198,50 +214,25 @@
       word-break: break-all;
     }
 
-    .child-processes-section {
-      margin-bottom: 16px;
-      padding: 12px;
-      background: #f5f5f5;
-      border-radius: 6px;
-      font-size: 13px;
-      flex-shrink: 0;
-      display: none;
-    }
-
-    .child-processes-section.visible {
-      display: block;
-    }
-
     .child-processes-header {
       font-weight: 600;
       color: #555;
-      margin-bottom: 8px;
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .child-processes-header::before {
-      content: '▶ ';
-      display: inline-block;
-      transition: transform 0.2s;
-    }
-
-    .child-processes-header.expanded::before {
-      transform: rotate(90deg);
+      margin-bottom: 12px;
+      font-size: 14px;
     }
 
     .child-processes-content {
-      display: none;
       margin-top: 8px;
       font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
       font-size: 11px;
-      max-height: 250px;
-      overflow-y: auto;
       overflow-x: auto;
     }
 
-    .child-processes-content.visible {
-      display: block;
+    .no-child-processes {
+      text-align: center;
+      color: #999;
+      padding: 20px;
+      font-style: italic;
     }
 
     .child-processes-content::-webkit-scrollbar {
@@ -318,34 +309,10 @@
       font-weight: 600;
       margin-bottom: 12px;
       color: #555;
-      flex-shrink: 0;
     }
 
     .sessions-container {
-      overflow-y: auto;
       overflow-x: hidden;
-      padding-right: 8px;
-      margin-bottom: 16px;
-      min-height: 0;
-      max-height: 300px;
-    }
-
-    .sessions-container::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    .sessions-container::-webkit-scrollbar-track {
-      background: #f1f1f1;
-      border-radius: 4px;
-    }
-
-    .sessions-container::-webkit-scrollbar-thumb {
-      background: #888;
-      border-radius: 4px;
-    }
-
-    .sessions-container::-webkit-scrollbar-thumb:hover {
-      background: #555;
     }
 
     .session-item {
@@ -415,40 +382,53 @@
 <body>
   <h1>Process Statistics</h1>
 
-  <div class="content-wrapper">
-    <div class="summary">
-      <span class="summary-label">Active PTY Processes:</span>
-      <span class="summary-value" id="activeCount">0</span>
+  <div class="summary">
+    <span class="summary-label">Active PTY Processes:</span>
+    <span class="summary-value" id="activeCount">0</span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-button active" data-tab="system">System Diagnostics</button>
+    <button class="tab-button" data-tab="processes">Child Processes</button>
+    <button class="tab-button" data-tab="sessions">Active Sessions</button>
+  </div>
+
+  <div class="tab-content-wrapper">
+    <!-- System Diagnostics Tab -->
+    <div class="tab-panel active" id="tab-system">
+      <!-- Warnings Section -->
+      <div class="warning-section hidden" id="warningSection">
+        <div class="warning-header">⚠️ System Warnings</div>
+        <div id="warningsList"></div>
+      </div>
+
+      <!-- Recent Spawn Errors Section -->
+      <div class="error-section hidden" id="errorSection">
+        <div class="error-header">Recent Spawn Errors</div>
+        <div id="errorsList"></div>
+      </div>
+
+      <!-- System Diagnostics Section -->
+      <div class="diagnostics-section">
+        <div class="diagnostics-header">System Diagnostics</div>
+        <div class="diagnostics-content" id="diagnosticsContent"></div>
+      </div>
     </div>
 
-    <!-- Warnings Section -->
-    <div class="warning-section" id="warningSection">
-      <div class="warning-header">⚠️ System Warnings</div>
-      <div id="warningsList"></div>
-    </div>
-
-    <!-- Recent Spawn Errors Section -->
-    <div class="error-section" id="errorSection">
-      <div class="error-header">Recent Spawn Errors</div>
-      <div id="errorsList"></div>
-    </div>
-
-    <!-- System Diagnostics Section -->
-    <div class="diagnostics-section">
-      <div class="diagnostics-header" id="diagnosticsHeader">System Diagnostics</div>
-      <div class="diagnostics-content" id="diagnosticsContent"></div>
-    </div>
-
-    <!-- Child Processes Section -->
-    <div class="child-processes-section" id="childProcessesSection">
+    <!-- Child Processes Tab -->
+    <div class="tab-panel" id="tab-processes">
       <div class="child-processes-header" id="childProcessesHeader">Child Processes</div>
-      <div class="child-processes-content" id="childProcessesContent"></div>
+      <div class="child-processes-content" id="childProcessesContent">
+        <div class="no-child-processes">No child processes.</div>
+      </div>
     </div>
 
-    <div class="sessions-header" id="sessionsHeader">Active Sessions:</div>
-
-    <div class="sessions-container" id="sessionsContainer">
-      <div class="no-sessions" id="noSessions">No active sessions.</div>
+    <!-- Active Sessions Tab -->
+    <div class="tab-panel" id="tab-sessions">
+      <div class="sessions-header" id="sessionsHeader">Active Sessions</div>
+      <div class="sessions-container" id="sessionsContainer">
+        <div class="no-sessions" id="noSessions">No active sessions.</div>
+      </div>
     </div>
   </div>
 
@@ -516,19 +496,19 @@
       const warningSection = document.getElementById('warningSection');
       const warningsList = document.getElementById('warningsList');
       if (stats.systemDiagnostics && stats.systemDiagnostics.warnings && stats.systemDiagnostics.warnings.length > 0) {
-        warningSection.classList.add('visible');
+        warningSection.classList.remove('hidden');
         warningsList.innerHTML = stats.systemDiagnostics.warnings.map(w =>
           `<div class="warning-item">${w}</div>`
         ).join('');
       } else {
-        warningSection.classList.remove('visible');
+        warningSection.classList.add('hidden');
       }
 
       // Update spawn errors section
       const errorSection = document.getElementById('errorSection');
       const errorsList = document.getElementById('errorsList');
       if (stats.spawnErrors && stats.spawnErrors.length > 0) {
-        errorSection.classList.add('visible');
+        errorSection.classList.remove('hidden');
         errorsList.innerHTML = stats.spawnErrors.map(e => {
           const time = new Date(e.timestamp).toLocaleString();
           const errorCodeText = e.errorCode ? ` <span class="error-code">[${e.errorCode}]</span>` : '';
@@ -541,7 +521,7 @@
           `;
         }).join('');
       } else {
-        errorSection.classList.remove('visible');
+        errorSection.classList.add('hidden');
       }
 
       // Update system diagnostics section
@@ -604,13 +584,10 @@
       }
 
       // Update child processes section
-      const childProcessesSection = document.getElementById('childProcessesSection');
       const childProcessesContent = document.getElementById('childProcessesContent');
       const childProcessesHeader = document.getElementById('childProcessesHeader');
 
       if (stats.systemDiagnostics && stats.systemDiagnostics.childProcesses && stats.systemDiagnostics.childProcesses.length > 0) {
-        childProcessesSection.classList.add('visible');
-
         // Count total processes
         function countTotal(procs) {
           let count = procs.length;
@@ -640,7 +617,8 @@
         childProcessesHeader.textContent = `Child Processes (${totalCount}${zombieText}${memoryText})`;
         childProcessesContent.innerHTML = renderProcessTree(stats.systemDiagnostics.childProcesses);
       } else {
-        childProcessesSection.classList.remove('visible');
+        childProcessesHeader.textContent = 'Child Processes';
+        childProcessesContent.innerHTML = '<div class="no-child-processes">No child processes.</div>';
       }
 
       const container = document.getElementById('sessionsContainer');
@@ -692,25 +670,23 @@
         console.error('Failed to load stats:', error);
       }
 
-      // Setup diagnostics toggle
-      const diagnosticsHeader = document.getElementById('diagnosticsHeader');
-      const diagnosticsContent = document.getElementById('diagnosticsContent');
-      if (diagnosticsHeader && diagnosticsContent) {
-        diagnosticsHeader.addEventListener('click', () => {
-          diagnosticsHeader.classList.toggle('expanded');
-          diagnosticsContent.classList.toggle('visible');
-        });
-      }
+      // Setup tab switching
+      const tabButtons = document.querySelectorAll('.tab-button');
+      const tabPanels = document.querySelectorAll('.tab-panel');
 
-      // Setup child processes toggle
-      const childProcessesHeader = document.getElementById('childProcessesHeader');
-      const childProcessesContent = document.getElementById('childProcessesContent');
-      if (childProcessesHeader && childProcessesContent) {
-        childProcessesHeader.addEventListener('click', () => {
-          childProcessesHeader.classList.toggle('expanded');
-          childProcessesContent.classList.toggle('visible');
+      tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          const targetTab = button.getAttribute('data-tab');
+
+          // Remove active class from all buttons and panels
+          tabButtons.forEach(btn => btn.classList.remove('active'));
+          tabPanels.forEach(panel => panel.classList.remove('active'));
+
+          // Add active class to clicked button and corresponding panel
+          button.classList.add('active');
+          document.getElementById(`tab-${targetTab}`).classList.add('active');
         });
-      }
+      });
 
       // Setup close button handler
       const closeButton = document.getElementById('closeButton');
