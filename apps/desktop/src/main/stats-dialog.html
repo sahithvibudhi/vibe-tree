@@ -31,6 +31,32 @@
       flex-shrink: 0;
     }
 
+    .content-wrapper {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      min-height: 0;
+      margin-bottom: 16px;
+    }
+
+    .content-wrapper::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .content-wrapper::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+
+    .content-wrapper::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 4px;
+    }
+
+    .content-wrapper::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+
     .summary {
       margin-bottom: 16px;
       padding: 12px;
@@ -296,13 +322,12 @@
     }
 
     .sessions-container {
-      flex: 1;
       overflow-y: auto;
       overflow-x: hidden;
       padding-right: 8px;
       margin-bottom: 16px;
       min-height: 0;
-      max-height: 400px;
+      max-height: 300px;
     }
 
     .sessions-container::-webkit-scrollbar {
@@ -363,6 +388,7 @@
       padding-top: 12px;
       border-top: 1px solid #e0e0e0;
       flex-shrink: 0;
+      background: #ffffff;
     }
 
     button {
@@ -389,39 +415,41 @@
 <body>
   <h1>Process Statistics</h1>
 
-  <div class="summary">
-    <span class="summary-label">Active PTY Processes:</span>
-    <span class="summary-value" id="activeCount">0</span>
-  </div>
+  <div class="content-wrapper">
+    <div class="summary">
+      <span class="summary-label">Active PTY Processes:</span>
+      <span class="summary-value" id="activeCount">0</span>
+    </div>
 
-  <!-- Warnings Section -->
-  <div class="warning-section" id="warningSection">
-    <div class="warning-header">⚠️ System Warnings</div>
-    <div id="warningsList"></div>
-  </div>
+    <!-- Warnings Section -->
+    <div class="warning-section" id="warningSection">
+      <div class="warning-header">⚠️ System Warnings</div>
+      <div id="warningsList"></div>
+    </div>
 
-  <!-- Recent Spawn Errors Section -->
-  <div class="error-section" id="errorSection">
-    <div class="error-header">Recent Spawn Errors</div>
-    <div id="errorsList"></div>
-  </div>
+    <!-- Recent Spawn Errors Section -->
+    <div class="error-section" id="errorSection">
+      <div class="error-header">Recent Spawn Errors</div>
+      <div id="errorsList"></div>
+    </div>
 
-  <!-- System Diagnostics Section -->
-  <div class="diagnostics-section">
-    <div class="diagnostics-header" id="diagnosticsHeader">System Diagnostics</div>
-    <div class="diagnostics-content" id="diagnosticsContent"></div>
-  </div>
+    <!-- System Diagnostics Section -->
+    <div class="diagnostics-section">
+      <div class="diagnostics-header" id="diagnosticsHeader">System Diagnostics</div>
+      <div class="diagnostics-content" id="diagnosticsContent"></div>
+    </div>
 
-  <!-- Child Processes Section -->
-  <div class="child-processes-section" id="childProcessesSection">
-    <div class="child-processes-header" id="childProcessesHeader">Child Processes</div>
-    <div class="child-processes-content" id="childProcessesContent"></div>
-  </div>
+    <!-- Child Processes Section -->
+    <div class="child-processes-section" id="childProcessesSection">
+      <div class="child-processes-header" id="childProcessesHeader">Child Processes</div>
+      <div class="child-processes-content" id="childProcessesContent"></div>
+    </div>
 
-  <div class="sessions-header" id="sessionsHeader">Active Sessions:</div>
+    <div class="sessions-header" id="sessionsHeader">Active Sessions:</div>
 
-  <div class="sessions-container" id="sessionsContainer">
-    <div class="no-sessions" id="noSessions">No active sessions.</div>
+    <div class="sessions-container" id="sessionsContainer">
+      <div class="no-sessions" id="noSessions">No active sessions.</div>
+    </div>
   </div>
 
   <div class="button-container">
