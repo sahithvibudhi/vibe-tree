@@ -219,12 +219,13 @@
       color: #555;
       margin-bottom: 12px;
       font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
     .child-processes-content {
       margin-top: 8px;
-      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-      font-size: 11px;
       overflow-x: auto;
     }
 
@@ -253,15 +254,115 @@
       background: #555;
     }
 
-    .process-tree-item {
-      margin: 2px 0;
-      padding: 4px;
-      white-space: nowrap;
-      min-width: max-content;
+    .regroup-button {
+      padding: 6px 16px;
+      background: #f5f5f5;
+      color: #333;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
     }
 
-    .process-tree-item:hover {
+    .regroup-button:hover {
+      background: #e0e0e0;
+      border-color: #999;
+    }
+
+    .regroup-button:active {
+      background: #d0d0d0;
+    }
+
+    .regroup-button.hidden {
+      display: none;
+    }
+
+    .process-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    }
+
+    .process-table thead {
+      background: #f5f5f5;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .process-table th {
+      text-align: left;
+      padding: 8px;
+      font-weight: 600;
+      border-bottom: 2px solid #ddd;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .process-table th:hover {
       background: #e8e8e8;
+    }
+
+    .process-table th.sortable::after {
+      content: ' ↕';
+      color: #999;
+      font-size: 10px;
+    }
+
+    .process-table th.sorted-asc::after {
+      content: ' ↑';
+      color: #007aff;
+    }
+
+    .process-table th.sorted-desc::after {
+      content: ' ↓';
+      color: #007aff;
+    }
+
+    .process-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .process-table tbody tr:hover {
+      background: #f9f9f9;
+    }
+
+    .process-table .pid-col {
+      color: #0066cc;
+      font-weight: 500;
+    }
+
+    .process-table .status-col {
+      color: #666;
+      font-weight: 500;
+    }
+
+    .process-table .status-zombie {
+      color: #c62828;
+      font-weight: 700;
+    }
+
+    .process-table .memory-col {
+      text-align: right;
+      color: #666;
+    }
+
+    .process-table .name-col {
+      color: #333;
+      font-weight: 500;
+    }
+
+    .process-table .command-col {
+      color: #666;
+      max-width: 400px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .process-tree-prefix {
@@ -417,7 +518,10 @@
 
     <!-- Child Processes Tab -->
     <div class="tab-panel" id="tab-processes">
-      <div class="child-processes-header" id="childProcessesHeader">Child Processes</div>
+      <div class="child-processes-header">
+        <span id="childProcessesHeader">Child Processes</span>
+        <button class="regroup-button hidden" id="regroupButton">Regroup</button>
+      </div>
       <div class="child-processes-content" id="childProcessesContent">
         <div class="no-child-processes">No child processes.</div>
       </div>
@@ -438,6 +542,13 @@
 
   <script>
 
+    // Global state
+    let allProcesses = [];
+    let originalProcessTree = [];
+    let currentSortColumn = null;
+    let currentSortOrder = 'asc';
+    let isGroupedView = true;
+
     /**
      * Format memory size in KB to human-readable format
      */
@@ -452,41 +563,189 @@
     }
 
     /**
-     * Render process tree recursively
+     * Extract binary name from command
      */
-    function renderProcessTree(processes, prefix = '', isLast = true) {
-      let html = '';
+    function extractBinaryName(command) {
+      // Remove leading/trailing whitespace
+      const trimmed = command.trim();
+
+      // Split by space to get the first part (the executable)
+      const parts = trimmed.split(/\s+/);
+      const executable = parts[0];
+
+      // Get just the binary name (last part of path)
+      const pathParts = executable.split('/');
+      return pathParts[pathParts.length - 1];
+    }
+
+    /**
+     * Flatten process tree into a list
+     */
+    function flattenProcessTree(processes, parentPrefix = '', level = 0) {
+      let flat = [];
 
       processes.forEach((proc, index) => {
-        const isLastChild = index === processes.length - 1;
-        const connector = isLastChild ? '└─' : '├─';
-        const childPrefix = isLastChild ? '  ' : '│ ';
+        const isLast = index === processes.length - 1;
+        const connector = isLast ? '└─' : '├─';
+        const childPrefix = parentPrefix + (isLast ? '  ' : '│ ');
 
-        // Highlight zombie processes
-        const stateClass = proc.state.startsWith('Z') ? 'process-state-zombie' : 'process-state';
-        const stateText = proc.state.startsWith('Z') ? `[${proc.state}] ${proc.stateDescription} ⚠️` : `[${proc.state}] ${proc.stateDescription}`;
+        flat.push({
+          ...proc,
+          level: level,
+          prefix: parentPrefix + connector + ' ',
+          binaryName: extractBinaryName(proc.command)
+        });
 
-        // Format memory
-        const memoryText = formatMemory(proc.memoryRSS);
-
-        html += `
-          <div class="process-tree-item">
-            <span class="process-tree-prefix">${prefix}${connector} </span>
-            <span class="process-pid">PID:${proc.pid}</span>
-            <span class="${stateClass}"> ${stateText}</span>
-            <span class="process-time"> (CPU:${proc.cpuTime})</span>
-            <span class="process-time"> [MEM:${memoryText}]</span>
-            <span class="process-command"> ${proc.command}</span>
-          </div>
-        `;
-
-        // Recursively render children
         if (proc.children && proc.children.length > 0) {
-          html += renderProcessTree(proc.children, prefix + childPrefix, false);
+          flat = flat.concat(flattenProcessTree(proc.children, childPrefix, level + 1));
         }
       });
 
+      return flat;
+    }
+
+    /**
+     * Render process table
+     */
+    function renderProcessTable(processes, showPrefix = false) {
+      if (processes.length === 0) {
+        return '<div class="no-child-processes">No child processes.</div>';
+      }
+
+      let html = '<table class="process-table"><thead><tr>';
+      html += '<th class="sortable" data-column="pid">PID</th>';
+      html += '<th class="sortable" data-column="status">Status</th>';
+      html += '<th class="sortable" data-column="memory">Memory</th>';
+      html += '<th class="sortable" data-column="name">Name</th>';
+      html += '<th class="sortable" data-column="command">Command</th>';
+      html += '</tr></thead><tbody>';
+
+      processes.forEach(proc => {
+        const statusClass = proc.state.startsWith('Z') ? 'status-zombie' : 'status-col';
+        const statusText = proc.state.startsWith('Z')
+          ? `${proc.stateDescription} ⚠️`
+          : proc.stateDescription;
+
+        const prefix = showPrefix && proc.prefix ? `<span class="process-tree-prefix">${proc.prefix}</span>` : '';
+
+        html += '<tr>';
+        html += `<td class="pid-col">${proc.pid}</td>`;
+        html += `<td class="${statusClass}">${statusText}</td>`;
+        html += `<td class="memory-col">${formatMemory(proc.memoryRSS)}</td>`;
+        html += `<td class="name-col">${prefix}${proc.binaryName}</td>`;
+        html += `<td class="command-col" title="${proc.command}">${proc.command}</td>`;
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
       return html;
+    }
+
+    /**
+     * Render grouped process view (now just shows all processes with tree prefixes)
+     */
+    function renderGroupedProcessView(processTree) {
+      if (processTree.length === 0) {
+        return '<div class="no-child-processes">No child processes.</div>';
+      }
+
+      // Flatten all processes but keep tree structure
+      const allProcesses = flattenProcessTree(processTree);
+      return renderProcessTable(allProcesses, true);
+    }
+
+    /**
+     * Sort processes by column
+     */
+    function sortProcesses(processes, column, order) {
+      const sorted = [...processes];
+
+      sorted.sort((a, b) => {
+        let aVal, bVal;
+
+        switch (column) {
+          case 'pid':
+            aVal = a.pid;
+            bVal = b.pid;
+            break;
+          case 'status':
+            aVal = a.stateDescription;
+            bVal = b.stateDescription;
+            break;
+          case 'memory':
+            aVal = a.memoryRSS;
+            bVal = b.memoryRSS;
+            break;
+          case 'name':
+            aVal = a.binaryName.toLowerCase();
+            bVal = b.binaryName.toLowerCase();
+            break;
+          case 'command':
+            aVal = a.command.toLowerCase();
+            bVal = b.command.toLowerCase();
+            break;
+          default:
+            return 0;
+        }
+
+        if (aVal < bVal) return order === 'asc' ? -1 : 1;
+        if (aVal > bVal) return order === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      return sorted;
+    }
+
+    /**
+     * Update sort indicators
+     */
+    function updateSortIndicators(column, order) {
+      const headers = document.querySelectorAll('.process-table th');
+      headers.forEach(th => {
+        th.classList.remove('sorted-asc', 'sorted-desc');
+        if (th.dataset.column === column) {
+          th.classList.add(order === 'asc' ? 'sorted-asc' : 'sorted-desc');
+        }
+      });
+    }
+
+    /**
+     * Render processes based on current view mode
+     */
+    function renderProcesses() {
+      const container = document.getElementById('childProcessesContent');
+      const regroupButton = document.getElementById('regroupButton');
+
+      if (isGroupedView) {
+        container.innerHTML = renderGroupedProcessView(originalProcessTree);
+        regroupButton.classList.add('hidden');
+      } else {
+        const sorted = currentSortColumn
+          ? sortProcesses(allProcesses, currentSortColumn, currentSortOrder)
+          : allProcesses;
+        container.innerHTML = renderProcessTable(sorted, false);
+        updateSortIndicators(currentSortColumn, currentSortOrder);
+        regroupButton.classList.remove('hidden');
+      }
+
+      // Add click handlers to table headers
+      const headers = container.querySelectorAll('.process-table th[data-column]');
+      headers.forEach(th => {
+        th.addEventListener('click', () => {
+          const column = th.dataset.column;
+
+          // Toggle sort order if clicking same column
+          if (currentSortColumn === column) {
+            currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+          } else {
+            currentSortColumn = column;
+            currentSortOrder = 'asc';
+          }
+
+          isGroupedView = false;
+          renderProcesses();
+        });
+      });
     }
 
     function updateStats(stats) {
@@ -584,10 +843,13 @@
       }
 
       // Update child processes section
-      const childProcessesContent = document.getElementById('childProcessesContent');
       const childProcessesHeader = document.getElementById('childProcessesHeader');
 
       if (stats.systemDiagnostics && stats.systemDiagnostics.childProcesses && stats.systemDiagnostics.childProcesses.length > 0) {
+        // Store process data globally
+        originalProcessTree = stats.systemDiagnostics.childProcesses;
+        allProcesses = flattenProcessTree(originalProcessTree);
+
         // Count total processes
         function countTotal(procs) {
           let count = procs.length;
@@ -615,10 +877,18 @@
         const memoryText = childrenMemory > 0 ? ` - ${formatMemory(childrenMemory)}` : '';
 
         childProcessesHeader.textContent = `Child Processes (${totalCount}${zombieText}${memoryText})`;
-        childProcessesContent.innerHTML = renderProcessTree(stats.systemDiagnostics.childProcesses);
+
+        // Reset to grouped view
+        isGroupedView = true;
+        currentSortColumn = null;
+        currentSortOrder = 'asc';
+        renderProcesses();
       } else {
         childProcessesHeader.textContent = 'Child Processes';
-        childProcessesContent.innerHTML = '<div class="no-child-processes">No child processes.</div>';
+        originalProcessTree = [];
+        allProcesses = [];
+        isGroupedView = true;
+        renderProcesses();
       }
 
       const container = document.getElementById('sessionsContainer');
@@ -687,6 +957,17 @@
           document.getElementById(`tab-${targetTab}`).classList.add('active');
         });
       });
+
+      // Setup regroup button handler
+      const regroupButton = document.getElementById('regroupButton');
+      if (regroupButton) {
+        regroupButton.addEventListener('click', () => {
+          isGroupedView = true;
+          currentSortColumn = null;
+          currentSortOrder = 'asc';
+          renderProcesses();
+        });
+      }
 
       // Setup close button handler
       const closeButton = document.getElementById('closeButton');
