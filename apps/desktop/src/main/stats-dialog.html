@@ -482,13 +482,6 @@
         const connector = isLastChild ? '└─' : '├─';
         const childPrefix = isLastChild ? '  ' : '│ ';
 
-        // Truncate command if too long
-        const maxCommandLength = 60;
-        let command = proc.command;
-        if (command.length > maxCommandLength) {
-          command = command.substring(0, maxCommandLength) + '...';
-        }
-
         // Highlight zombie processes
         const stateClass = proc.state.startsWith('Z') ? 'process-state-zombie' : 'process-state';
         const stateText = proc.state.startsWith('Z') ? `[${proc.state}] ${proc.stateDescription} ⚠️` : `[${proc.state}] ${proc.stateDescription}`;
@@ -503,7 +496,7 @@
             <span class="${stateClass}"> ${stateText}</span>
             <span class="process-time"> (CPU:${proc.cpuTime})</span>
             <span class="process-time"> [MEM:${memoryText}]</span>
-            <span class="process-command"> ${command}</span>
+            <span class="process-command"> ${proc.command}</span>
           </div>
         `;
 
