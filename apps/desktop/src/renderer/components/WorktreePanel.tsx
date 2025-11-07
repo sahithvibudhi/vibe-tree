@@ -322,7 +322,23 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
 
       <ScrollArea className="flex-1 h-0">
         <div className="p-2">
-          {worktrees.map((worktree) => (
+          {[...worktrees].sort((a, b) => {
+            // Extract branch names, handling refs/heads/ prefix and detached HEAD
+            const getBranchName = (wt: Worktree) => {
+              if (!wt.branch) return wt.head.substring(0, 8); // detached HEAD
+              return wt.branch.replace('refs/heads/', '');
+            };
+
+            const branchA = getBranchName(a);
+            const branchB = getBranchName(b);
+
+            // Keep main or master first
+            if (branchA === 'main' || branchA === 'master') return -1;
+            if (branchB === 'main' || branchB === 'master') return 1;
+
+            // Sort alphabetically for the rest
+            return branchA.localeCompare(branchB);
+          }).map((worktree) => (
             <div
               key={worktree.path}
               className={`relative group rounded-md transition-colors ${

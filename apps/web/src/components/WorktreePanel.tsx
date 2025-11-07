@@ -176,7 +176,23 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
           </div>
         ) : (
           <div className="p-2">
-            {project.worktrees.map((worktree) => {
+            {[...project.worktrees].sort((a, b) => {
+              // Extract branch names, handling refs/heads/ prefix and detached HEAD
+              const getBranchName = (wt: typeof a) => {
+                if (!wt.branch) return wt.head.substring(0, 8); // detached HEAD
+                return wt.branch.replace('refs/heads/', '');
+              };
+
+              const branchA = getBranchName(a);
+              const branchB = getBranchName(b);
+
+              // Keep main or master first
+              if (branchA === 'main' || branchA === 'master') return -1;
+              if (branchB === 'main' || branchB === 'master') return 1;
+
+              // Sort alphabetically for the rest
+              return branchA.localeCompare(branchB);
+            }).map((worktree) => {
               console.log('🌳 Rendering worktree:', { 
                 branch: worktree.branch, 
                 path: worktree.path,
