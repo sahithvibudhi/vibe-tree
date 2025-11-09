@@ -918,17 +918,14 @@ export function ClaudeTerminal({
 
       {/* Debug Section: Last 20 keys sent */}
       {debugKeys.length > 0 && (
-        <div className="debug-keys-section border-t bg-muted/30 p-2 text-xs font-mono overflow-auto max-h-32">
-          <div className="font-semibold mb-1 text-muted-foreground">Debug: Last {debugKeys.length} keys sent to terminal</div>
-          <div className="space-y-1">
-            {debugKeys.map((key, i) => (
-              <div key={i} className="flex gap-4 items-center">
-                <span className="text-muted-foreground w-16 text-right">{new Date(key.timestamp).toLocaleTimeString()}</span>
-                <span className="bg-background px-2 py-0.5 rounded border min-w-16 text-center">{key.char}</span>
-                <span className="text-blue-600 dark:text-blue-400 font-mono">{key.hex}</span>
-              </div>
-            ))}
-          </div>
+        <div className="debug-keys-section border-t bg-muted/30 p-2 text-xs font-mono overflow-x-auto whitespace-nowrap">
+          <span className="font-semibold text-muted-foreground">Keys: </span>
+          {[...debugKeys].reverse().map((key, i) => (
+            <span key={i} className="inline-block mr-2">
+              {key.char}
+              <span className="text-blue-600 dark:text-blue-400">({key.hex})</span>
+            </span>
+          ))}
         </div>
       )}
 
