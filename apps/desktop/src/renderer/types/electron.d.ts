@@ -65,6 +65,16 @@ export interface ElectronAPI {
     getFonts: () => Promise<string[]>;
     onChange: (callback: (settings: import('./terminal-settings').TerminalSettings) => void) => () => void;
   };
+  schedulerHistory: {
+    get: () => Promise<Array<{
+      command: string;
+      delayMs: number;
+      repeat: boolean;
+      timestamp: number;
+    }>>;
+    add: (command: string, delayMs: number, repeat: boolean) => Promise<void>;
+    clear: () => Promise<void>;
+  };
   menu: {
     onOpenTerminalSettings: (callback: () => void) => () => void;
   };

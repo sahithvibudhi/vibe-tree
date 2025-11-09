@@ -707,7 +707,7 @@ describe('SchedulerDialog', () => {
       ];
       (window.electronAPI.schedulerHistory.get as any).mockResolvedValue(mockHistory);
 
-      const { container } = render(
+      render(
         <SchedulerDialog
           open={true}
           onClose={mockOnClose}
