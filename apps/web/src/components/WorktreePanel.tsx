@@ -197,13 +197,10 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
                 <div className="flex items-start gap-2">
                   <GitBranch className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">
-                      {worktree.branch 
+                    <div className="truncate" style={{ fontSize: '21px', fontWeight: 'bold' }}>
+                      {worktree.branch
                         ? worktree.branch.replace('refs/heads/', '')
                         : `Detached HEAD (${worktree.head.substring(0, 8)})`}
-                    </div>
-                    <div className="text-xs text-muted-foreground truncate">
-                      {worktree.path.split('/').slice(-2).join('/')}
                     </div>
                   </div>
                 </div>

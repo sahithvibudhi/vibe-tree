@@ -7,6 +7,7 @@ import { GitBranch, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 import { isProtectedBranch } from '../utils/worktree';
 import { DeletionReportingDialog } from './DeletionReportingDialog';
+import type { TerminalSettings } from '../types/terminal-settings';
 
 interface Worktree {
   path: string;
@@ -39,6 +40,7 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
     error?: string;
   }>>([]);
   const [isDeletionComplete, setIsDeletionComplete] = useState(false);
+  const [terminalSettings, setTerminalSettings] = useState<TerminalSettings | null>(null);
   const { toast } = useToast();
 
   const loadWorktrees = useCallback(async () => {
@@ -150,6 +152,19 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
       setWorktrees(initialWorktrees);
     }
   }, [initialWorktrees]);
+
+  // Load terminal settings to calculate worktree font size
+  useEffect(() => {
+    window.electronAPI.terminalSettings.get().then(setTerminalSettings);
+
+    const unsubscribe = window.electronAPI.terminalSettings.onChange((newSettings) => {
+      setTerminalSettings(newSettings);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   const handleCreateBranch = async () => {
     if (!newBranchName.trim()) return;
@@ -283,6 +298,9 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
     }
   };
 
+  // Calculate worktree font size as 150% of terminal font size
+  const worktreeFontSize = terminalSettings ? terminalSettings.fontSize * 1.5 : 21; // Default to 21px (150% of 14px)
+
   return (
     <div className="w-80 border-r flex flex-col h-full">
       <div className="h-[57px] px-4 border-b flex-shrink-0 flex flex-col justify-center">
@@ -331,33 +349,30 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
                   : 'hover:bg-accent/50'
               }`}
             >
-              <button
-                onClick={() => onSelectWorktree(worktree.path)}
-                className="w-full text-left p-3 flex items-center gap-1.5"
-                data-worktree-branch={worktree.branch ? worktree.branch.replace('refs/heads/', '') : worktree.head.substring(0, 8)}
-              >
-                <GitBranch className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">
-                    {worktree.branch 
-                      ? worktree.branch.replace('refs/heads/', '')
-                      : `Detached HEAD (${worktree.head.substring(0, 8)})`}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {worktree.path.replace('/Users/dots/Documents/projects/', '')}
-                  </div>
-                </div>
-              </button>
               {worktrees.length > 1 && worktree.branch && !isProtectedBranch(worktree.branch) && (
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="relative right-2 top-1/2 -translate-y-1/2 h-6 w-6 opacity-60 hover:opacity-100 group-hover:opacity-100 transition-opacity bg-red-50 hover:bg-red-100 border border-red-200 hover:border-red-300"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 h-6 w-6 opacity-60 hover:opacity-100 group-hover:opacity-100 transition-opacity bg-red-50 hover:bg-red-100 border border-red-200 hover:border-red-300"
                   onClick={(e) => handleDeleteWorktree(worktree, e)}
                 >
                   <Trash2 className="h-3 w-3 text-red-600" />
                 </Button>
               )}
+              <button
+                onClick={() => onSelectWorktree(worktree.path)}
+                className="w-full text-left p-3 flex items-center gap-1.5 pl-10"
+                data-worktree-branch={worktree.branch ? worktree.branch.replace('refs/heads/', '') : worktree.head.substring(0, 8)}
+              >
+                <GitBranch className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="truncate" style={{ fontSize: `${worktreeFontSize}px`, fontWeight: 'bold' }}>
+                    {worktree.branch
+                      ? worktree.branch.replace('refs/heads/', '')
+                      : `Detached HEAD (${worktree.head.substring(0, 8)})`}
+                  </div>
+                </div>
+              </button>
             </div>
           ))}
         </div>
