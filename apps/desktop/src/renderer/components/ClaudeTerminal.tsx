@@ -95,9 +95,11 @@ export function ClaudeTerminal({
 
   const sendScheduledCommand = useCallback((command: string) => {
     if (processIdRef.current) {
-      // Send command with newline ('\n') to emulate ENTER key and execute the command
-      // This ensures the command is executed rather than just typed
-      window.electronAPI.shell.write(processIdRef.current, command + '\n');
+      // Send command with carriage return ('\r') to emulate ENTER key
+      // In raw/non-canonical terminal mode (used by interactive apps like Claude Code),
+      // the ENTER key sends '\r' (carriage return), not '\n' (newline)
+      // This ensures the command is executed in both canonical and raw terminal modes
+      window.electronAPI.shell.write(processIdRef.current, command + '\r');
     }
   }, []);
 

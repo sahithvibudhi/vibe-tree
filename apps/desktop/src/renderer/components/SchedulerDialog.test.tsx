@@ -471,7 +471,7 @@ describe('SchedulerDialog', () => {
       fireEvent.click(startButton);
 
       // Verify the command is passed as-is to onStart
-      // The parent component (ClaudeTerminal) is responsible for appending '\n'
+      // The parent component (ClaudeTerminal) is responsible for appending '\r' (ENTER key)
       expect(mockOnStart).toHaveBeenCalledWith({
         command: 'echo "test"',
         delayMs: 1000,
