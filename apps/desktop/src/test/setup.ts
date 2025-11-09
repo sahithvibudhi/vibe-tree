@@ -15,3 +15,15 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: vi.fn(),
   })),
 });
+
+// Mock window.electronAPI
+Object.defineProperty(window, 'electronAPI', {
+  writable: true,
+  value: {
+    schedulerHistory: {
+      get: vi.fn(() => Promise.resolve([])),
+      add: vi.fn(() => Promise.resolve()),
+      clear: vi.fn(() => Promise.resolve()),
+    },
+  },
+});

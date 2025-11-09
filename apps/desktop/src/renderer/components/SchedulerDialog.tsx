@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { PlayCircle, StopCircle } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from './ui/dropdown-menu';
+import { PlayCircle, StopCircle, History } from 'lucide-react';
 
 export interface SchedulerConfig {
   command: string;
@@ -19,6 +20,13 @@ interface SchedulerDialogProps {
   currentConfig: SchedulerConfig | null;
 }
 
+interface SchedulerHistoryEntry {
+  command: string;
+  delayMs: number;
+  repeat: boolean;
+  timestamp: number;
+}
+
 export function SchedulerDialog({
   open,
   onClose,
@@ -30,6 +38,16 @@ export function SchedulerDialog({
   const [command, setCommand] = useState('');
   const [delaySeconds, setDelaySeconds] = useState('1');
   const [repeat, setRepeat] = useState(false);
+  const [history, setHistory] = useState<SchedulerHistoryEntry[]>([]);
+
+  // Load history when dialog opens
+  useEffect(() => {
+    if (open) {
+      window.electronAPI.schedulerHistory.get().then((historyEntries: SchedulerHistoryEntry[]) => {
+        setHistory(historyEntries);
+      });
+    }
+  }, [open]);
 
   // Update form when currentConfig changes
   useEffect(() => {
@@ -56,11 +74,22 @@ export function SchedulerDialog({
       return;
     }
 
-    onStart({
+    const config = {
       command: command.trim(),
       delayMs,
       repeat,
-    });
+    };
+
+    // Save to history
+    window.electronAPI.schedulerHistory.add(config.command, config.delayMs, config.repeat);
+
+    onStart(config);
+  };
+
+  const handleLoadFromHistory = (entry: SchedulerHistoryEntry) => {
+    setCommand(entry.command);
+    setDelaySeconds((entry.delayMs / 1000).toString());
+    setRepeat(entry.repeat);
   };
 
   const handleStop = () => {
@@ -86,9 +115,41 @@ export function SchedulerDialog({
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <label htmlFor="command" className="text-sm font-medium">
-              Command
-            </label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="command" className="text-sm font-medium">
+                Command
+              </label>
+              {history.length > 0 && !isRunning && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1"
+                    >
+                      <History className="h-3 w-3" />
+                      History
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80">
+                    {history.map((entry, index) => (
+                      <DropdownMenuItem
+                        key={index}
+                        onClick={() => handleLoadFromHistory(entry)}
+                        className="flex flex-col items-start gap-1 py-2"
+                      >
+                        <div className="font-mono text-xs truncate w-full">
+                          {entry.command}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {(entry.delayMs / 1000)}s {entry.repeat ? '• Repeat' : '• One-time'}
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
             <Input
               id="command"
               type="text"

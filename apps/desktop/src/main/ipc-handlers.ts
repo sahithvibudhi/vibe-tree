@@ -9,6 +9,7 @@ import {
 } from '@vibetree/core';
 import { terminalSettingsManager } from './terminal-settings';
 import { recentProjectsManager } from './recent-projects';
+import { schedulerHistoryManager } from './scheduler-history';
 import fs from 'fs';
 import { execSync } from 'child_process';
 import * as os from 'os';
@@ -137,6 +138,19 @@ export function registerIpcHandlers(mainWindow: BrowserWindow | null) {
 
   ipcMain.handle('terminal-settings:get-fonts', () => {
     return terminalSettingsManager.getAvailableFonts();
+  });
+
+  // Scheduler history handlers
+  ipcMain.handle('scheduler-history:get', () => {
+    return schedulerHistoryManager.getHistory();
+  });
+
+  ipcMain.handle('scheduler-history:add', (_, command: string, delayMs: number, repeat: boolean) => {
+    schedulerHistoryManager.addHistoryEntry(command, delayMs, repeat);
+  });
+
+  ipcMain.handle('scheduler-history:clear', () => {
+    schedulerHistoryManager.clearHistory();
   });
 
   // Open external links
