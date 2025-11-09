@@ -60,7 +60,6 @@ export function ClaudeTerminal({
   const [schedulerConfig, setSchedulerConfig] = useState<SchedulerConfig | null>(null);
   const [schedulerRunning, setSchedulerRunning] = useState(false);
   const schedulerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const schedulerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Search functionality
   const handleSearch = useCallback((query: string, direction: 'next' | 'previous' = 'next') => {
@@ -86,39 +85,38 @@ export function ClaudeTerminal({
       clearTimeout(schedulerTimeoutRef.current);
       schedulerTimeoutRef.current = null;
     }
-    if (schedulerIntervalRef.current) {
-      clearInterval(schedulerIntervalRef.current);
-      schedulerIntervalRef.current = null;
-    }
     setSchedulerRunning(false);
   }, []);
 
-  const sendScheduledCommand = useCallback((command: string) => {
-    if (!processIdRef.current || !terminal) return;
+  const sendScheduledCommand = useCallback((command: string): Promise<void> => {
+    if (!processIdRef.current || !terminal) return Promise.resolve();
 
-    // Simulate typing through xterm terminal instance
-    // This ensures the input goes through the same path as real user typing,
-    // which is critical for interactive apps like Claude Code that process
-    // input character-by-character in raw terminal mode
+    return new Promise((resolve) => {
+      // Simulate typing through xterm terminal instance
+      // This ensures the input goes through the same path as real user typing,
+      // which is critical for interactive apps like Claude Code that process
+      // input character-by-character in raw terminal mode
 
-    // Type each character with a small delay to simulate realistic typing
-    let charIndex = 0;
-    const typeNextChar = () => {
-      if (charIndex < command.length) {
-        const char = command[charIndex];
-        // Send to PTY
-        window.electronAPI.shell.write(processIdRef.current, char);
-        charIndex++;
-        setTimeout(typeNextChar, 10); // 10ms between characters
-      } else {
-        // After all characters, wait 1 second before sending ENTER key (\r)
-        setTimeout(() => {
-          window.electronAPI.shell.write(processIdRef.current, '\r');
-        }, 1000);
-      }
-    };
+      // Type each character with a small delay to simulate realistic typing
+      let charIndex = 0;
+      const typeNextChar = () => {
+        if (charIndex < command.length) {
+          const char = command[charIndex];
+          // Send to PTY
+          window.electronAPI.shell.write(processIdRef.current, char);
+          charIndex++;
+          setTimeout(typeNextChar, 10); // 10ms between characters
+        } else {
+          // After all characters, wait 1 second before sending ENTER key (\r)
+          setTimeout(() => {
+            window.electronAPI.shell.write(processIdRef.current, '\r');
+            resolve(); // Resolve the promise after the command is fully sent
+          }, 1000);
+        }
+      };
 
-    typeNextChar();
+      typeNextChar();
+    });
   }, [terminal]);
 
   const startScheduler = useCallback((config: SchedulerConfig) => {
@@ -128,19 +126,25 @@ export function ClaudeTerminal({
     setSchedulerConfig(config);
     setSchedulerRunning(true);
 
-    if (config.repeat) {
-      // For repeat mode, use setInterval
-      schedulerIntervalRef.current = setInterval(() => {
-        sendScheduledCommand(config.command);
+    const scheduleNext = () => {
+      schedulerTimeoutRef.current = setTimeout(async () => {
+        // Send the command and wait for it to complete
+        await sendScheduledCommand(config.command);
+
+        // If repeat mode and scheduler is still running, schedule the next execution
+        if (config.repeat && schedulerTimeoutRef.current !== null) {
+          scheduleNext();
+        } else {
+          // For one-time mode or if stopped, clean up
+          setSchedulerRunning(false);
+          setSchedulerConfig(null);
+          schedulerTimeoutRef.current = null;
+        }
       }, config.delayMs);
-    } else {
-      // For one-time mode, use setTimeout
-      schedulerTimeoutRef.current = setTimeout(() => {
-        sendScheduledCommand(config.command);
-        setSchedulerRunning(false);
-        setSchedulerConfig(null);
-      }, config.delayMs);
-    }
+    };
+
+    // Start the scheduling chain
+    scheduleNext();
 
     setSchedulerDialogOpen(false);
   }, [stopScheduler, sendScheduledCommand]);
