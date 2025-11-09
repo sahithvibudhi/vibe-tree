@@ -26,9 +26,7 @@ pnpm fix:electron
 
 ## Launch with Project
 
-Launch the Electron app with a project automatically opened: `bin/launch-with-project [PATH] [--name NAME]`
-
-The `--name` parameter sets the app window title (e.g., "Testing", "Production") to help identify different instances, while the project name is derived from the directory.
+`bin/launch-with-project [PATH] [--name NAME]` - Launch app with auto-opened project. The `--name` sets window title for easy identification.
 
 ## E2E Testing
 
