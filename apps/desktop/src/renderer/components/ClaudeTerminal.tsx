@@ -95,6 +95,8 @@ export function ClaudeTerminal({
 
   const sendScheduledCommand = useCallback((command: string) => {
     if (processIdRef.current) {
+      // Send command with newline ('\n') to emulate ENTER key and execute the command
+      // This ensures the command is executed rather than just typed
       window.electronAPI.shell.write(processIdRef.current, command + '\n');
     }
   }, []);

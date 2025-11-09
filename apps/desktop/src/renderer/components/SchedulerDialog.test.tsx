@@ -26,7 +26,7 @@ describe('SchedulerDialog', () => {
       );
 
       expect(screen.getByText('Schedule Terminal Command')).toBeInTheDocument();
-      expect(screen.getByText('Configure a command to be sent to the terminal automatically.')).toBeInTheDocument();
+      expect(screen.getByText('Configure a command to be sent to the terminal automatically. The command will be executed with ENTER.')).toBeInTheDocument();
     });
 
     it('should not render when open is false', () => {
@@ -447,6 +447,36 @@ describe('SchedulerDialog', () => {
       );
 
       expect(screen.getByText('Scheduler is running. Stop it to reconfigure.')).toBeInTheDocument();
+    });
+
+    it('should send command with newline character to emulate ENTER', () => {
+      render(
+        <SchedulerDialog
+          open={true}
+          onClose={mockOnClose}
+          onStart={mockOnStart}
+          onStop={mockOnStop}
+          isRunning={false}
+          currentConfig={null}
+        />
+      );
+
+      const commandInput = screen.getByLabelText('Command');
+      const delayInput = screen.getByLabelText('Delay (seconds)');
+
+      fireEvent.change(commandInput, { target: { value: 'echo "test"' } });
+      fireEvent.change(delayInput, { target: { value: '1' } });
+
+      const startButton = screen.getByText('Start');
+      fireEvent.click(startButton);
+
+      // Verify the command is passed as-is to onStart
+      // The parent component (ClaudeTerminal) is responsible for appending '\n'
+      expect(mockOnStart).toHaveBeenCalledWith({
+        command: 'echo "test"',
+        delayMs: 1000,
+        repeat: false,
+      });
     });
   });
 

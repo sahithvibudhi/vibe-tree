@@ -80,7 +80,7 @@ export function SchedulerDialog({
           <DialogDescription>
             {isRunning
               ? 'Scheduler is running. Stop it to reconfigure.'
-              : 'Configure a command to be sent to the terminal automatically.'}
+              : 'Configure a command to be sent to the terminal automatically. The command will be executed with ENTER.'}
           </DialogDescription>
         </DialogHeader>
 
