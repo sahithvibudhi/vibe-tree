@@ -62,26 +62,6 @@ export function ClaudeTerminal({
   const schedulerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const schedulerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Debug: Track last 20 keys sent to terminal
-  const [debugKeys, setDebugKeys] = useState<Array<{ char: string; hex: string; timestamp: number }>>([]);
-
-  const logDebugKey = useCallback((char: string) => {
-    const hex = Array.from(char).map(c =>
-      '0x' + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')
-    ).join(' ');
-
-    const displayChar = char.replace(/\r/g, '\\r')
-                            .replace(/\n/g, '\\n')
-                            .replace(/\t/g, '\\t')
-                            // eslint-disable-next-line no-control-regex
-                            .replace(/\x1b/g, '\\x1b');
-
-    setDebugKeys(prev => {
-      const newKeys = [...prev, { char: displayChar, hex, timestamp: Date.now() }];
-      return newKeys.slice(-20); // Keep only last 20
-    });
-  }, []);
-
   // Search functionality
   const handleSearch = useCallback((query: string, direction: 'next' | 'previous' = 'next') => {
     if (!searchAddonRef.current || !query) return;
@@ -126,8 +106,6 @@ export function ClaudeTerminal({
     const typeNextChar = () => {
       if (charIndex < command.length) {
         const char = command[charIndex];
-        // Log to debug display
-        logDebugKey(char);
         // Send to PTY
         window.electronAPI.shell.write(processIdRef.current, char);
         charIndex++;
@@ -135,14 +113,13 @@ export function ClaudeTerminal({
       } else {
         // After all characters, wait 1 second before sending ENTER key (\r)
         setTimeout(() => {
-          logDebugKey('\r');
           window.electronAPI.shell.write(processIdRef.current, '\r');
         }, 1000);
       }
     };
 
     typeNextChar();
-  }, [terminal, logDebugKey]);
+  }, [terminal]);
 
   const startScheduler = useCallback((config: SchedulerConfig) => {
     // Stop any existing scheduler
@@ -514,8 +491,6 @@ export function ClaudeTerminal({
         // Handle terminal input - simply pass it to the PTY
         const disposable = terminal.onData((data) => {
           if (processIdRef.current) {
-            // Log all key presses for debugging
-            logDebugKey(data);
             window.electronAPI.shell.write(processIdRef.current, data);
           }
         });
@@ -918,19 +893,6 @@ export function ClaudeTerminal({
           } : {})
         }}
       />
-
-      {/* Debug Section: Last 20 keys sent (dev/test only) */}
-      {debugKeys.length > 0 && process.env.NODE_ENV === 'development' && (
-        <div className="debug-keys-section border-t bg-muted/30 p-2 text-xs font-mono overflow-x-auto whitespace-nowrap">
-          <span className="font-semibold text-muted-foreground">Keys: </span>
-          {[...debugKeys].reverse().map((key, i) => (
-            <span key={i} className="inline-block mr-2">
-              {key.char}
-              <span className="text-blue-600 dark:text-blue-400">({key.hex})</span>
-            </span>
-          ))}
-        </div>
-      )}
 
       {/* Scheduler Dialog */}
       <SchedulerDialog
