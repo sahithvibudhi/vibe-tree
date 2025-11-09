@@ -3,6 +3,7 @@ import { ElectronApplication, Page, _electron as electron } from 'playwright';
 import path from 'path';
 import fs from 'fs';
 import { closeElectronApp } from './helpers/test-launcher';
+import { waitUntil } from './test-utils';
 
 interface MenuItem {
   label?: string;
@@ -185,51 +186,65 @@ test.describe('Application Menu Structure', () => {
       }
     }, testProjectPath);
 
-    // Poll for menu update with retry mechanism
-    let menuStructure: Array<{label?: string; enabled?: boolean}> = [];
-    let attempts = 0;
-    const maxAttempts = 10;
+    // Wait for menu to update with the new project
+    await waitUntil(page, {
+      condition: async () => {
+        const menuStructure = await electronApp.evaluate(({ Menu }) => {
+          const menu = Menu.getApplicationMenu();
+          if (!menu) {
+            throw new Error('Application menu not found');
+          }
 
-    while (attempts < maxAttempts) {
-      await page.waitForTimeout(200);
+          const fileMenu = menu.items.find(item => item.label === 'File');
+          if (!fileMenu || !fileMenu.submenu) {
+            throw new Error('File menu not found');
+          }
 
-      menuStructure = await electronApp.evaluate(({ Menu }) => {
-        const menu = Menu.getApplicationMenu();
-        if (!menu) {
-          throw new Error('Application menu not found');
-        }
+          const recentProjects = fileMenu.submenu.items.find(item => item.label === 'Recent Projects');
+          if (!recentProjects || !recentProjects.submenu) {
+            throw new Error('Recent Projects submenu not found');
+          }
 
-        const fileMenu = menu.items.find(item => item.label === 'File');
-        if (!fileMenu || !fileMenu.submenu) {
-          throw new Error('File menu not found');
-        }
+          return recentProjects.submenu.items.map((item: Electron.MenuItem) => ({
+            label: item.label,
+            enabled: item.enabled
+          }));
+        });
 
-        const recentProjects = fileMenu.submenu.items.find(item => item.label === 'Recent Projects');
-        if (!recentProjects || !recentProjects.submenu) {
-          throw new Error('Recent Projects submenu not found');
-        }
+        const projectLabels = menuStructure.map((item: {label?: string; enabled?: boolean}) => item.label).filter(Boolean);
+        return projectLabels.some((label: string) =>
+          label === 'Clear Recent Projects' ||
+          label === 'No Recent Projects' ||
+          (label.includes('test') && label.includes(testProjectPath))
+        );
+      },
+      timeoutMs: 2000,
+      message: 'Recent Projects menu did not update with test project'
+    });
 
-        return recentProjects.submenu.items.map((item: Electron.MenuItem) => ({
-          label: item.label,
-          enabled: item.enabled
-        }));
-      });
-
-      const projectLabels = menuStructure.map((item: {label?: string; enabled?: boolean}) => item.label).filter(Boolean);
-      const hasValidMenu = projectLabels.some((label: string) =>
-        label === 'Clear Recent Projects' ||
-        label === 'No Recent Projects' ||
-        (label.includes('test') && label.includes(testProjectPath))
-      );
-
-      if (hasValidMenu) {
-        break;
+    // Get final menu structure for verification
+    const menuStructure = await electronApp.evaluate(({ Menu }) => {
+      const menu = Menu.getApplicationMenu();
+      if (!menu) {
+        throw new Error('Application menu not found');
       }
 
-      attempts++;
-    }
+      const fileMenu = menu.items.find(item => item.label === 'File');
+      if (!fileMenu || !fileMenu.submenu) {
+        throw new Error('File menu not found');
+      }
 
-    // Verify the project was added
+      const recentProjects = fileMenu.submenu.items.find(item => item.label === 'Recent Projects');
+      if (!recentProjects || !recentProjects.submenu) {
+        throw new Error('Recent Projects submenu not found');
+      }
+
+      return recentProjects.submenu.items.map((item: Electron.MenuItem) => ({
+        label: item.label,
+        enabled: item.enabled
+      }));
+    });
+
     const projectLabels = menuStructure.map((item: {label?: string; enabled?: boolean}) => item.label).filter(Boolean);
 
     // Should either have the test project or "Clear Recent Projects" option
