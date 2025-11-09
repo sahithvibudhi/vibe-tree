@@ -62,6 +62,25 @@ export function ClaudeTerminal({
   const schedulerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const schedulerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Debug: Track last 20 keys sent to terminal
+  const [debugKeys, setDebugKeys] = useState<Array<{ char: string; hex: string; timestamp: number }>>([]);
+
+  const logDebugKey = useCallback((char: string) => {
+    const hex = Array.from(char).map(c =>
+      '0x' + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')
+    ).join(' ');
+
+    const displayChar = char.replace(/\r/g, '\\r')
+                            .replace(/\n/g, '\\n')
+                            .replace(/\t/g, '\\t')
+                            .replace(/\x1b/g, '\\x1b');
+
+    setDebugKeys(prev => {
+      const newKeys = [...prev, { char: displayChar, hex, timestamp: Date.now() }];
+      return newKeys.slice(-20); // Keep only last 20
+    });
+  }, []);
+
   // Search functionality
   const handleSearch = useCallback((query: string, direction: 'next' | 'previous' = 'next') => {
     if (!searchAddonRef.current || !query) return;
@@ -94,14 +113,33 @@ export function ClaudeTerminal({
   }, []);
 
   const sendScheduledCommand = useCallback((command: string) => {
-    if (processIdRef.current) {
-      // Send command with carriage return ('\r') to emulate ENTER key
-      // In raw/non-canonical terminal mode (used by interactive apps like Claude Code),
-      // the ENTER key sends '\r' (carriage return), not '\n' (newline)
-      // This ensures the command is executed in both canonical and raw terminal modes
-      window.electronAPI.shell.write(processIdRef.current, command + '\r');
-    }
-  }, []);
+    if (!processIdRef.current || !terminal) return;
+
+    // Simulate typing through xterm terminal instance
+    // This ensures the input goes through the same path as real user typing,
+    // which is critical for interactive apps like Claude Code that process
+    // input character-by-character in raw terminal mode
+
+    // Type each character with a small delay to simulate realistic typing
+    let charIndex = 0;
+    const typeNextChar = () => {
+      if (charIndex < command.length) {
+        const char = command[charIndex];
+        // Log to debug display
+        logDebugKey(char);
+        // Send to PTY
+        window.electronAPI.shell.write(processIdRef.current, char);
+        charIndex++;
+        setTimeout(typeNextChar, 10); // 10ms between characters
+      } else {
+        // After all characters, send ENTER key (\r)
+        logDebugKey('\r');
+        window.electronAPI.shell.write(processIdRef.current, '\r');
+      }
+    };
+
+    typeNextChar();
+  }, [terminal, logDebugKey]);
 
   const startScheduler = useCallback((config: SchedulerConfig) => {
     // Stop any existing scheduler
@@ -473,6 +511,8 @@ export function ClaudeTerminal({
         // Handle terminal input - simply pass it to the PTY
         const disposable = terminal.onData((data) => {
           if (processIdRef.current) {
+            // Log all key presses for debugging
+            logDebugKey(data);
             window.electronAPI.shell.write(processIdRef.current, data);
           }
         });
@@ -875,6 +915,22 @@ export function ClaudeTerminal({
           } : {})
         }}
       />
+
+      {/* Debug Section: Last 20 keys sent */}
+      {debugKeys.length > 0 && (
+        <div className="debug-keys-section border-t bg-muted/30 p-2 text-xs font-mono overflow-auto max-h-32">
+          <div className="font-semibold mb-1 text-muted-foreground">Debug: Last {debugKeys.length} keys sent to terminal</div>
+          <div className="space-y-1">
+            {debugKeys.map((key, i) => (
+              <div key={i} className="flex gap-4 items-center">
+                <span className="text-muted-foreground w-16 text-right">{new Date(key.timestamp).toLocaleTimeString()}</span>
+                <span className="bg-background px-2 py-0.5 rounded border min-w-16 text-center">{key.char}</span>
+                <span className="text-blue-600 dark:text-blue-400 font-mono">{key.hex}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Scheduler Dialog */}
       <SchedulerDialog

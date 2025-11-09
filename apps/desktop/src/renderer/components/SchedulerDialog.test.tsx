@@ -26,7 +26,7 @@ describe('SchedulerDialog', () => {
       );
 
       expect(screen.getByText('Schedule Terminal Command')).toBeInTheDocument();
-      expect(screen.getByText('Configure a command to be sent to the terminal automatically. The command will be executed with ENTER.')).toBeInTheDocument();
+      expect(screen.getByText('Configure a command to be typed into the terminal automatically. Characters will be typed one by one, then ENTER will be pressed to execute.')).toBeInTheDocument();
     });
 
     it('should not render when open is false', () => {
