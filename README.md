@@ -57,29 +57,7 @@ Download the latest release for your platform from the [Releases page](https://g
 
 #### Testing with Auto-Open Project
 
-For testing or scripting purposes, you can launch the desktop app with a project automatically opened:
-
-```bash
-# Launch the app with a specific project
-bin/launch-with-project /path/to/your/project
-
-# Launch with a custom project name for easy identification
-bin/launch-with-project /path/to/your/project --name "My Test Project"
-
-# Example: Launch with current directory
-bin/launch-with-project .
-
-# Example: Launch current directory with a custom name
-bin/launch-with-project . --name "Development Build"
-```
-
-**Parameters:**
-- `PATH` (required): Path to the project directory (project name is derived from the directory name)
-- `--name NAME` (optional): Custom app name for easy identification in the window title (e.g., "Testing", "Production")
-
-**Prerequisites:**
-- Dependencies installed: `pnpm install`
-- Desktop app built: `pnpm --filter @vibetree/desktop build`
+`bin/launch-with-project /path/to/project [--name "CustomName"]` - Launch app with auto-opened project. Optional `--name` sets window title for easy identification.
 
 ### Web/Mobile Access
 
