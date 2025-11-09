@@ -132,9 +132,11 @@ export function ClaudeTerminal({
         charIndex++;
         setTimeout(typeNextChar, 10); // 10ms between characters
       } else {
-        // After all characters, send ENTER key (\r)
-        logDebugKey('\r');
-        window.electronAPI.shell.write(processIdRef.current, '\r');
+        // After all characters, wait 1 second before sending ENTER key (\r)
+        setTimeout(() => {
+          logDebugKey('\r');
+          window.electronAPI.shell.write(processIdRef.current, '\r');
+        }, 1000);
       }
     };
 
