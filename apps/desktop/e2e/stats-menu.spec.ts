@@ -119,22 +119,35 @@ test.describe('Stats Menu', () => {
     await expect(terminalScreen).toBeVisible({ timeout: 10000 });
     await page.waitForTimeout(2000);
 
-    // Get stats - should have 1 active process
-    const stats = await electronApp.evaluate(async ({ ipcMain }) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const handlers = (ipcMain as unknown as {_invokeHandlers?: Map<string, (...args: any[]) => any>})._invokeHandlers;
-      if (handlers && handlers.get('shell:get-stats')) {
-        const handler = handlers.get('shell:get-stats');
-        return await handler();
+    // Poll for stats to ensure PTY process is registered
+    let stats: { activeProcessCount: number; sessions: Array<{ worktreePath: string }> } | undefined;
+    let attempts = 0;
+    const maxAttempts = 20; // 20 attempts * 500ms = 10 seconds max
+
+    while (attempts < maxAttempts) {
+      stats = await electronApp.evaluate(async ({ ipcMain }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const handlers = (ipcMain as unknown as {_invokeHandlers?: Map<string, (...args: any[]) => any>})._invokeHandlers;
+        if (handlers && handlers.get('shell:get-stats')) {
+          const handler = handlers.get('shell:get-stats');
+          return await handler();
+        }
+        throw new Error('shell:get-stats handler not found');
+      });
+
+      if (stats && stats.activeProcessCount === 1 && stats.sessions.length === 1) {
+        break;
       }
-      throw new Error('shell:get-stats handler not found');
-    });
+
+      await page.waitForTimeout(500);
+      attempts++;
+    }
 
     expect(stats).toBeDefined();
-    expect(stats.activeProcessCount).toBe(1);
-    expect(stats.sessions.length).toBe(1);
+    expect(stats!.activeProcessCount).toBe(1);
+    expect(stats!.sessions.length).toBe(1);
     // On macOS, paths may have /private prefix, so normalize for comparison
-    const normalizedSessionPath = stats.sessions[0].worktreePath.replace(/^\/private/, '');
+    const normalizedSessionPath = stats!.sessions[0].worktreePath.replace(/^\/private/, '');
     const normalizedDummyPath = dummyRepoPath.replace(/^\/private/, '');
     expect(normalizedSessionPath).toBe(normalizedDummyPath);
   });
