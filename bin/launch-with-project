@@ -1,0 +1,96 @@
+#!/bin/bash
+set -e
+
+# Script to launch the Electron app with a project automatically opened
+#
+# Usage: bin/launch-with-project [PATH] [--name NAME]
+#
+# Arguments:
+#   PATH        Path to the project directory (required)
+#   --name NAME Optional app name shown in window title for easy identification
+#
+# Prerequisites:
+#   - Dependencies must be installed: pnpm install
+#   - The desktop app should be built: pnpm --filter @vibetree/desktop build
+#     (The script will attempt to build if not already built)
+
+# Parse arguments
+PROJECT_ARG=""
+PROJECT_NAME=""
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --name)
+      PROJECT_NAME="$2"
+      shift 2
+      ;;
+    *)
+      if [ -z "$PROJECT_ARG" ]; then
+        PROJECT_ARG="$1"
+      else
+        echo "Error: Unexpected argument: $1"
+        echo "Usage: bin/launch-with-project [PATH] [--name NAME]"
+        exit 1
+      fi
+      shift
+      ;;
+  esac
+done
+
+if [ -z "$PROJECT_ARG" ]; then
+  echo "Error: No project path provided"
+  echo "Usage: bin/launch-with-project [PATH] [--name NAME]"
+  exit 1
+fi
+
+# Get the script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Check if the path exists first
+if [ ! -d "$PROJECT_ARG" ]; then
+  echo "Error: Directory does not exist: $PROJECT_ARG"
+  exit 1
+fi
+
+# Convert the provided path to an absolute path
+PROJECT_PATH="$(cd "$PROJECT_ARG" && pwd)"
+
+if [ -n "$PROJECT_NAME" ]; then
+  echo "Launching VibeTree with project: $PROJECT_PATH (name: $PROJECT_NAME)"
+else
+  echo "Launching VibeTree with project: $PROJECT_PATH"
+fi
+
+# Install dependencies (pnpm install is fast if already installed)
+echo "Installing dependencies..."
+cd "$PROJECT_ROOT"
+pnpm install || {
+  echo ""
+  echo "Failed to install dependencies."
+  exit 1
+}
+
+# Fix Electron installation
+echo "Fixing Electron installation..."
+pnpm fix:electron || {
+  echo ""
+  echo "Failed to fix Electron installation."
+  exit 1
+}
+
+# Build the app (always build to ensure latest code)
+echo "Building app..."
+pnpm --filter @vibetree/core build && pnpm --filter @vibetree/desktop build || {
+  echo ""
+  echo "Build failed. Please check the error above."
+  exit 1
+}
+
+# Launch the app with the AUTO_OPEN_PROJECT environment variable and remote debugging enabled
+cd "$PROJECT_ROOT/apps/desktop"
+if [ -n "$PROJECT_NAME" ]; then
+  NODE_ENV=production AUTO_OPEN_PROJECT="$PROJECT_PATH" AUTO_OPEN_PROJECT_NAME="$PROJECT_NAME" pnpm exec electron . --remote-debugging-port=9222
+else
+  NODE_ENV=production AUTO_OPEN_PROJECT="$PROJECT_PATH" pnpm exec electron . --remote-debugging-port=9222
+fi

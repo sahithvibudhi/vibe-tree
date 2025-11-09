@@ -55,6 +55,32 @@ Download the latest release for your platform from the [Releases page](https://g
 
 **Build custom versions** (macOS): `./build-custom-mac-version.sh [VARIATION_NAME]` to create a custom build with the variation name included in both the app file name and displayed app name (e.g., `./build-custom-mac-version.sh Nov2` creates VibeTreeNov2.app which displays as "VibeTreeNov2" when opened)
 
+#### Testing with Auto-Open Project
+
+For testing or scripting purposes, you can launch the desktop app with a project automatically opened:
+
+```bash
+# Launch the app with a specific project
+bin/launch-with-project /path/to/your/project
+
+# Launch with a custom project name for easy identification
+bin/launch-with-project /path/to/your/project --name "My Test Project"
+
+# Example: Launch with current directory
+bin/launch-with-project .
+
+# Example: Launch current directory with a custom name
+bin/launch-with-project . --name "Development Build"
+```
+
+**Parameters:**
+- `PATH` (required): Path to the project directory (project name is derived from the directory name)
+- `--name NAME` (optional): Custom app name for easy identification in the window title (e.g., "Testing", "Production")
+
+**Prerequisites:**
+- Dependencies installed: `pnpm install`
+- Desktop app built: `pnpm --filter @vibetree/desktop build`
+
 ### Web/Mobile Access
 
 1. Start services: `pnpm dev:all`

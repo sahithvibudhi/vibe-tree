@@ -24,6 +24,12 @@ Run the following command from the project root to fix the Electron installation
 pnpm fix:electron
 ```
 
+## Launch with Project
+
+Launch the Electron app with a project automatically opened: `bin/launch-with-project [PATH] [--name NAME]`
+
+The `--name` parameter sets the app window title (e.g., "Testing", "Production") to help identify different instances, while the project name is derived from the directory.
+
 ## E2E Testing
 
 When you need to run, debug, or troubleshoot end-to-end Electron tests, use the `electron-e2e-test-runner` agent. This specialized agent handles:

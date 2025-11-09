@@ -26,8 +26,9 @@ function createWindow() {
     }
   });
 
-  // In development, load from Vite dev server
-  if (!app.isPackaged) {
+  // In development, load from Vite dev server (unless NODE_ENV=production)
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (!app.isPackaged && !isProduction) {
     let port = '3000';
     try {
       const portFile = path.join(__dirname, '../../.dev-port');
@@ -58,6 +59,29 @@ app.whenReady().then(() => {
   quitManager.options.onQuitConfirmed = async () => {
     await shellProcessManager.cleanup();
   };
+
+  // Auto-open project if specified via environment variable
+  const autoOpenProject = process.env.AUTO_OPEN_PROJECT;
+  const autoOpenAppName = process.env.AUTO_OPEN_PROJECT_NAME;
+  if (autoOpenProject && mainWindow) {
+    console.log('Auto-opening project:', autoOpenProject);
+    if (autoOpenAppName) {
+      console.log('App name:', autoOpenAppName);
+      // Set the app name in the window title
+      mainWindow.setTitle(`VibeTree - ${autoOpenAppName}`);
+    }
+    // Wait for the window to be ready before sending the project:open event
+    mainWindow.webContents.once('did-finish-load', () => {
+      if (mainWindow && fs.existsSync(autoOpenProject)) {
+        setTimeout(() => {
+          // Send just the path - project name will be derived from path
+          mainWindow?.webContents.send('project:open', autoOpenProject);
+        }, 500); // Small delay to ensure renderer is ready
+      } else {
+        console.error('Auto-open project path does not exist:', autoOpenProject);
+      }
+    });
+  }
 });
 
 // Handle window-all-closed event

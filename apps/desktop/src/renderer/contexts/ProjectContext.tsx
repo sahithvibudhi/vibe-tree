@@ -56,7 +56,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
 
     const id = `project-${Date.now()}`;
     const name = path.split('/').pop() || 'Unnamed Project';
-    
+
     const newProject: Project = {
       id,
       path,
@@ -67,10 +67,10 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
 
     setProjects(prev => [...prev, newProject]);
     setActiveProjectId(id);
-    
+
     // Add to recent projects when opening new project
     window.electronAPI.recentProjects.add(path);
-    
+
     return id;
   }, [projects]);
 
