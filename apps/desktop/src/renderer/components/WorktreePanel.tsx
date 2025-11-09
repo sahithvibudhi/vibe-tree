@@ -41,6 +41,8 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
   }>>([]);
   const [isDeletionComplete, setIsDeletionComplete] = useState(false);
   const [terminalSettings, setTerminalSettings] = useState<TerminalSettings | null>(null);
+  const [panelWidth, setPanelWidth] = useState<number>(320); // Default 320px (w-80)
+  const [isResizing, setIsResizing] = useState(false);
   const { toast } = useToast();
 
   const loadWorktrees = useCallback(async () => {
@@ -165,6 +167,51 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
       unsubscribe();
     };
   }, []);
+
+  // Load panel width from localStorage on mount
+  useEffect(() => {
+    const savedWidth = localStorage.getItem('worktreePanelWidth');
+    if (savedWidth) {
+      const width = parseInt(savedWidth, 10);
+      if (!isNaN(width)) {
+        setPanelWidth(width);
+      }
+    }
+  }, []);
+
+  // Save panel width to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('worktreePanelWidth', panelWidth.toString());
+  }, [panelWidth]);
+
+  // Handle resize mouse events
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = e.clientX;
+      // Constrain width between 200px and 600px
+      const constrainedWidth = Math.max(200, Math.min(600, newWidth));
+      setPanelWidth(constrainedWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
   const handleCreateBranch = async () => {
     if (!newBranchName.trim()) return;
@@ -302,7 +349,7 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
   const worktreeFontSize = terminalSettings ? terminalSettings.fontSize * 1.5 : 21; // Default to 21px (150% of 14px)
 
   return (
-    <div className="w-80 border-r flex flex-col h-full">
+    <div className="border-r flex flex-col h-full relative" style={{ width: `${panelWidth}px` }}>
       <div className="h-[57px] px-4 border-b flex-shrink-0 flex flex-col justify-center">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">Worktrees</h3>
@@ -475,6 +522,15 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
           setDeletionBranchName('');
           setDeletionWorktreePath('');
         }}
+      />
+
+      {/* Resize handle */}
+      <div
+        className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500 ${
+          isResizing ? 'bg-blue-500' : 'bg-transparent'
+        } transition-colors`}
+        onMouseDown={handleResizeMouseDown}
+        title="Drag to resize"
       />
     </div>
   );
