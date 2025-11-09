@@ -73,6 +73,7 @@ export function ClaudeTerminal({
     const displayChar = char.replace(/\r/g, '\\r')
                             .replace(/\n/g, '\\n')
                             .replace(/\t/g, '\\t')
+                            // eslint-disable-next-line no-control-regex
                             .replace(/\x1b/g, '\\x1b');
 
     setDebugKeys(prev => {

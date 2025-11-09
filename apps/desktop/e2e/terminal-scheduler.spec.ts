@@ -172,7 +172,6 @@ test.describe('Terminal Scheduler Test', () => {
 
     // Verify scheduler button is no longer running (one-time execution should stop)
     await page.waitForTimeout(1000);
-    const buttonClass = await schedulerButton.getAttribute('class');
     // For one-time execution, the button should not have the blue color after execution
     // Note: This might take a moment to update
   });
@@ -250,7 +249,7 @@ test.describe('Terminal Scheduler Test', () => {
     await page.waitForTimeout(2500);
 
     // Get terminal content
-    let terminalContent = await page.locator('.xterm-screen').textContent();
+    const terminalContent = await page.locator('.xterm-screen').textContent();
 
     // Count occurrences of "Repeat Test" - should be at least 2
     const occurrences = (terminalContent?.match(/Repeat Test/g) || []).length;
