@@ -16,7 +16,7 @@ export function ProjectWorkspace({ projectId, theme }: ProjectWorkspaceProps) {
   }
 
   return (
-    <div className="flex-1 flex h-full">
+    <div className="flex h-full overflow-hidden">
       <WorktreePanel
         projectPath={project.path}
         selectedWorktree={project.selectedWorktree}
@@ -25,8 +25,8 @@ export function ProjectWorkspace({ projectId, theme }: ProjectWorkspaceProps) {
         initialWorktrees={project.worktrees}
       />
       {project.selectedWorktree && (
-        <RightPaneView 
-          worktreePath={project.selectedWorktree} 
+        <RightPaneView
+          worktreePath={project.selectedWorktree}
           projectId={projectId}
           theme={theme}
         />

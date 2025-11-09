@@ -77,10 +77,10 @@ function AppContent() {
       {projects.length === 0 ? (
         <ProjectSelector onSelectProject={handleSelectProject} />
       ) : (
-        <Tabs 
-          value={activeProjectId || ''} 
+        <Tabs
+          value={activeProjectId || ''}
           onValueChange={setActiveProject}
-          className="flex-1 flex flex-col"
+          className="flex-1 flex flex-col overflow-hidden"
         >
           <div className="border-b flex items-center gap-2 bg-muted/50 h-10">
             <TabsList className="h-full bg-transparent p-0 rounded-none">
@@ -111,10 +111,10 @@ function AppContent() {
           </div>
 
           {projects.map((project) => (
-            <TabsContent 
-              key={project.id} 
+            <TabsContent
+              key={project.id}
               value={project.id}
-              className="flex-1 m-0 h-full"
+              className="flex-1 m-0 h-0 overflow-hidden"
             >
               <ProjectWorkspace projectId={project.id} theme={theme} />
             </TabsContent>
