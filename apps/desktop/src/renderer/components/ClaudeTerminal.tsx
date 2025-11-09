@@ -919,8 +919,8 @@ export function ClaudeTerminal({
         }}
       />
 
-      {/* Debug Section: Last 20 keys sent */}
-      {debugKeys.length > 0 && (
+      {/* Debug Section: Last 20 keys sent (dev/test only) */}
+      {debugKeys.length > 0 && process.env.NODE_ENV === 'development' && (
         <div className="debug-keys-section border-t bg-muted/30 p-2 text-xs font-mono overflow-x-auto whitespace-nowrap">
           <span className="font-semibold text-muted-foreground">Keys: </span>
           {[...debugKeys].reverse().map((key, i) => (
