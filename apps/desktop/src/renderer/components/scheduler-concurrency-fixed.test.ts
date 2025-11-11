@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock the terminal write function
 const mockWrites: string[] = [];
-const mockWrite = vi.fn((processId: string, data: string) => {
+const mockWrite = vi.fn((_processId: string, data: string) => {
   mockWrites.push(data);
   return Promise.resolve();
 });
@@ -150,7 +150,7 @@ describe('Scheduler Overlap Bug - Fixed', () => {
     const stopSignal = { stopped: false };
 
     // Start scheduler with 500ms interval
-    const schedulerPromise = startSchedulerFixed(command, 500, processId, terminal, stopSignal);
+    startSchedulerFixed(command, 500, processId, terminal, stopSignal);
 
     // Let it run for enough time for 3 executions
     // Each execution: 500ms wait + ~1100ms execution = 1600ms per iteration
@@ -241,7 +241,7 @@ describe('Scheduler Overlap Bug - Fixed', () => {
     const stopSignal = { stopped: false };
 
     // Start scheduler with very fast 200ms interval
-    const schedulerPromise = startSchedulerFixed(command, 200, processId, terminal, stopSignal);
+    startSchedulerFixed(command, 200, processId, terminal, stopSignal);
 
     // Let it run for several iterations
     // Each iteration: 200ms wait + ~1100ms execution = 1300ms

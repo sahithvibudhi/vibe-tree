@@ -10,7 +10,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock the terminal write function
 const mockWrites: string[] = [];
-const mockWrite = vi.fn((processId: string, data: string) => {
+const mockWrite = vi.fn((_processId: string, data: string) => {
   mockWrites.push(data);
   return Promise.resolve();
 });
