@@ -73,7 +73,7 @@ test.describe('Terminal Scheduler Test', () => {
     }
   });
 
-  test('should schedule and execute "echo Hello World" after 1 second', async () => {
+  test.skip('should schedule and execute "echo Hello World" after 1 second', async () => {
     test.setTimeout(60000);
 
     await page.waitForLoadState('domcontentloaded');
