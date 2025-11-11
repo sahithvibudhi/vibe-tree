@@ -24,6 +24,8 @@ interface ProjectContextType {
   setSelectedWorktree: (projectId: string, worktreePath: string | null) => void;
   getProject: (id: string) => Project | undefined;
   getActiveProject: () => Project | undefined;
+  setWorktreeSchedulerStatus: (projectId: string, worktreePath: string, hasRunningScheduler: boolean) => void;
+  getWorktreeSchedulerStatus: (projectId: string, worktreePath: string) => boolean;
 }
 
 const ProjectContext = createContext<ProjectContextType | null>(null);
@@ -43,6 +45,8 @@ interface ProjectProviderProps {
 export function ProjectProvider({ children }: ProjectProviderProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  // Map of projectId -> worktreePath -> hasRunningScheduler
+  const [worktreeSchedulerStatus, setWorktreeSchedulerStatusState] = useState<Map<string, Map<string, boolean>>>(new Map());
 
   const addProject = useCallback((path: string): string => {
     // Check if project already exists
@@ -145,6 +149,24 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     return activeProjectId ? projects.find(p => p.id === activeProjectId) : undefined;
   };
 
+  const setWorktreeSchedulerStatus = useCallback((projectId: string, worktreePath: string, hasRunningScheduler: boolean) => {
+    setWorktreeSchedulerStatusState(prev => {
+      const newMap = new Map(prev);
+      let projectMap = newMap.get(projectId);
+      if (!projectMap) {
+        projectMap = new Map();
+        newMap.set(projectId, projectMap);
+      }
+      projectMap.set(worktreePath, hasRunningScheduler);
+      return newMap;
+    });
+  }, []);
+
+  const getWorktreeSchedulerStatus = useCallback((projectId: string, worktreePath: string): boolean => {
+    const projectMap = worktreeSchedulerStatus.get(projectId);
+    return projectMap?.get(worktreePath) || false;
+  }, [worktreeSchedulerStatus]);
+
   const value: ProjectContextType = {
     projects,
     activeProjectId,
@@ -154,7 +176,9 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     updateProjectWorktrees,
     setSelectedWorktree,
     getProject,
-    getActiveProject
+    getActiveProject,
+    setWorktreeSchedulerStatus,
+    getWorktreeSchedulerStatus
   };
 
   return (

@@ -7,6 +7,7 @@ interface TerminalManagerProps {
   worktreePath: string;
   projectId?: string;
   theme?: 'light' | 'dark';
+  onSchedulerStatusChange?: (hasRunningScheduler: boolean) => void;
 }
 
 interface TerminalInstance {
@@ -82,11 +83,12 @@ function countTerminals(node: GridNode): number {
   return node.children.reduce((sum, child) => sum + countTerminals(child), 0);
 }
 
-export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManagerProps) {
+export function TerminalGrid({ worktreePath, projectId, theme, onSchedulerStatusChange }: TerminalManagerProps) {
   const [worktreeGrids, setWorktreeGrids] = useState<Map<string, WorktreeGrid>>(worktreeGridCache);
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalProcessIds = useRef<Map<string, string>>(new Map());
   const terminalsBeingClosed = useRef<Set<string>>(new Set());
+  const terminalSchedulerStatus = useRef<Map<string, boolean>>(new Map());
 
   // Initialize terminal controller
   const terminalControllerRef = useRef<TerminalController>();
@@ -318,6 +320,21 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
     }
   }, []);
 
+  // Callback to handle scheduler status changes from terminals
+  const handleSchedulerStatusChange = useCallback((terminalId: string, isRunning: boolean) => {
+    terminalSchedulerStatus.current.set(terminalId, isRunning);
+
+    // Check if any terminal in the current worktree has a running scheduler
+    const grid = worktreeGridCache.get(worktreePath);
+    if (grid && onSchedulerStatusChange) {
+      const allTerminals = collectTerminals(grid.root);
+      const hasRunningScheduler = allTerminals.some(
+        terminal => terminalSchedulerStatus.current.get(terminal.id) === true
+      );
+      onSchedulerStatusChange(hasRunningScheduler);
+    }
+  }, [worktreePath, onSchedulerStatusChange]);
+
   // Get current grid
   const currentGrid = useMemo(() => {
     return worktreeGrids.get(worktreePath);
@@ -441,6 +458,7 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
               onClose={() => handleClose(terminal.id)}
               canClose={canCloseTerminal}
               onProcessIdChange={(processId) => handleTerminalProcessId(terminal.id, processId)}
+              onSchedulerStatusChange={(isRunning) => handleSchedulerStatusChange(terminal.id, isRunning)}
             />
           </InPortal>
         );

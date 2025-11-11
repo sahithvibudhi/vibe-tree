@@ -8,7 +8,7 @@ interface ProjectWorkspaceProps {
 }
 
 export function ProjectWorkspace({ projectId, theme }: ProjectWorkspaceProps) {
-  const { getProject, setSelectedWorktree, updateProjectWorktrees } = useProjects();
+  const { getProject, setSelectedWorktree, updateProjectWorktrees, setWorktreeSchedulerStatus } = useProjects();
   const project = getProject(projectId);
 
   if (!project) {
@@ -23,12 +23,16 @@ export function ProjectWorkspace({ projectId, theme }: ProjectWorkspaceProps) {
         onSelectWorktree={(worktree) => setSelectedWorktree(projectId, worktree)}
         onWorktreesChange={(worktrees) => updateProjectWorktrees(projectId, worktrees)}
         initialWorktrees={project.worktrees}
+        projectId={projectId}
       />
       {project.selectedWorktree && (
         <RightPaneView
           worktreePath={project.selectedWorktree}
           projectId={projectId}
           theme={theme}
+          onSchedulerStatusChange={(hasRunningScheduler) =>
+            setWorktreeSchedulerStatus(projectId, project.selectedWorktree!, hasRunningScheduler)
+          }
         />
       )}
     </div>

@@ -8,9 +8,10 @@ interface RightPaneViewProps {
   worktreePath: string;
   projectId?: string;
   theme?: 'light' | 'dark';
+  onSchedulerStatusChange?: (hasRunningScheduler: boolean) => void;
 }
 
-export function RightPaneView({ worktreePath, projectId, theme }: RightPaneViewProps) {
+export function RightPaneView({ worktreePath, projectId, theme, onSchedulerStatusChange }: RightPaneViewProps) {
   const [activeTab, setActiveTab] = useState('terminal');
 
   return (
@@ -39,7 +40,7 @@ export function RightPaneView({ worktreePath, projectId, theme }: RightPaneViewP
           </TabsList>
         </div>
 
-        <TabsContent 
+        <TabsContent
           value="terminal"
           className="flex-1 m-0 h-full"
         >
@@ -47,6 +48,7 @@ export function RightPaneView({ worktreePath, projectId, theme }: RightPaneViewP
             worktreePath={worktreePath}
             projectId={projectId}
             theme={theme}
+            onSchedulerStatusChange={onSchedulerStatusChange}
           />
         </TabsContent>
 

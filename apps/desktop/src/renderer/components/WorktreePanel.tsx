@@ -3,11 +3,12 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
-import { GitBranch, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { GitBranch, Plus, RefreshCw, Trash2, Clock } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 import { isProtectedBranch } from '../utils/worktree';
 import { DeletionReportingDialog } from './DeletionReportingDialog';
 import type { TerminalSettings } from '../types/terminal-settings';
+import { useProjects } from '../contexts/ProjectContext';
 
 interface Worktree {
   path: string;
@@ -21,9 +22,10 @@ interface WorktreePanelProps {
   onSelectWorktree: (path: string) => void;
   onWorktreesChange?: (worktrees: Worktree[]) => void;
   initialWorktrees?: Worktree[];
+  projectId?: string;
 }
 
-export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree, onWorktreesChange, initialWorktrees }: WorktreePanelProps) {
+export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree, onWorktreesChange, initialWorktrees, projectId }: WorktreePanelProps) {
   const [worktrees, setWorktrees] = useState<Worktree[]>(initialWorktrees || []);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -44,6 +46,7 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
   const [panelWidth, setPanelWidth] = useState<number>(320); // Default 320px (w-80)
   const [isResizing, setIsResizing] = useState(false);
   const { toast } = useToast();
+  const { getWorktreeSchedulerStatus } = useProjects();
 
   const loadWorktrees = useCallback(async () => {
     setRefreshing(true);
@@ -427,6 +430,9 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
                 className="w-full text-left p-3 flex items-center gap-1.5 pl-10"
                 data-worktree-branch={worktree.branch ? worktree.branch.replace('refs/heads/', '') : worktree.head.substring(0, 8)}
               >
+                {projectId && getWorktreeSchedulerStatus(projectId, worktree.path) && (
+                  <Clock className="h-4 w-4 text-blue-500 flex-shrink-0 animate-pulse" />
+                )}
                 <GitBranch className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="truncate" style={{ fontSize: `${worktreeFontSize}px`, fontWeight: 'bold' }}>

@@ -25,6 +25,7 @@ interface ClaudeTerminalProps {
   onClose?: () => void;
   canClose?: boolean;
   onProcessIdChange?: (processId: string) => void;
+  onSchedulerStatusChange?: (isRunning: boolean) => void;
 }
 
 // Cache for terminal states per worktree
@@ -39,7 +40,8 @@ export function ClaudeTerminal({
   onSplitHorizontal,
   onClose,
   canClose = false,
-  onProcessIdChange
+  onProcessIdChange,
+  onSchedulerStatusChange
 }: ClaudeTerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [terminal, setTerminal] = useState<Terminal | null>(null);
@@ -156,6 +158,13 @@ export function ClaudeTerminal({
       stopScheduler();
     };
   }, [stopScheduler]);
+
+  // Notify parent when scheduler status changes
+  useEffect(() => {
+    if (onSchedulerStatusChange) {
+      onSchedulerStatusChange(schedulerRunning);
+    }
+  }, [schedulerRunning, onSchedulerStatusChange]);
 
   // Load terminal settings and listen for changes
   useEffect(() => {
