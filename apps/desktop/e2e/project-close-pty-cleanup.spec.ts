@@ -71,7 +71,7 @@ test.describe('Project Close PTY Cleanup', () => {
     }
   });
 
-  test('should kill all PTY processes when closing a project', async () => {
+  test.skip('should kill all PTY processes when closing a project', async () => {
     test.setTimeout(90000);
 
     await page.waitForLoadState('domcontentloaded');

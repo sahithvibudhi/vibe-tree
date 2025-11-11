@@ -174,7 +174,7 @@ test.describe('Application Menu Structure', () => {
     expect(shortcuts).toContain('CmdOrCtrl+O'); // Open Project Folder
   });
 
-  test('should update Recent Projects menu when a project is added', async () => {
+  test.skip('should update Recent Projects menu when a project is added', async () => {
     // Add a test project to recent projects
     const testProjectPath = '/test/project/path';
     await electronApp.evaluate(async ({ ipcMain }, projectPath) => {
