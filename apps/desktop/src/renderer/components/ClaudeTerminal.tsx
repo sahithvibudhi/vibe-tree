@@ -91,13 +91,13 @@ export function ClaudeTerminal({
     setSchedulerRunning(false);
   }, []);
 
-  const sendScheduledCommand = useCallback((command: string): Promise<void> => {
-    if (!processIdRef.current || !terminal) return Promise.resolve();
+  const sendScheduledCommand = useCallback((command: string): Promise<boolean> => {
+    if (!processIdRef.current || !terminal) return Promise.resolve(false);
 
     // Prevent overlapping command executions by checking if one is already in progress
     if (commandInProgressRef.current) {
       console.warn('Command already in progress, skipping overlapping execution');
-      return Promise.resolve();
+      return Promise.resolve(false);
     }
 
     commandInProgressRef.current = true;
@@ -107,7 +107,7 @@ export function ClaudeTerminal({
     // which is critical for interactive apps like Claude Code that process
     // input character-by-character in raw terminal mode
 
-    return new Promise<void>((resolve) => {
+    return new Promise<boolean>((resolve) => {
       // Type each character with a small delay to simulate realistic typing
       let charIndex = 0;
       const typeNextChar = () => {
@@ -122,7 +122,7 @@ export function ClaudeTerminal({
           setTimeout(() => {
             window.electronAPI.shell.write(processIdRef.current, '\r');
             commandInProgressRef.current = false;
-            resolve();
+            resolve(true);
           }, 1000);
         }
       };
@@ -139,26 +139,29 @@ export function ClaudeTerminal({
     setSchedulerRunning(true);
 
     if (config.repeat) {
-      // For repeat mode, use chained setTimeout to ensure each command completes
+      // For repeat mode, use a loop with chained setTimeout to ensure each command completes
       // before the next one starts. This prevents overlapping executions that
       // cause gibberish input, especially after machine sleep/wake.
-      const scheduleNext = async () => {
-        // Wait for the delay interval
-        await new Promise(resolve => {
-          schedulerTimeoutRef.current = setTimeout(resolve, config.delayMs);
-        });
+      const runSchedulerLoop = async () => {
+        while (schedulerTimeoutRef.current) {
+          // Wait for the delay interval
+          await new Promise(resolve => {
+            schedulerTimeoutRef.current = setTimeout(resolve, config.delayMs);
+          });
 
-        // Execute the command and wait for it to complete
-        await sendScheduledCommand(config.command);
+          // Check if scheduler was stopped during the delay
+          if (!schedulerTimeoutRef.current) {
+            break;
+          }
 
-        // Schedule the next execution only if scheduler is still running
-        if (schedulerTimeoutRef.current) {
-          scheduleNext();
+          // Execute the command and wait for it to complete
+          // This will wait for the full typing duration before continuing the loop
+          await sendScheduledCommand(config.command);
         }
       };
 
-      // Start the chain
-      scheduleNext();
+      // Start the loop
+      runSchedulerLoop();
     } else {
       // For one-time mode, use setTimeout
       schedulerTimeoutRef.current = setTimeout(async () => {
