@@ -31,8 +31,15 @@ The worktree button with `data-worktree-branch="main"` is not appearing within 3
 - Check if project loading is slower in CI
 - Investigate if the 3-second wait after `openButton.click()` is insufficient
 
-## Potential Fixes
-1. Add explicit wait for worktree button before clicking
-2. Increase timeout for worktree button visibility check
-3. Add better error handling to show what elements ARE present when timeout occurs
-4. Check if project is fully loaded before attempting to click worktree button
+## Fix Applied
+Added proper waits and checks before clicking worktree button in tests 2 and 3:
+
+1. **Test 2 (line 200):** Added `await expect(openButton).toBeVisible()` before clicking
+2. **Test 2 (line 227-230):** Added worktree count check before clicking worktree button
+3. **Test 3 (line 290):** Added `await expect(openButton).toBeVisible()` before clicking
+4. **Test 3 (line 308-311):** Added worktree count check before clicking worktree button
+
+These changes match the pattern used in test 1 which was passing. The tests now:
+- Explicitly wait for the open button to be visible before clicking
+- Verify worktree button exists (count > 0) before attempting to click
+- Properly sequence: openButton.click() → wait 3s → check worktree exists → click worktree

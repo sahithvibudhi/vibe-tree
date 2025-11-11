@@ -209,7 +209,7 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
     // Open project
     await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
-    await openButton.click();
+    await expect(openButton).toBeVisible();
 
     await electronApp.evaluate(async ({ dialog }, repoPath) => {
       dialog.showOpenDialog = async () => {
@@ -220,10 +220,13 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
       };
     }, dummyRepoPath);
 
+    await openButton.click();
     await page.waitForTimeout(3000);
 
     // Open terminal
     const worktreeButton = page.locator('button[data-worktree-branch="main"]');
+    const worktreeCount = await worktreeButton.count();
+    expect(worktreeCount).toBeGreaterThan(0);
     await worktreeButton.click();
     await page.waitForTimeout(3000);
 
@@ -287,7 +290,7 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
     // Open project
     await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
-    await openButton.click();
+    await expect(openButton).toBeVisible();
 
     await electronApp.evaluate(async ({ dialog }, repoPath) => {
       dialog.showOpenDialog = async () => {
@@ -298,10 +301,13 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
       };
     }, dummyRepoPath);
 
+    await openButton.click();
     await page.waitForTimeout(3000);
 
     // Open terminal
     const worktreeButton = page.locator('button[data-worktree-branch="main"]');
+    const worktreeCount = await worktreeButton.count();
+    expect(worktreeCount).toBeGreaterThan(0);
     await worktreeButton.click();
     await page.waitForTimeout(3000);
 
