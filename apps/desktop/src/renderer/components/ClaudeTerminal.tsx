@@ -60,7 +60,6 @@ export function ClaudeTerminal({
   const [schedulerConfig, setSchedulerConfig] = useState<SchedulerConfig | null>(null);
   const [schedulerRunning, setSchedulerRunning] = useState(false);
   const schedulerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const schedulerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const commandInProgressRef = useRef(false);
 
   // Search functionality
@@ -86,10 +85,6 @@ export function ClaudeTerminal({
     if (schedulerTimeoutRef.current) {
       clearTimeout(schedulerTimeoutRef.current);
       schedulerTimeoutRef.current = null;
-    }
-    if (schedulerIntervalRef.current) {
-      clearInterval(schedulerIntervalRef.current);
-      schedulerIntervalRef.current = null;
     }
     // Reset the command in progress flag when stopping
     commandInProgressRef.current = false;
