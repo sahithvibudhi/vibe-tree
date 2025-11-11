@@ -7,17 +7,19 @@ import { execSync } from 'child_process';
 import os from 'os';
 
 /**
- * This test suite exposes the issue where overlapping scheduler executions
- * cause gibberish input to be sent to the terminal.
+ * This test suite verifies that the scheduler overlap bug has been fixed.
  *
- * Root Cause: When the scheduler interval is shorter than the time it takes
+ * Previous Bug: When the scheduler interval was shorter than the time it takes
  * to type the command (10ms per char + 1000ms wait), multiple sendScheduledCommand
- * calls overlap, causing characters from different executions to interleave.
+ * calls would overlap, causing characters from different executions to interleave.
  *
- * This is particularly problematic after machine sleep/wake when timers may
- * fire rapidly or unpredictably.
+ * Fix: Added concurrency protection with commandInProgressRef flag and changed
+ * from setInterval to chained setTimeout. Commands now only execute serially.
+ *
+ * These tests verify the fix works even in extreme cases (fast intervals, machine
+ * sleep/wake scenarios).
  */
-test.describe('Terminal Scheduler Overlap Bug', () => {
+test.describe('Terminal Scheduler Overlap Fix Verification', () => {
   let electronApp: ElectronApplication;
   let page: Page;
   let dummyRepoPath: string;
@@ -81,15 +83,15 @@ test.describe('Terminal Scheduler Overlap Bug', () => {
     }
   });
 
-  test('should expose overlapping execution bug with fast repeat interval', async () => {
+  test('should prevent overlapping execution even with fast repeat interval', async () => {
     /**
-     * This test exposes the bug by:
+     * This test verifies the fix by:
      * 1. Setting repeat interval to 500ms (faster than typing time)
-     * 2. Using a long command that takes > 500ms to type
-     * 3. Verifying that gibberish/corrupted output appears
+     * 2. Using a command that takes > 500ms to type
+     * 3. Verifying that NO corrupted output appears despite fast interval
      *
-     * Expected behavior: Clean output with each command on a new line
-     * Actual behavior: Overlapping characters and malformed commands
+     * With the fix: Clean output because concurrency protection prevents overlap
+     * Without the fix: Would have overlapping characters and malformed commands
      */
     test.setTimeout(60000);
 
@@ -176,8 +178,7 @@ test.describe('Terminal Scheduler Overlap Bug', () => {
       /echo.*\n[^%].*Hello/.test(terminalContent || '') || // Command split across lines
       /Hello Wor\s+ld/.test(terminalContent || ''); // Split word
 
-    // This test should FAIL with current implementation, exposing the bug
-    // When fixed, we should NOT see any corrupted output
+    // The fix prevents overlapping executions, so we should NOT see corrupted output
     if (hasCorruptedOutput) {
       console.error('BUG DETECTED: Overlapping scheduler executions caused corrupted terminal input!');
       console.error('Signs of corruption:');
@@ -192,8 +193,8 @@ test.describe('Terminal Scheduler Overlap Bug', () => {
       }
     }
 
-    // For now, we expect the bug to be present (test will fail when bug is fixed)
-    expect(hasCorruptedOutput).toBe(true);
+    // With the fix, we expect clean output (no corruption)
+    expect(hasCorruptedOutput).toBe(false);
   });
 
   test('should show clean output when interval is longer than typing time', async () => {
@@ -269,16 +270,15 @@ test.describe('Terminal Scheduler Overlap Bug', () => {
     expect(terminalContent).not.toMatch(/Hello Wor\s+ld/);
   });
 
-  test('should expose bug with rapid timer firing after simulated delay', async () => {
+  test('should prevent corruption even with very short interval (200ms)', async () => {
     /**
-     * This test simulates the sleep/wake scenario by:
-     * 1. Starting scheduler with short interval
-     * 2. Letting it run briefly
-     * 3. Pausing to simulate sleep (not actual sleep, but demonstrates the concept)
-     * 4. Checking for corrupted output
+     * This test verifies the fix handles extreme cases:
+     * 1. Starting scheduler with very short interval (200ms)
+     * 2. Using a longer command (~500ms typing time)
+     * 3. Verifying NO corruption despite massive interval vs. typing time mismatch
      *
-     * In real scenario, machine sleep causes setInterval timers to fire rapidly
-     * on wake, making the overlap issue worse.
+     * This simulates worst-case scenarios like machine sleep/wake where timers
+     * might fire rapidly. The fix prevents corruption via concurrency protection.
      */
     test.setTimeout(60000);
 
@@ -344,8 +344,9 @@ test.describe('Terminal Scheduler Overlap Bug', () => {
       /echo.*\n[^%].*This/.test(terminalContent || '') ||
       /longer\s+command/.test(terminalContent || '');
 
-    // With 200ms interval and ~500ms typing time, we should definitely see overlap
+    // With the fix, even with 200ms interval and ~500ms typing time,
+    // we should NOT see overlap due to concurrency protection
     console.log('Corrupted output detected:', hasCorruptedOutput);
-    expect(hasCorruptedOutput).toBe(true);
+    expect(hasCorruptedOutput).toBe(false);
   });
 });
