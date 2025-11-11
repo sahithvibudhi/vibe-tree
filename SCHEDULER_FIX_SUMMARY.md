@@ -2,13 +2,18 @@
 
 ## Problem Statement
 
-The terminal scheduler was sending gibberish input when the machine was locked/sleeping with a repeating command. For example:
+The terminal scheduler had two issues:
+
+1. **Gibberish input when machine sleeps**: Corrupted terminal output with incomplete quotes, split commands, and interleaved characters
+2. **Scheduler not working in background**: Commands were not sent when the app window was not in focus
 
 **Configuration**: `echo "Hello World"` - every 1 second - repeat
 
-**Result**: Corrupted terminal output with incomplete quotes, split commands, and interleaved characters.
+**Result**: Corrupted terminal output + no execution when app in background
 
-## Root Cause
+## Root Causes
+
+### Issue 1: Overlapping Command Executions
 
 The bug was caused by **overlapping command executions** in `apps/desktop/src/renderer/components/ClaudeTerminal.tsx`:
 
@@ -19,6 +24,10 @@ The bug was caused by **overlapping command executions** in `apps/desktop/src/re
 3. **Character interleaving**: When a new command started while the previous was still typing, characters from both executions would interleave, creating gibberish.
 
 4. **Sleep/wake amplification**: When the machine sleeps, timers are paused. On wake, multiple intervals may fire rapidly, causing massive overlap.
+
+### Issue 2: Background Throttling
+
+Electron/Chromium throttles `setTimeout` and `setInterval` when the window is in the background to save resources. By default, `backgroundThrottling` is enabled, which can delay timers to 1000ms+ when the app is not focused, causing the scheduler to not fire as expected.
 
 ## Solution Implemented
 
@@ -39,6 +48,11 @@ The bug was caused by **overlapping command executions** in `apps/desktop/src/re
    - Executes command and waits for completion
    - Only then schedules the next execution
    - This ensures commands never overlap
+
+4. **Disabled background throttling**:
+   - Added `backgroundThrottling: false` to BrowserWindow webPreferences
+   - Ensures timers fire correctly even when app is in background
+   - Applied to both main window and test window
 
 ### Code Changes
 
@@ -148,6 +162,7 @@ pnpm build
 
 To verify the fix:
 
+#### Test 1: Overlap Prevention
 1. Start the app with a test project
 2. Open a terminal
 3. Schedule a repeating command: `echo "Hello World"` every 1 second
@@ -157,6 +172,17 @@ To verify the fix:
 
 **Expected**: Clean, non-overlapping output
 **Before fix**: Gibberish with `dquote>` prompts and split words
+
+#### Test 2: Background Execution
+1. Start the app with a test project
+2. Open a terminal
+3. Schedule a repeating command: `echo "Background Test"` every 2 seconds
+4. Switch to another application (put VibeTree in background)
+5. Wait 10 seconds
+6. Switch back to VibeTree and observe terminal
+
+**Expected**: Commands continued executing in background
+**Before fix**: No commands executed while app was in background
 
 ## Technical Benefits
 
@@ -173,12 +199,14 @@ To verify the fix:
 
 ## Files Modified
 
-1. `apps/desktop/src/renderer/components/ClaudeTerminal.tsx` - Main fix
-2. `apps/desktop/src/renderer/components/scheduler-concurrency.test.ts` - Bug exposure test
-3. `apps/desktop/src/renderer/components/scheduler-concurrency-fixed.test.ts` - Fix verification test
-4. `apps/desktop/e2e/terminal-scheduler-overlap.spec.ts` - E2E test
-5. `SCHEDULER_BUG_ANALYSIS.md` - Detailed analysis
-6. `SCHEDULER_FIX_SUMMARY.md` - This document
+1. `apps/desktop/src/renderer/components/ClaudeTerminal.tsx` - Main overlap fix
+2. `apps/desktop/src/main/index.ts` - Disable background throttling
+3. `apps/desktop/src/main/test-index.ts` - Disable background throttling for tests
+4. `apps/desktop/src/renderer/components/scheduler-concurrency.test.ts` - Bug exposure test
+5. `apps/desktop/src/renderer/components/scheduler-concurrency-fixed.test.ts` - Fix verification test
+6. `apps/desktop/e2e/terminal-scheduler-overlap.spec.ts` - E2E test
+7. `SCHEDULER_BUG_ANALYSIS.md` - Detailed analysis
+8. `SCHEDULER_FIX_SUMMARY.md` - This document
 
 ## Migration Notes
 
