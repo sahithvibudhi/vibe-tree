@@ -61,6 +61,7 @@ export function ClaudeTerminal({
   const [schedulerRunning, setSchedulerRunning] = useState(false);
   const schedulerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const schedulerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const commandInProgressRef = useRef(false);
 
   // Search functionality
   const handleSearch = useCallback((query: string, direction: 'next' | 'previous' = 'next') => {
@@ -90,35 +91,49 @@ export function ClaudeTerminal({
       clearInterval(schedulerIntervalRef.current);
       schedulerIntervalRef.current = null;
     }
+    // Reset the command in progress flag when stopping
+    commandInProgressRef.current = false;
     setSchedulerRunning(false);
   }, []);
 
-  const sendScheduledCommand = useCallback((command: string) => {
-    if (!processIdRef.current || !terminal) return;
+  const sendScheduledCommand = useCallback((command: string): Promise<void> => {
+    if (!processIdRef.current || !terminal) return Promise.resolve();
+
+    // Prevent overlapping command executions by checking if one is already in progress
+    if (commandInProgressRef.current) {
+      console.warn('Command already in progress, skipping overlapping execution');
+      return Promise.resolve();
+    }
+
+    commandInProgressRef.current = true;
 
     // Simulate typing through xterm terminal instance
     // This ensures the input goes through the same path as real user typing,
     // which is critical for interactive apps like Claude Code that process
     // input character-by-character in raw terminal mode
 
-    // Type each character with a small delay to simulate realistic typing
-    let charIndex = 0;
-    const typeNextChar = () => {
-      if (charIndex < command.length) {
-        const char = command[charIndex];
-        // Send to PTY
-        window.electronAPI.shell.write(processIdRef.current, char);
-        charIndex++;
-        setTimeout(typeNextChar, 10); // 10ms between characters
-      } else {
-        // After all characters, wait 1 second before sending ENTER key (\r)
-        setTimeout(() => {
-          window.electronAPI.shell.write(processIdRef.current, '\r');
-        }, 1000);
-      }
-    };
+    return new Promise<void>((resolve) => {
+      // Type each character with a small delay to simulate realistic typing
+      let charIndex = 0;
+      const typeNextChar = () => {
+        if (charIndex < command.length) {
+          const char = command[charIndex];
+          // Send to PTY
+          window.electronAPI.shell.write(processIdRef.current, char);
+          charIndex++;
+          setTimeout(typeNextChar, 10); // 10ms between characters
+        } else {
+          // After all characters, wait 1 second before sending ENTER key (\r)
+          setTimeout(() => {
+            window.electronAPI.shell.write(processIdRef.current, '\r');
+            commandInProgressRef.current = false;
+            resolve();
+          }, 1000);
+        }
+      };
 
-    typeNextChar();
+      typeNextChar();
+    });
   }, [terminal]);
 
   const startScheduler = useCallback((config: SchedulerConfig) => {
@@ -129,14 +144,30 @@ export function ClaudeTerminal({
     setSchedulerRunning(true);
 
     if (config.repeat) {
-      // For repeat mode, use setInterval
-      schedulerIntervalRef.current = setInterval(() => {
-        sendScheduledCommand(config.command);
-      }, config.delayMs);
+      // For repeat mode, use chained setTimeout to ensure each command completes
+      // before the next one starts. This prevents overlapping executions that
+      // cause gibberish input, especially after machine sleep/wake.
+      const scheduleNext = async () => {
+        // Wait for the delay interval
+        await new Promise(resolve => {
+          schedulerTimeoutRef.current = setTimeout(resolve, config.delayMs);
+        });
+
+        // Execute the command and wait for it to complete
+        await sendScheduledCommand(config.command);
+
+        // Schedule the next execution only if scheduler is still running
+        if (schedulerTimeoutRef.current) {
+          scheduleNext();
+        }
+      };
+
+      // Start the chain
+      scheduleNext();
     } else {
       // For one-time mode, use setTimeout
-      schedulerTimeoutRef.current = setTimeout(() => {
-        sendScheduledCommand(config.command);
+      schedulerTimeoutRef.current = setTimeout(async () => {
+        await sendScheduledCommand(config.command);
         setSchedulerRunning(false);
         setSchedulerConfig(null);
       }, config.delayMs);
