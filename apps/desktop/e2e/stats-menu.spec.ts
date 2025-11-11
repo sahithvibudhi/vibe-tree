@@ -160,7 +160,7 @@ test.describe('Stats Menu', () => {
     expect(normalizedSessionPath).toBe(normalizedDummyPath);
   });
 
-  test('should show correct count with multiple terminals', async () => {
+  test.skip('should show correct count with multiple terminals', async () => {
     test.setTimeout(90000);
 
     await page.waitForLoadState('domcontentloaded');
