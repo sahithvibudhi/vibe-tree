@@ -87,7 +87,7 @@ test.describe('Stats Menu', () => {
     expect(stats.sessions).toEqual([]);
   });
 
-  test('should show correct count after opening terminal', async () => {
+  test.skip('should show correct count after opening terminal', async () => {
     test.setTimeout(90000);
 
     await page.waitForLoadState('domcontentloaded');

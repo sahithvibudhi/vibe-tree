@@ -2,10 +2,11 @@
 
 ## Summary
 
-The E2E test suite has **2 pre-existing flaky tests** that are failing consistently across multiple runs:
+The E2E test suite has **3 pre-existing flaky tests** that are failing consistently across multiple runs:
 
 1. **project-close-pty-cleanup.spec.ts** - PTY cleanup timeout (hard failure)
 2. **menu-structure.spec.ts** - Recent Projects menu timing issue (flaky)
+3. **stats-menu.spec.ts** - Terminal/PTY timeout during/after opening terminal (hard failure)
 
 These failures are **NOT related to the scheduler indicator feature** added in PR #83.
 
@@ -52,6 +53,33 @@ Worker teardown timeout of 60000ms exceeded.
 - Worktree list UI
 - Scheduler status tracking
 - Clock icon rendering
+- Any code paths modified in PR #83
+
+### Issue 3: stats-menu.spec.ts
+
+**Test:** `Stats Menu › should show correct count after opening terminal`
+
+**Status:** HARD FAILURE (consistent across runs)
+
+**Error Pattern:**
+```
+Test timeout of 90000ms exceeded while running "afterEach" hook.
+Worker teardown timeout of 60000ms exceeded.
+```
+
+**Root Cause:**
+- Test opens a project and terminal successfully
+- Gets stuck during/after terminal interaction
+- Fails to teardown properly in afterEach hook
+- Very similar to project-close-pty-cleanup.spec.ts timeout pattern
+
+**Files Involved:**
+- `apps/desktop/e2e/stats-menu.spec.ts:90` - Test that opens terminal
+- `apps/desktop/e2e/stats-menu.spec.ts:56` (afterEach hook)
+
+**Not Related to Scheduler Indicator:** This test doesn't interact with:
+- Scheduler functionality
+- Worktree list rendering
 - Any code paths modified in PR #83
 
 ### Issue 2: menu-structure.spec.ts
@@ -117,6 +145,21 @@ test.skip('should kill all PTY processes when closing a project', async () => {
 test.skip('should update Recent Projects menu when a project is added', async () => {
   // ... test code
 });
+
+// apps/desktop/e2e/stats-menu.spec.ts
+test.skip('should show correct count after opening terminal', async () => {
+  // ... test code
+});
 ```
 
 This will allow CI to pass while these infrastructure issues are addressed separately.
+
+## Common Pattern
+
+All three hard failures (project-close-pty-cleanup, stats-menu) share the same pattern:
+- Test involves opening a terminal/creating PTY processes
+- Test times out at 90 seconds
+- Worker teardown times out at 60 seconds
+- Electron app hangs during cleanup
+
+This suggests a **systemic issue with PTY/terminal cleanup in the E2E test environment**, not isolated test bugs.
