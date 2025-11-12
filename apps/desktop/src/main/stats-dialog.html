@@ -478,6 +478,87 @@
     button:active {
       background: #004bb5;
     }
+
+    .diagnose-action-button {
+      padding: 10px 24px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .diagnose-action-button:hover {
+      background: #218838;
+    }
+
+    .diagnose-action-button:active {
+      background: #1e7e34;
+    }
+
+    .diagnose-action-button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .diagnose-status {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .diagnose-status.hidden {
+      display: none;
+    }
+
+    .diagnose-status.running {
+      background: #d1ecf1;
+      border: 1px solid #bee5eb;
+      color: #0c5460;
+    }
+
+    .diagnose-status.success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+
+    .diagnose-status.error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+
+    .diagnose-status-title {
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .diagnose-status-detail {
+      font-size: 12px;
+      margin: 4px 0;
+      color: #666;
+    }
+
+    .diagnose-file-path {
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      font-size: 11px;
+      color: #0066cc;
+      word-break: break-all;
+      margin: 4px 0;
+      padding: 4px 8px;
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .diagnose-file-path:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -513,6 +594,18 @@
       <div class="diagnostics-section">
         <div class="diagnostics-header">System Diagnostics</div>
         <div class="diagnostics-content" id="diagnosticsContent"></div>
+      </div>
+
+      <!-- Diagnose Button Section -->
+      <div class="diagnostics-section">
+        <div class="diagnostics-header">Posix Spawn Diagnostics</div>
+        <div style="margin-top: 8px;">
+          <p style="color: #666; font-size: 12px; margin-bottom: 12px;">
+            Run comprehensive diagnostics to analyze posix_spawn failures. This will collect detailed system information including file descriptors, PTY processes, memory usage, and more. Reports are saved to ~/.vibetree/diagnostics/
+          </p>
+          <button id="diagnoseButton" class="diagnose-action-button">Run Diagnostics</button>
+          <div id="diagnoseStatus" class="diagnose-status hidden"></div>
+        </div>
       </div>
     </div>
 
@@ -982,6 +1075,93 @@
             }
           } catch (error) {
             console.error('Error closing window:', error);
+          }
+        });
+      }
+
+      // Setup diagnose button handler
+      const diagnoseButton = document.getElementById('diagnoseButton');
+      const diagnoseStatus = document.getElementById('diagnoseStatus');
+
+      if (diagnoseButton && diagnoseStatus) {
+        diagnoseButton.addEventListener('click', async () => {
+          try {
+            // Disable button and show running status
+            diagnoseButton.disabled = true;
+            diagnoseStatus.className = 'diagnose-status running';
+            diagnoseStatus.innerHTML = '<div class="diagnose-status-title">Running diagnostics...</div>';
+
+            // Run diagnostics
+            const result = await window.statsDialog.runDiagnostics();
+
+            if (result.success) {
+              // Show success status with summary
+              diagnoseStatus.className = 'diagnose-status success';
+
+              let summaryHtml = '<div class="diagnose-status-title">✓ Diagnostics completed successfully</div>';
+
+              if (result.summary) {
+                const s = result.summary;
+                summaryHtml += '<div class="diagnose-status-detail">';
+                summaryHtml += `<strong>Summary:</strong><br>`;
+                summaryHtml += `• File Descriptors: ${s.openFds || 'N/A'}/${s.fdLimit || 'N/A'}`;
+                if (s.fdUsagePercent) {
+                  summaryHtml += ` (${s.fdUsagePercent}% used)`;
+                }
+                summaryHtml += `<br>`;
+                summaryHtml += `• PTY Processes: ${s.ptyProcessCount}<br>`;
+                summaryHtml += `• Child Processes: ${s.childProcessCount}<br>`;
+                if (s.zombieCount > 0) {
+                  summaryHtml += `• Zombie Processes: ${s.zombieCount}<br>`;
+                }
+                if (s.threadCount) {
+                  summaryHtml += `• Threads: ${s.threadCount}<br>`;
+                }
+                if (s.systemLoad) {
+                  summaryHtml += `• System Load: ${s.systemLoad.load1.toFixed(2)}, ${s.systemLoad.load5.toFixed(2)}, ${s.systemLoad.load15.toFixed(2)}<br>`;
+                }
+                if (s.warningCount > 0) {
+                  summaryHtml += `• <strong>Warnings: ${s.warningCount}</strong><br>`;
+                }
+                summaryHtml += '</div>';
+              }
+
+              summaryHtml += '<div style="margin-top: 8px;"><strong>Reports saved to:</strong></div>';
+              summaryHtml += `<div class="diagnose-file-path" title="Click to copy">${result.textFilePath}</div>`;
+              summaryHtml += `<div class="diagnose-file-path" title="Click to copy">${result.jsonFilePath}</div>`;
+
+              diagnoseStatus.innerHTML = summaryHtml;
+
+              // Add click handlers to copy paths
+              diagnoseStatus.querySelectorAll('.diagnose-file-path').forEach(el => {
+                el.addEventListener('click', () => {
+                  navigator.clipboard.writeText(el.textContent).then(() => {
+                    const originalText = el.textContent;
+                    el.textContent = 'Copied!';
+                    setTimeout(() => {
+                      el.textContent = originalText;
+                    }, 1000);
+                  });
+                });
+              });
+            } else {
+              // Show error status
+              diagnoseStatus.className = 'diagnose-status error';
+              diagnoseStatus.innerHTML = `
+                <div class="diagnose-status-title">✗ Diagnostics failed</div>
+                <div class="diagnose-status-detail">${result.error || 'Unknown error'}</div>
+              `;
+            }
+          } catch (error) {
+            console.error('Error running diagnostics:', error);
+            diagnoseStatus.className = 'diagnose-status error';
+            diagnoseStatus.innerHTML = `
+              <div class="diagnose-status-title">✗ Diagnostics failed</div>
+              <div class="diagnose-status-detail">${error instanceof Error ? error.message : 'Unknown error'}</div>
+            `;
+          } finally {
+            // Re-enable button
+            diagnoseButton.disabled = false;
           }
         });
       }

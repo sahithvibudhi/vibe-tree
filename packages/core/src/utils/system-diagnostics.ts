@@ -465,3 +465,455 @@ export function formatDiagnostics(diagnostics: SystemDiagnostics): string {
 
   return lines.join('\n');
 }
+
+/**
+ * Extended diagnostics for posix_spawn failure investigation
+ */
+export interface ExtendedDiagnostics extends SystemDiagnostics {
+  // PTY-specific information
+  ptyProcesses: {
+    count: number;
+    pids: number[];
+    details: Array<{
+      pid: number;
+      command: string;
+      state: string;
+      memoryRSS: number;
+      cpuTime: string;
+      startTime: string;
+    }>;
+  };
+
+  // File descriptor details
+  fileDescriptorDetails: {
+    byType?: Record<string, number>; // e.g., { REG: 10, CHR: 5, PIPE: 3 }
+    topConsumers?: Array<{
+      type: string;
+      name: string;
+      count: number;
+    }>;
+  } | null;
+
+  // Thread information
+  threadInfo: {
+    threadCount: number | null;
+    threadLimit: number | null;
+  };
+
+  // System load
+  systemLoad: {
+    load1: number;
+    load5: number;
+    load15: number;
+  };
+
+  // Kernel limits (macOS specific)
+  kernelLimits: {
+    maxFiles: number | null;
+    maxFilesPerProcess: number | null;
+    maxProcesses: number | null;
+  };
+
+  // Environment variables that might affect spawning
+  environmentVariables: {
+    shell: string | undefined;
+    path: string | undefined;
+    home: string | undefined;
+    user: string | undefined;
+  };
+
+  // Node.js process information
+  nodeProcess: {
+    uptime: number;
+    memoryUsage: NodeJS.MemoryUsage;
+    cpuUsage: NodeJS.CpuUsage;
+    resourceUsage?: NodeJS.ResourceUsage;
+  };
+
+  // Timestamp of diagnostic collection
+  timestamp: string;
+}
+
+/**
+ * Get detailed file descriptor information using lsof
+ */
+async function getFileDescriptorDetails(): Promise<ExtendedDiagnostics['fileDescriptorDetails']> {
+  try {
+    const pid = process.pid;
+
+    if (process.platform === 'darwin') {
+      // Get detailed lsof output
+      const { stdout } = await execAsync(`lsof -p ${pid} -F t n 2>/dev/null || true`);
+
+      if (!stdout) return null;
+
+      const lines = stdout.split('\n');
+      const byType: Record<string, number> = {};
+      const fileNames: Record<string, Set<string>> = {};
+
+      let currentType: string | null = null;
+
+      for (const line of lines) {
+        if (line.startsWith('t')) {
+          // Type line
+          currentType = line.substring(1);
+          if (!byType[currentType]) {
+            byType[currentType] = 0;
+            fileNames[currentType] = new Set();
+          }
+        } else if (line.startsWith('n') && currentType) {
+          // Name line
+          const name = line.substring(1);
+          byType[currentType]++;
+          fileNames[currentType].add(name);
+        }
+      }
+
+      // Find top consumers
+      const topConsumers = Object.entries(byType)
+        .map(([type, count]) => ({
+          type,
+          name: Array.from(fileNames[type]).slice(0, 3).join(', '),
+          count
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      return { byType, topConsumers };
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error getting FD details:', error);
+    return null;
+  }
+}
+
+/**
+ * Get thread count for current process
+ */
+async function getThreadInfo(): Promise<ExtendedDiagnostics['threadInfo']> {
+  try {
+    const pid = process.pid;
+    let threadCount: number | null = null;
+    let threadLimit: number | null = null;
+
+    if (process.platform === 'darwin') {
+      // macOS: use ps to get thread count
+      const { stdout } = await execAsync(`ps -M -p ${pid} | wc -l`);
+      // ps includes header, so subtract 1
+      threadCount = Math.max(0, parseInt(stdout.trim(), 10) - 1);
+
+      // Get thread limit from sysctl
+      try {
+        const { stdout: limitStdout } = await execAsync('sysctl -n kern.maxprocperuid');
+        threadLimit = parseInt(limitStdout.trim(), 10);
+      } catch {
+        threadLimit = null;
+      }
+    } else if (process.platform === 'linux') {
+      // Linux: count threads in /proc/[pid]/task
+      const { stdout } = await execAsync(`ls /proc/${pid}/task | wc -l`);
+      threadCount = parseInt(stdout.trim(), 10);
+
+      // Get thread limit
+      try {
+        const { stdout: limitStdout } = await execAsync('ulimit -u');
+        threadLimit = parseInt(limitStdout.trim(), 10);
+      } catch {
+        threadLimit = null;
+      }
+    }
+
+    return { threadCount, threadLimit };
+  } catch (error) {
+    return { threadCount: null, threadLimit: null };
+  }
+}
+
+/**
+ * Get PTY-related processes
+ */
+async function getPtyProcesses(): Promise<ExtendedDiagnostics['ptyProcesses']> {
+  try {
+    if (process.platform === 'darwin' || process.platform === 'linux') {
+      // Look for processes with PTY (tty/pts) or node-pty in command
+      const { stdout } = await execAsync(
+        `ps -A -o pid,tty,state,rss,time,lstart,command | grep -E 'pts/|ttys|node-pty' | grep -v grep || true`
+      );
+
+      if (!stdout.trim()) {
+        return { count: 0, pids: [], details: [] };
+      }
+
+      const lines = stdout.trim().split('\n');
+      const details: ExtendedDiagnostics['ptyProcesses']['details'] = [];
+      const pids: number[] = [];
+
+      for (const line of lines) {
+        const match = line.trim().match(/^\s*(\d+)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(\w+\s+\w+\s+\d+\s+\d+:\d+:\d+\s+\d+)\s+(.+)$/);
+        if (match) {
+          const [, pidStr, , state, rssStr, cpuTime, startTime, command] = match;
+          const pid = parseInt(pidStr, 10);
+          const rss = parseInt(rssStr, 10);
+
+          pids.push(pid);
+          details.push({
+            pid,
+            command: command.trim(),
+            state,
+            memoryRSS: rss,
+            cpuTime,
+            startTime
+          });
+        }
+      }
+
+      return { count: details.length, pids, details };
+    }
+
+    return { count: 0, pids: [], details: [] };
+  } catch (error) {
+    console.error('Error getting PTY processes:', error);
+    return { count: 0, pids: [], details: [] };
+  }
+}
+
+/**
+ * Get kernel limits (macOS specific)
+ */
+async function getKernelLimits(): Promise<ExtendedDiagnostics['kernelLimits']> {
+  const limits: ExtendedDiagnostics['kernelLimits'] = {
+    maxFiles: null,
+    maxFilesPerProcess: null,
+    maxProcesses: null
+  };
+
+  if (process.platform === 'darwin') {
+    try {
+      // Get system-wide file limit
+      const { stdout: maxFiles } = await execAsync('sysctl -n kern.maxfiles');
+      limits.maxFiles = parseInt(maxFiles.trim(), 10);
+    } catch {}
+
+    try {
+      // Get per-process file limit
+      const { stdout: maxFilesPerProc } = await execAsync('sysctl -n kern.maxfilesperproc');
+      limits.maxFilesPerProcess = parseInt(maxFilesPerProc.trim(), 10);
+    } catch {}
+
+    try {
+      // Get max processes
+      const { stdout: maxProc } = await execAsync('sysctl -n kern.maxproc');
+      limits.maxProcesses = parseInt(maxProc.trim(), 10);
+    } catch {}
+  }
+
+  return limits;
+}
+
+/**
+ * Collect comprehensive diagnostics for posix_spawn failure analysis
+ * This gathers extensive system state to help diagnose PTY leaks and resource exhaustion
+ */
+export async function getExtendedDiagnostics(): Promise<ExtendedDiagnostics> {
+  // Get base diagnostics
+  const baseDiagnostics = await getSystemDiagnostics();
+
+  // Get additional diagnostic info in parallel
+  const [fdDetails, threadInfo, ptyProcesses, kernelLimits] = await Promise.all([
+    getFileDescriptorDetails(),
+    getThreadInfo(),
+    getPtyProcesses(),
+    getKernelLimits()
+  ]);
+
+  // Get system load
+  const loadAvg = os.loadavg();
+  const systemLoad = {
+    load1: loadAvg[0],
+    load5: loadAvg[1],
+    load15: loadAvg[2]
+  };
+
+  // Get environment variables
+  const environmentVariables = {
+    shell: process.env.SHELL,
+    path: process.env.PATH,
+    home: process.env.HOME,
+    user: process.env.USER || process.env.USERNAME
+  };
+
+  // Get Node.js process info
+  const nodeProcess = {
+    uptime: process.uptime(),
+    memoryUsage: process.memoryUsage(),
+    cpuUsage: process.cpuUsage(),
+    resourceUsage: typeof process.resourceUsage === 'function' ? process.resourceUsage() : undefined
+  };
+
+  return {
+    ...baseDiagnostics,
+    ptyProcesses,
+    fileDescriptorDetails: fdDetails,
+    threadInfo,
+    systemLoad,
+    kernelLimits,
+    environmentVariables,
+    nodeProcess,
+    timestamp: new Date().toISOString()
+  };
+}
+
+/**
+ * Format extended diagnostics for display or logging
+ */
+export function formatExtendedDiagnostics(diagnostics: ExtendedDiagnostics): string {
+  const lines: string[] = [];
+
+  lines.push('=== COMPREHENSIVE POSIX_SPAWN FAILURE DIAGNOSTICS ===');
+  lines.push(`Timestamp: ${diagnostics.timestamp}`);
+  lines.push(`Platform: ${diagnostics.platform}`);
+  lines.push('');
+
+  // System Load
+  lines.push('System Load:');
+  lines.push(`  1-min:  ${diagnostics.systemLoad.load1.toFixed(2)}`);
+  lines.push(`  5-min:  ${diagnostics.systemLoad.load5.toFixed(2)}`);
+  lines.push(`  15-min: ${diagnostics.systemLoad.load15.toFixed(2)}`);
+  lines.push('');
+
+  // File Descriptors
+  lines.push('File Descriptors:');
+  if (diagnostics.fileDescriptorLimit.soft !== null) {
+    lines.push(`  Soft Limit: ${diagnostics.fileDescriptorLimit.soft}`);
+  }
+  if (diagnostics.fileDescriptorLimit.hard !== null) {
+    lines.push(`  Hard Limit: ${diagnostics.fileDescriptorLimit.hard}`);
+  }
+  if (diagnostics.openFileDescriptors !== null) {
+    lines.push(`  Currently Open: ${diagnostics.openFileDescriptors}`);
+    if (diagnostics.fileDescriptorLimit.soft !== null) {
+      const usage = (diagnostics.openFileDescriptors / diagnostics.fileDescriptorLimit.soft * 100).toFixed(1);
+      lines.push(`  Usage: ${usage}%`);
+    }
+  }
+
+  if (diagnostics.fileDescriptorDetails) {
+    lines.push('  Breakdown by Type:');
+    Object.entries(diagnostics.fileDescriptorDetails.byType || {})
+      .sort(([, a], [, b]) => b - a)
+      .forEach(([type, count]) => {
+        lines.push(`    ${type}: ${count}`);
+      });
+
+    if (diagnostics.fileDescriptorDetails.topConsumers) {
+      lines.push('  Top Consumers:');
+      diagnostics.fileDescriptorDetails.topConsumers.forEach(consumer => {
+        lines.push(`    ${consumer.type}: ${consumer.count} (${consumer.name.substring(0, 50)}...)`);
+      });
+    }
+  }
+  lines.push('');
+
+  // Threads
+  lines.push('Threads:');
+  if (diagnostics.threadInfo.threadCount !== null) {
+    lines.push(`  Count: ${diagnostics.threadInfo.threadCount}`);
+  }
+  if (diagnostics.threadInfo.threadLimit !== null) {
+    lines.push(`  Limit: ${diagnostics.threadInfo.threadLimit}`);
+  }
+  lines.push('');
+
+  // Processes
+  lines.push('Processes:');
+  if (diagnostics.processLimit !== null) {
+    lines.push(`  User Limit: ${diagnostics.processLimit}`);
+  }
+  if (diagnostics.currentProcessCount !== null) {
+    lines.push(`  Current Count: ${diagnostics.currentProcessCount}`);
+  }
+  if (diagnostics.kernelLimits.maxProcesses !== null) {
+    lines.push(`  System Max: ${diagnostics.kernelLimits.maxProcesses}`);
+  }
+  lines.push('');
+
+  // PTY Processes
+  lines.push('PTY Processes:');
+  lines.push(`  Count: ${diagnostics.ptyProcesses.count}`);
+  if (diagnostics.ptyProcesses.details.length > 0) {
+    lines.push('  Details:');
+    diagnostics.ptyProcesses.details.forEach(proc => {
+      lines.push(`    PID ${proc.pid}: ${proc.command.substring(0, 60)} (${proc.state}, ${formatMemorySize(proc.memoryRSS)})`);
+    });
+  }
+  lines.push('');
+
+  // Child Processes Summary
+  const totalChildren = countProcessesInTree(diagnostics.childProcesses);
+  lines.push('Child Processes:');
+  lines.push(`  Total: ${totalChildren}`);
+  lines.push(`  Zombies: ${diagnostics.zombieProcessCount}`);
+  lines.push('');
+
+  // Memory
+  lines.push('Memory:');
+  const totalGB = (diagnostics.totalMemory / (1024 ** 3)).toFixed(2);
+  const freeGB = (diagnostics.freeMemory / (1024 ** 3)).toFixed(2);
+  const usedPercent = ((1 - diagnostics.freeMemory / diagnostics.totalMemory) * 100).toFixed(1);
+  lines.push(`  System Total: ${totalGB} GB`);
+  lines.push(`  System Free: ${freeGB} GB`);
+  lines.push(`  System Used: ${usedPercent}%`);
+  lines.push(`  Process RSS: ${formatMemorySize(diagnostics.processTreeMemory.currentProcessRSS)}`);
+  lines.push(`  Process Tree RSS: ${formatMemorySize(diagnostics.processTreeMemory.totalTreeRSS)}`);
+  lines.push('');
+
+  // Node.js Process
+  lines.push('Node.js Process:');
+  lines.push(`  Uptime: ${diagnostics.nodeProcess.uptime.toFixed(2)}s`);
+  lines.push(`  Heap Used: ${(diagnostics.nodeProcess.memoryUsage.heapUsed / 1024 / 1024).toFixed(2)} MB`);
+  lines.push(`  Heap Total: ${(diagnostics.nodeProcess.memoryUsage.heapTotal / 1024 / 1024).toFixed(2)} MB`);
+  lines.push(`  External: ${(diagnostics.nodeProcess.memoryUsage.external / 1024 / 1024).toFixed(2)} MB`);
+  lines.push(`  Array Buffers: ${(diagnostics.nodeProcess.memoryUsage.arrayBuffers / 1024 / 1024).toFixed(2)} MB`);
+
+  if (diagnostics.nodeProcess.resourceUsage) {
+    const ru = diagnostics.nodeProcess.resourceUsage;
+    lines.push(`  User CPU Time: ${ru.userCPUTime / 1000}ms`);
+    lines.push(`  System CPU Time: ${ru.systemCPUTime / 1000}ms`);
+    lines.push(`  Max RSS: ${(ru.maxRSS / 1024).toFixed(2)} MB`);
+  }
+  lines.push('');
+
+  // Kernel Limits (macOS)
+  if (process.platform === 'darwin') {
+    lines.push('Kernel Limits (macOS):');
+    if (diagnostics.kernelLimits.maxFiles !== null) {
+      lines.push(`  Max Files (system): ${diagnostics.kernelLimits.maxFiles}`);
+    }
+    if (diagnostics.kernelLimits.maxFilesPerProcess !== null) {
+      lines.push(`  Max Files per Process: ${diagnostics.kernelLimits.maxFilesPerProcess}`);
+    }
+    lines.push('');
+  }
+
+  // Environment
+  lines.push('Environment:');
+  lines.push(`  SHELL: ${diagnostics.environmentVariables.shell || 'not set'}`);
+  lines.push(`  USER: ${diagnostics.environmentVariables.user || 'not set'}`);
+  lines.push(`  HOME: ${diagnostics.environmentVariables.home || 'not set'}`);
+  lines.push('');
+
+  // Warnings
+  if (diagnostics.warnings.length > 0) {
+    lines.push('⚠️  WARNINGS:');
+    diagnostics.warnings.forEach(warning => {
+      lines.push(`  - ${warning}`);
+    });
+    lines.push('');
+  }
+
+  lines.push('=== END DIAGNOSTICS ===');
+
+  return lines.join('\n');
+}

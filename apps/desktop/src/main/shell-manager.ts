@@ -1,7 +1,10 @@
 import { ipcMain } from 'electron';
 import * as pty from 'node-pty';
-import { ShellSessionManager, getSystemDiagnostics } from '@vibetree/core';
+import { ShellSessionManager, getSystemDiagnostics, getExtendedDiagnostics, formatExtendedDiagnostics } from '@vibetree/core';
 import { terminalSettingsManager } from './terminal-settings';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
 /**
  * Desktop shell manager - thin wrapper around shared ShellSessionManager
@@ -147,6 +150,63 @@ class DesktopShellManager {
         })),
         systemDiagnostics
       };
+    });
+
+    ipcMain.handle('shell:diagnose', async () => {
+      try {
+        console.log('Running comprehensive diagnostics for posix_spawn failure analysis...');
+
+        // Collect extended diagnostics
+        const diagnostics = await getExtendedDiagnostics();
+
+        // Format for text output
+        const formattedText = formatExtendedDiagnostics(diagnostics);
+
+        // Create diagnostics directory in user's home
+        const diagDir = path.join(os.homedir(), '.vibetree', 'diagnostics');
+        if (!fs.existsSync(diagDir)) {
+          fs.mkdirSync(diagDir, { recursive: true });
+        }
+
+        // Create timestamped filename
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const textFilePath = path.join(diagDir, `posix-spawn-diagnostics-${timestamp}.txt`);
+        const jsonFilePath = path.join(diagDir, `posix-spawn-diagnostics-${timestamp}.json`);
+
+        // Write text report
+        fs.writeFileSync(textFilePath, formattedText, 'utf8');
+        console.log(`Text diagnostics saved to: ${textFilePath}`);
+
+        // Write JSON for programmatic analysis
+        fs.writeFileSync(jsonFilePath, JSON.stringify(diagnostics, null, 2), 'utf8');
+        console.log(`JSON diagnostics saved to: ${jsonFilePath}`);
+
+        return {
+          success: true,
+          textFilePath,
+          jsonFilePath,
+          summary: {
+            timestamp: diagnostics.timestamp,
+            openFds: diagnostics.openFileDescriptors,
+            fdLimit: diagnostics.fileDescriptorLimit.soft,
+            fdUsagePercent: diagnostics.openFileDescriptors && diagnostics.fileDescriptorLimit.soft
+              ? ((diagnostics.openFileDescriptors / diagnostics.fileDescriptorLimit.soft) * 100).toFixed(1)
+              : null,
+            ptyProcessCount: diagnostics.ptyProcesses.count,
+            childProcessCount: diagnostics.childProcesses.length,
+            zombieCount: diagnostics.zombieProcessCount,
+            warningCount: diagnostics.warnings.length,
+            threadCount: diagnostics.threadInfo.threadCount,
+            systemLoad: diagnostics.systemLoad
+          }
+        };
+      } catch (error) {
+        console.error('Failed to run diagnostics:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        };
+      }
     });
   }
 
