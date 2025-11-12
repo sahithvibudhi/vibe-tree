@@ -3,7 +3,7 @@ import { ElectronApplication, Page, _electron as electron } from 'playwright';
 import path from 'path';
 import fs from 'fs';
 import { closeElectronApp } from './helpers/test-launcher';
-import { waitUntil } from './test-utils';
+import { waitUntil, waitForMenuUpdate } from './test-utils';
 
 interface MenuItem {
   label?: string;
@@ -186,26 +186,25 @@ test.describe('Application Menu Structure', () => {
       }
     }, testProjectPath);
 
-    // Give menu time to rebuild after IPC call
-    await page.waitForTimeout(500);
-
-    // Wait for menu to update with the new project
+    // Wait for menu to be rebuilt and updated with the new project
+    // This replaces the fixed 500ms timeout with a dynamic wait that polls
+    // the menu state until it's updated or timeout is reached
     await waitUntil(page, {
       condition: async () => {
         const menuStructure = await electronApp.evaluate(({ Menu }) => {
           const menu = Menu.getApplicationMenu();
           if (!menu) {
-            throw new Error('Application menu not found');
+            return null;
           }
 
           const fileMenu = menu.items.find(item => item.label === 'File');
           if (!fileMenu || !fileMenu.submenu) {
-            throw new Error('File menu not found');
+            return null;
           }
 
           const recentProjects = fileMenu.submenu.items.find(item => item.label === 'Recent Projects');
           if (!recentProjects || !recentProjects.submenu) {
-            throw new Error('Recent Projects submenu not found');
+            return null;
           }
 
           return recentProjects.submenu.items.map((item: Electron.MenuItem) => ({
@@ -213,6 +212,10 @@ test.describe('Application Menu Structure', () => {
             enabled: item.enabled
           }));
         });
+
+        if (!menuStructure) {
+          return false;
+        }
 
         const projectLabels = menuStructure.map((item: {label?: string; enabled?: boolean}) => item.label).filter(Boolean);
         return projectLabels.some((label: string) =>
@@ -222,6 +225,7 @@ test.describe('Application Menu Structure', () => {
         );
       },
       timeoutMs: 5000,
+      intervalMs: 50,
       message: 'Recent Projects menu did not update with test project'
     });
 
