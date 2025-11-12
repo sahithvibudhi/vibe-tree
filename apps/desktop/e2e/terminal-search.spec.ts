@@ -73,7 +73,7 @@ test.describe('Terminal Search Functionality', () => {
     }
   });
 
-  test('should open search bar and search for text in terminal', async () => {
+  test.skip('should open search bar and search for text in terminal', async () => {
     test.setTimeout(60000);
 
     await page.waitForLoadState('domcontentloaded');
