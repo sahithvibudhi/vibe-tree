@@ -273,18 +273,11 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
     expect(terminalContent).not.toMatch(/Hello Wor\s+ld/);
   });
 
-  // SKIP: This test correctly identifies a known limitation where 200ms intervals
-  // are too short for commands that take ~1440ms to type character-by-character.
-  // The math doesn't work: with 200ms intervals, the scheduler tries to start new
-  // command executions every 200ms, but each command takes ~1440ms to type.
-  // Even with concurrency protection (commandInProgressRef guard), when a command
-  // is in progress, sendScheduledCommand returns false immediately, causing rapid
-  // rescheduling and multiple overlapping execution chains.
-  // This is a known limitation of the current implementation - users should not
-  // use intervals shorter than command execution times. A future enhancement
-  // could implement a command queue to handle this case properly.
-  // See: errors/E2E_SCHEDULER_OVERLAP_200MS_STILL_FAILING.md
-  test.skip('should prevent corruption even with very short interval (200ms)', async () => {
+  // This test verifies that the scheduler works correctly even with very short intervals
+  // by using a dynamic ENTER key delay of min(delayMs/2, 1000). For 200ms intervals,
+  // the ENTER key delay is 100ms, allowing the command to complete faster and preventing
+  // overlap issues.
+  test('should prevent corruption even with very short interval (200ms)', async () => {
     /**
      * This test verifies the fix handles extreme cases:
      * 1. Starting scheduler with very short interval (200ms)

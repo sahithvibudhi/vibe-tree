@@ -91,7 +91,7 @@ export function ClaudeTerminal({
     setSchedulerRunning(false);
   }, []);
 
-  const sendScheduledCommand = useCallback((command: string): Promise<boolean> => {
+  const sendScheduledCommand = useCallback((command: string, delayMs: number): Promise<boolean> => {
     if (!processIdRef.current || !terminal) return Promise.resolve(false);
 
     // Prevent overlapping command executions by checking if one is already in progress
@@ -118,12 +118,15 @@ export function ClaudeTerminal({
           charIndex++;
           setTimeout(typeNextChar, 10); // 10ms between characters
         } else {
-          // After all characters, wait 1 second before sending ENTER key (\r)
+          // After all characters, wait before sending ENTER key (\r)
+          // Use min(delayMs/2, 1000) to ensure we don't wait too long for short intervals
+          // but also don't exceed 1 second for long intervals
+          const enterKeyDelay = Math.min(delayMs / 2, 1000);
           setTimeout(() => {
             window.electronAPI.shell.write(processIdRef.current, '\r');
             commandInProgressRef.current = false;
             resolve(true);
-          }, 1000);
+          }, enterKeyDelay);
         }
       };
 
@@ -149,7 +152,7 @@ export function ClaudeTerminal({
         });
 
         // Execute the command and wait for it to complete
-        await sendScheduledCommand(config.command);
+        await sendScheduledCommand(config.command, config.delayMs);
 
         // Schedule the next execution only if scheduler is still running
         if (schedulerTimeoutRef.current) {
@@ -162,7 +165,7 @@ export function ClaudeTerminal({
     } else {
       // For one-time mode, use setTimeout
       schedulerTimeoutRef.current = setTimeout(async () => {
-        await sendScheduledCommand(config.command);
+        await sendScheduledCommand(config.command, config.delayMs);
         setSchedulerRunning(false);
         setSchedulerConfig(null);
       }, config.delayMs);
