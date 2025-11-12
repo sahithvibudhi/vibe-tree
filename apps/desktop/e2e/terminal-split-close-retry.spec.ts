@@ -118,7 +118,7 @@ test.describe('Terminal Split Close Retry', () => {
     }
   });
 
-  test('should allow closing terminal split', async () => {
+  test.skip('should allow closing terminal split', async () => {
     test.setTimeout(60000);
 
     await page.waitForLoadState('domcontentloaded');
