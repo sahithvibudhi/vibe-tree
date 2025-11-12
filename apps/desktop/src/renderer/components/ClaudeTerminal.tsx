@@ -60,7 +60,6 @@ export function ClaudeTerminal({
   const [schedulerConfig, setSchedulerConfig] = useState<SchedulerConfig | null>(null);
   const [schedulerRunning, setSchedulerRunning] = useState(false);
   const schedulerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const schedulerShouldRunRef = useRef(false);
   const commandInProgressRef = useRef(false);
 
   // Search functionality
@@ -83,7 +82,6 @@ export function ClaudeTerminal({
 
   // Scheduler functionality
   const stopScheduler = useCallback(() => {
-    schedulerShouldRunRef.current = false;
     if (schedulerTimeoutRef.current) {
       clearTimeout(schedulerTimeoutRef.current);
       schedulerTimeoutRef.current = null;
@@ -139,30 +137,27 @@ export function ClaudeTerminal({
 
     setSchedulerConfig(config);
     setSchedulerRunning(true);
-    schedulerShouldRunRef.current = true; // Set flag to indicate scheduler should run
 
     if (config.repeat) {
-      // For repeat mode, use recursive setTimeout with concurrency protection
-      // CRITICAL: We schedule the NEXT iteration AFTER command completes + delay
-      // This prevents overlapping executions even with very short intervals
-      const scheduleNext = () => {
-        schedulerTimeoutRef.current = setTimeout(async () => {
-          // Check if scheduler should still run
-          if (!schedulerShouldRunRef.current) {
-            return;
-          }
+      // For repeat mode, use chained setTimeout to ensure each command completes
+      // before the next one starts. This prevents overlapping executions that
+      // cause gibberish input, especially after machine sleep/wake.
+      const scheduleNext = async () => {
+        // Wait for the delay interval
+        await new Promise(resolve => {
+          schedulerTimeoutRef.current = setTimeout(resolve, config.delayMs);
+        });
 
-          // Execute command and WAIT for it to complete
-          const wasExecuted = await sendScheduledCommand(config.command);
+        // Execute the command and wait for it to complete
+        await sendScheduledCommand(config.command);
 
-          // Only schedule next if command was actually executed and scheduler should continue
-          if (wasExecuted && schedulerShouldRunRef.current) {
-            scheduleNext(); // Schedule the next iteration
-          }
-        }, config.delayMs);
+        // Schedule the next execution only if scheduler is still running
+        if (schedulerTimeoutRef.current) {
+          scheduleNext();
+        }
       };
 
-      // Start the first iteration
+      // Start the chain
       scheduleNext();
     } else {
       // For one-time mode, use setTimeout
