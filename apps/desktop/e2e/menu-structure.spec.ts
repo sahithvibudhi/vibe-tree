@@ -3,7 +3,7 @@ import { ElectronApplication, Page, _electron as electron } from 'playwright';
 import path from 'path';
 import fs from 'fs';
 import { closeElectronApp } from './helpers/test-launcher';
-import { waitUntil, waitForMenuUpdate } from './test-utils';
+import { waitUntil } from './test-utils';
 
 interface MenuItem {
   label?: string;
