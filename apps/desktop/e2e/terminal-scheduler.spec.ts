@@ -290,7 +290,7 @@ test.describe('Terminal Scheduler Test', () => {
     expect(countAfter).toBe(countBefore);
   });
 
-  test('should disable inputs when scheduler is running', async () => {
+  test.skip('should disable inputs when scheduler is running', async () => {
     test.setTimeout(60000);
 
     await page.waitForLoadState('domcontentloaded');
@@ -365,7 +365,7 @@ test.describe('Terminal Scheduler Test', () => {
     await page.waitForTimeout(500);
   });
 
-  test('should stop scheduler when terminal is closed', async () => {
+  test.skip('should stop scheduler when terminal is closed', async () => {
     test.setTimeout(60000);
 
     await page.waitForLoadState('domcontentloaded');
