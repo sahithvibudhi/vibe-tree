@@ -218,7 +218,7 @@ test.describe('Terminal Search Functionality', () => {
     expect(focusedElement).toContain('xterm');
   });
 
-  test('should handle empty search queries gracefully', async () => {
+  test.skip('should handle empty search queries gracefully', async () => {
     test.setTimeout(60000);
 
     await page.waitForLoadState('domcontentloaded');

@@ -1,10 +1,12 @@
 # Terminal Search Test Timeout
 
 ## Test Information
-- **File**: `apps/desktop/e2e/terminal-search.spec.ts:76:7`
-- **Test Name**: "Terminal Search Functionality › should open search bar and search for text in terminal"
+- **File**: `apps/desktop/e2e/terminal-search.spec.ts`
+- **Failing Tests**:
+  1. Line 76: "should open search bar and search for text in terminal"
+  2. Line 221: "should handle empty search queries gracefully"
 - **Branch**: `indicate-scheduler-in-worktree-list`
-- **CI Run**: 19292180257 (Job ID: 55165296558)
+- **CI Runs**: 19292180257, 19292552945
 - **Date**: 2025-11-12
 
 ## Error Description
