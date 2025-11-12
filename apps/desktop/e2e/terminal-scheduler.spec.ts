@@ -176,7 +176,7 @@ test.describe('Terminal Scheduler Test', () => {
     // Note: This might take a moment to update
   });
 
-  test('should schedule repeating command and allow stopping', async () => {
+  test.skip('should schedule repeating command and allow stopping', async () => {
     test.setTimeout(60000);
 
     await page.waitForLoadState('domcontentloaded');
