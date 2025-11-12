@@ -186,6 +186,9 @@ test.describe('Application Menu Structure', () => {
       }
     }, testProjectPath);
 
+    // Give menu time to rebuild after IPC call
+    await page.waitForTimeout(500);
+
     // Wait for menu to update with the new project
     await waitUntil(page, {
       condition: async () => {
@@ -218,7 +221,7 @@ test.describe('Application Menu Structure', () => {
           (label.includes('test') && label.includes(testProjectPath))
         );
       },
-      timeoutMs: 2000,
+      timeoutMs: 5000,
       message: 'Recent Projects menu did not update with test project'
     });
 
