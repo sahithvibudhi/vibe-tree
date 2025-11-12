@@ -1,4 +1,4 @@
-import { Page, ElectronApplication } from '@playwright/test';
+import { Page } from '@playwright/test';
 
 /**
  * Polls a condition function until it returns true or timeout is reached
@@ -49,52 +49,4 @@ export async function waitUntil(
   }
 
   throw new Error(`${message} (max attempts: ${maxAttempts})`);
-}
-
-/**
- * Waits for the Electron application menu to be updated with a specific condition
- *
- * @param page - Playwright page instance for waiting
- * @param electronApp - Electron application instance
- * @param options - Configuration options
- * @param options.condition - Function that checks the menu state and returns true when updated
- * @param options.timeoutMs - Maximum time to wait in milliseconds (default: 5000)
- * @param options.intervalMs - Polling interval in milliseconds (default: 100)
- * @param options.message - Error message if timeout is reached
- * @returns Promise that resolves when menu is updated
- * @throws Error if timeout is reached before menu is updated
- */
-export async function waitForMenuUpdate(
-  page: Page,
-  electronApp: ElectronApplication,
-  options: {
-    condition: (menu: Electron.Menu) => boolean;
-    timeoutMs?: number;
-    intervalMs?: number;
-    message?: string;
-  }
-): Promise<void> {
-  const {
-    condition,
-    timeoutMs = 5000,
-    intervalMs = 100,
-    message = 'Timeout waiting for menu update'
-  } = options;
-
-  await waitUntil(page, {
-    condition: async () => {
-      const menu = await electronApp.evaluate(({ Menu }) => {
-        return Menu.getApplicationMenu();
-      });
-
-      if (!menu) {
-        return false;
-      }
-
-      return condition(menu);
-    },
-    timeoutMs,
-    intervalMs,
-    message
-  });
 }
