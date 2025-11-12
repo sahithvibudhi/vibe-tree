@@ -81,13 +81,22 @@ export function ClaudeTerminal({
   }, [handleSearch]);
 
   // Scheduler functionality
-  const stopScheduler = useCallback(() => {
+  const stopScheduler = useCallback(async () => {
     if (schedulerTimeoutRef.current) {
       clearTimeout(schedulerTimeoutRef.current);
       schedulerTimeoutRef.current = null;
     }
-    // Reset the command in progress flag when stopping
-    commandInProgressRef.current = false;
+
+    // Wait for any in-progress command to complete naturally instead of cancelling it
+    // This prevents partial commands from appearing in the terminal
+    while (commandInProgressRef.current) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+
+    // Additional small delay to ensure the shell has processed the ENTER key
+    // and the command output has been fully rendered in the terminal
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     setSchedulerRunning(false);
   }, []);
 
@@ -134,9 +143,9 @@ export function ClaudeTerminal({
     });
   }, [terminal]);
 
-  const startScheduler = useCallback((config: SchedulerConfig) => {
+  const startScheduler = useCallback(async (config: SchedulerConfig) => {
     // Stop any existing scheduler
-    stopScheduler();
+    await stopScheduler();
 
     setSchedulerConfig(config);
     setSchedulerRunning(true);
@@ -174,8 +183,8 @@ export function ClaudeTerminal({
     setSchedulerDialogOpen(false);
   }, [stopScheduler, sendScheduledCommand]);
 
-  const handleSchedulerStop = useCallback(() => {
-    stopScheduler();
+  const handleSchedulerStop = useCallback(async () => {
+    await stopScheduler();
     setSchedulerConfig(null);
   }, [stopScheduler]);
 

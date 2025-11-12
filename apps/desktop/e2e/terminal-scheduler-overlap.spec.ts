@@ -337,26 +337,44 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
     await startButton.click();
     await expect(page.locator('text=Schedule Terminal Command')).not.toBeVisible({ timeout: 3000 });
 
-    // Let it run for just 2 seconds - enough for overlap to occur
-    await page.waitForTimeout(2000);
+    // Let it run for 2.2 seconds - enough to complete 3 full iterations without catching mid-execution
+    // With 200ms interval + ~570ms command time = ~770ms per iteration
+    // 2200ms allows 2-3 complete iterations plus a safety buffer
+    await page.waitForTimeout(2200);
 
     // Stop
     await schedulerButton.click();
     const stopButton = page.locator('button', { hasText: 'Stop Scheduler' });
     await stopButton.click();
 
+    // Wait for the stop scheduler dialog to close, ensuring any in-progress command completes
+    await expect(page.locator('text=Schedule Terminal Command')).not.toBeVisible({ timeout: 3000 });
+
+    // Additional wait to ensure terminal output is fully rendered
+    await page.waitForTimeout(200);
+
     // Check for corruption
     const terminalContent = await page.locator('.xterm-screen').textContent();
     console.log('Terminal content (rapid firing):', terminalContent);
 
-    const hasCorruptedOutput =
-      terminalContent?.includes('dquote>') ||
-      /echo.*\n[^%].*This/.test(terminalContent || '') ||
-      /longer\s+command/.test(terminalContent || '');
+    // Check for actual corruption patterns:
+    // 1. Shell waiting for closing quote (dquote>)
+    // 2. Command split mid-word across lines (like "This\nis a longer" instead of complete output)
+    // 3. Words split with excessive whitespace in the middle (more than 1 space)
+    const hasDquote = terminalContent?.includes('dquote>') || false;
+    const hasSplitCommand = /echo "This is a longer\s*\n(?!This is a longer command to test overlap)/.test(terminalContent || '');
+    const hasExtraSpaces = /longer\s{2,}command/.test(terminalContent || ''); // 2 or more spaces
+
+    const hasCorruptedOutput = hasDquote || hasSplitCommand || hasExtraSpaces;
 
     // With the fix, even with 200ms interval and ~500ms typing time,
     // we should NOT see overlap due to concurrency protection
     console.log('Corrupted output detected:', hasCorruptedOutput);
+    if (hasCorruptedOutput) {
+      console.log('  - dquote:', hasDquote);
+      console.log('  - split command:', hasSplitCommand);
+      console.log('  - extra spaces:', hasExtraSpaces);
+    }
     expect(hasCorruptedOutput).toBe(false);
   });
 });
