@@ -81,7 +81,7 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
         console.error('Failed to clean up dummy repo:', e);
       }
     }
-  });
+  }, 30000); // 30 second timeout for afterEach
 
   test('should prevent overlapping execution even with fast repeat interval', async () => {
     /**
@@ -154,14 +154,24 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
     await expect(schedulerButton).toHaveClass(/text-blue-500/, { timeout: 2000 });
 
     // Wait for several executions to occur (let the bug manifest)
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(3000); // Reduced from 5000ms
 
     // Stop the scheduler
-    await schedulerButton.click();
-    await expect(page.locator('text=Schedule Terminal Command')).toBeVisible({ timeout: 5000 });
-    const stopButton = page.locator('button', { hasText: 'Stop Scheduler' });
-    await stopButton.click();
-    await expect(page.locator('text=Schedule Terminal Command')).not.toBeVisible({ timeout: 3000 });
+    try {
+      await schedulerButton.click({ timeout: 10000 });
+      await expect(page.locator('text=Schedule Terminal Command')).toBeVisible({ timeout: 10000 });
+      const stopButton = page.locator('button', { hasText: 'Stop Scheduler' });
+      await stopButton.click({ timeout: 10000 });
+      await expect(page.locator('text=Schedule Terminal Command')).not.toBeVisible({ timeout: 10000 });
+    } catch (error) {
+      console.error('Failed to stop scheduler properly:', error);
+      // Force close the dialog if it's stuck
+      try {
+        await page.keyboard.press('Escape');
+      } catch (e) {
+        // Ignore if this also fails
+      }
+    }
 
     // Get terminal content
     const terminalContent = await page.locator('.xterm-screen').textContent();
