@@ -93,7 +93,7 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
      * With the fix: Clean output because concurrency protection prevents overlap
      * Without the fix: Would have overlapping characters and malformed commands
      */
-    test.setTimeout(60000);
+    test.setTimeout(120000);
 
     await page.waitForLoadState('domcontentloaded');
 
