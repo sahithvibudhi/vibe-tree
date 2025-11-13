@@ -6,6 +6,10 @@ import { ipcRenderer } from 'electron';
     const stats = await ipcRenderer.invoke('shell:get-stats');
     return stats;
   },
+  runDiagnostics: async () => {
+    const result = await ipcRenderer.invoke('shell:diagnose');
+    return result;
+  },
   closeWindow: () => {
     ipcRenderer.send('stats-dialog:close');
   }

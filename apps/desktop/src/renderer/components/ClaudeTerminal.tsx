@@ -62,7 +62,7 @@ export function ClaudeTerminal({
   const [schedulerConfig, setSchedulerConfig] = useState<SchedulerConfig | null>(null);
   const [schedulerRunning, setSchedulerRunning] = useState(false);
   const schedulerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const schedulerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const commandInProgressRef = useRef(false);
 
   // Search functionality
   const handleSearch = useCallback((query: string, direction: 'next' | 'previous' = 'next') => {
@@ -83,62 +83,100 @@ export function ClaudeTerminal({
   }, [handleSearch]);
 
   // Scheduler functionality
-  const stopScheduler = useCallback(() => {
+  const stopScheduler = useCallback(async () => {
     if (schedulerTimeoutRef.current) {
       clearTimeout(schedulerTimeoutRef.current);
       schedulerTimeoutRef.current = null;
     }
-    if (schedulerIntervalRef.current) {
-      clearInterval(schedulerIntervalRef.current);
-      schedulerIntervalRef.current = null;
+
+    // Wait for any in-progress command to complete naturally instead of cancelling it
+    // This prevents partial commands from appearing in the terminal
+    while (commandInProgressRef.current) {
+      await new Promise(resolve => setTimeout(resolve, 50));
     }
+
+    // Additional small delay to ensure the shell has processed the ENTER key
+    // and the command output has been fully rendered in the terminal
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     setSchedulerRunning(false);
   }, []);
 
-  const sendScheduledCommand = useCallback((command: string) => {
-    if (!processIdRef.current || !terminal) return;
+  const sendScheduledCommand = useCallback((command: string, delayMs: number): Promise<boolean> => {
+    if (!processIdRef.current || !terminal) return Promise.resolve(false);
+
+    // Prevent overlapping command executions by checking if one is already in progress
+    if (commandInProgressRef.current) {
+      console.warn('Command already in progress, skipping overlapping execution');
+      return Promise.resolve(false);
+    }
+
+    commandInProgressRef.current = true;
 
     // Simulate typing through xterm terminal instance
     // This ensures the input goes through the same path as real user typing,
     // which is critical for interactive apps like Claude Code that process
     // input character-by-character in raw terminal mode
 
-    // Type each character with a small delay to simulate realistic typing
-    let charIndex = 0;
-    const typeNextChar = () => {
-      if (charIndex < command.length) {
-        const char = command[charIndex];
-        // Send to PTY
-        window.electronAPI.shell.write(processIdRef.current, char);
-        charIndex++;
-        setTimeout(typeNextChar, 10); // 10ms between characters
-      } else {
-        // After all characters, wait 1 second before sending ENTER key (\r)
-        setTimeout(() => {
-          window.electronAPI.shell.write(processIdRef.current, '\r');
-        }, 1000);
-      }
-    };
+    return new Promise<boolean>((resolve) => {
+      // Type each character with a small delay to simulate realistic typing
+      let charIndex = 0;
+      const typeNextChar = () => {
+        if (charIndex < command.length) {
+          const char = command[charIndex];
+          // Send to PTY
+          window.electronAPI.shell.write(processIdRef.current, char);
+          charIndex++;
+          setTimeout(typeNextChar, 10); // 10ms between characters
+        } else {
+          // After all characters, wait before sending ENTER key (\r)
+          // Use min(delayMs/2, 1000) to ensure we don't wait too long for short intervals
+          // but also don't exceed 1 second for long intervals
+          const enterKeyDelay = Math.min(delayMs / 2, 1000);
+          setTimeout(() => {
+            window.electronAPI.shell.write(processIdRef.current, '\r');
+            commandInProgressRef.current = false;
+            resolve(true);
+          }, enterKeyDelay);
+        }
+      };
 
-    typeNextChar();
+      typeNextChar();
+    });
   }, [terminal]);
 
-  const startScheduler = useCallback((config: SchedulerConfig) => {
+  const startScheduler = useCallback(async (config: SchedulerConfig) => {
     // Stop any existing scheduler
-    stopScheduler();
+    await stopScheduler();
 
     setSchedulerConfig(config);
     setSchedulerRunning(true);
 
     if (config.repeat) {
-      // For repeat mode, use setInterval
-      schedulerIntervalRef.current = setInterval(() => {
-        sendScheduledCommand(config.command);
-      }, config.delayMs);
+      // For repeat mode, use chained setTimeout to ensure each command completes
+      // before the next one starts. This prevents overlapping executions that
+      // cause gibberish input, especially after machine sleep/wake.
+      const scheduleNext = async () => {
+        // Wait for the delay interval
+        await new Promise(resolve => {
+          schedulerTimeoutRef.current = setTimeout(resolve, config.delayMs);
+        });
+
+        // Execute the command and wait for it to complete
+        await sendScheduledCommand(config.command, config.delayMs);
+
+        // Schedule the next execution only if scheduler is still running
+        if (schedulerTimeoutRef.current) {
+          scheduleNext();
+        }
+      };
+
+      // Start the chain
+      scheduleNext();
     } else {
       // For one-time mode, use setTimeout
-      schedulerTimeoutRef.current = setTimeout(() => {
-        sendScheduledCommand(config.command);
+      schedulerTimeoutRef.current = setTimeout(async () => {
+        await sendScheduledCommand(config.command, config.delayMs);
         setSchedulerRunning(false);
         setSchedulerConfig(null);
       }, config.delayMs);
@@ -147,8 +185,8 @@ export function ClaudeTerminal({
     setSchedulerDialogOpen(false);
   }, [stopScheduler, sendScheduledCommand]);
 
-  const handleSchedulerStop = useCallback(() => {
-    stopScheduler();
+  const handleSchedulerStop = useCallback(async () => {
+    await stopScheduler();
     setSchedulerConfig(null);
   }, [stopScheduler]);
 

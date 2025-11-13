@@ -10,6 +10,7 @@ import {
 import { terminalSettingsManager } from './terminal-settings';
 import { recentProjectsManager } from './recent-projects';
 import { schedulerHistoryManager } from './scheduler-history';
+import { createMenu } from './menu';
 import fs from 'fs';
 import { execSync } from 'child_process';
 import * as os from 'os';
@@ -105,14 +106,20 @@ export function registerIpcHandlers(mainWindow: BrowserWindow | null) {
 
   ipcMain.handle('recent-projects:add', (_, projectPath: string) => {
     recentProjectsManager.addRecentProject(projectPath);
+    // Rebuild menu to reflect the updated recent projects list
+    createMenu(mainWindow);
   });
 
   ipcMain.handle('recent-projects:remove', (_, projectPath: string) => {
     recentProjectsManager.removeRecentProject(projectPath);
+    // Rebuild menu to reflect the updated recent projects list
+    createMenu(mainWindow);
   });
 
   ipcMain.handle('recent-projects:clear', () => {
     recentProjectsManager.clearRecentProjects();
+    // Rebuild menu to reflect the updated recent projects list
+    createMenu(mainWindow);
   });
 
   // Terminal settings handlers

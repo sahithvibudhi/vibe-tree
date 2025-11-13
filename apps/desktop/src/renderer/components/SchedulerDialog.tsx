@@ -15,7 +15,7 @@ interface SchedulerDialogProps {
   open: boolean;
   onClose: () => void;
   onStart: (config: SchedulerConfig) => void;
-  onStop: () => void;
+  onStop: () => void | Promise<void>;
   isRunning: boolean;
   currentConfig: SchedulerConfig | null;
 }
@@ -92,8 +92,8 @@ export function SchedulerDialog({
     setRepeat(entry.repeat);
   };
 
-  const handleStop = () => {
-    onStop();
+  const handleStop = async () => {
+    await onStop();
     onClose();
   };
 
