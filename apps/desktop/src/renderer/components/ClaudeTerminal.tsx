@@ -30,6 +30,14 @@ interface ClaudeTerminalProps {
 // Cache for terminal states per worktree
 const terminalStateCache = new Map<string, string>();
 
+// Cache for scheduler states per process ID
+interface SchedulerState {
+  config: SchedulerConfig;
+  isRunning: boolean;
+  timeoutId: NodeJS.Timeout | null;
+}
+const schedulerStateCache = new Map<string, SchedulerState>();
+
 export function ClaudeTerminal({
   worktreePath,
   theme = 'dark',
@@ -86,6 +94,10 @@ export function ClaudeTerminal({
       schedulerTimeoutRef.current = null;
     }
     setSchedulerRunning(false);
+    // Clear from cache when explicitly stopped
+    if (processIdRef.current) {
+      schedulerStateCache.delete(processIdRef.current);
+    }
   }, []);
 
   const sendScheduledCommand = useCallback((command: string): Promise<void> => {
@@ -154,12 +166,36 @@ export function ClaudeTerminal({
     setSchedulerConfig(null);
   }, [stopScheduler]);
 
-  // Cleanup scheduler on unmount
+  // Save scheduler state to cache when it changes
+  useEffect(() => {
+    if (!processIdRef.current) return;
+
+    if (schedulerRunning && schedulerConfig && schedulerTimeoutRef.current) {
+      schedulerStateCache.set(processIdRef.current, {
+        config: schedulerConfig,
+        isRunning: schedulerRunning,
+        timeoutId: schedulerTimeoutRef.current
+      });
+    } else {
+      // Clear cache when scheduler is stopped
+      schedulerStateCache.delete(processIdRef.current);
+    }
+  }, [schedulerRunning, schedulerConfig]);
+
+  // Cleanup scheduler on unmount - save to cache instead of stopping
   useEffect(() => {
     return () => {
-      stopScheduler();
+      // Don't stop the scheduler on unmount - just save state
+      // The scheduler will continue running and be restored when remounted
+      if (processIdRef.current && schedulerRunning && schedulerConfig && schedulerTimeoutRef.current) {
+        schedulerStateCache.set(processIdRef.current, {
+          config: schedulerConfig,
+          isRunning: schedulerRunning,
+          timeoutId: schedulerTimeoutRef.current
+        });
+      }
     };
-  }, [stopScheduler]);
+  }, [schedulerRunning, schedulerConfig]);
 
   // Load terminal settings and listen for changes
   useEffect(() => {
@@ -439,6 +475,15 @@ export function ClaudeTerminal({
         setCurrentProcessId(result.processId!);
         console.log(`Shell started: ${result.processId}, isNew: ${result.isNew}, worktree: ${worktreePath}`);
 
+        // Restore scheduler state if it exists for this process
+        const cachedScheduler = schedulerStateCache.get(result.processId!);
+        if (cachedScheduler && cachedScheduler.isRunning) {
+          console.log(`Restoring scheduler for process ${result.processId}`);
+          setSchedulerConfig(cachedScheduler.config);
+          setSchedulerRunning(true);
+          schedulerTimeoutRef.current = cachedScheduler.timeoutId;
+        }
+
         // Handle terminal state
         if (result.isNew) {
           // Clear terminal for new shells
@@ -507,7 +552,17 @@ export function ClaudeTerminal({
         // Set up exit listener
         const removeExitListener = window.electronAPI.shell.onExit(result.processId!, (code) => {
           terminal.writeln(`\r\n[Shell exited with code ${code}]`);
+          const exitedProcessId = processIdRef.current;
           processIdRef.current = '';
+
+          // Clean up scheduler state when PTY exits
+          if (exitedProcessId) {
+            const cachedScheduler = schedulerStateCache.get(exitedProcessId);
+            if (cachedScheduler?.timeoutId) {
+              clearTimeout(cachedScheduler.timeoutId);
+            }
+            schedulerStateCache.delete(exitedProcessId);
+          }
         });
 
         // Periodically save terminal state
