@@ -484,6 +484,13 @@ export interface ExtendedDiagnostics extends SystemDiagnostics {
     }>;
   };
 
+  // App-specific PTY tracking
+  appPtyInfo: {
+    totalPtyInstancesCreated: number; // Total PTY instances created by our app during lifetime
+    currentActiveSessions: number; // Currently active PTY sessions
+    ptyChildProcesses: number; // PTY processes that are direct children of our app process
+  };
+
   // File descriptor details
   fileDescriptorDetails: {
     byType?: Record<string, number>; // e.g., { REG: 10, CHR: 5, PIPE: 3 }
@@ -680,6 +687,41 @@ async function getPtyProcesses(): Promise<ExtendedDiagnostics['ptyProcesses']> {
 }
 
 /**
+ * Count PTY child processes of our app (direct children only)
+ * This helps identify if we have PTY processes that are still running as children
+ */
+async function countAppPtyChildProcesses(allChildProcesses: ChildProcessInfo[]): Promise<number> {
+  try {
+    // Count how many of our direct child processes have a PTY/TTY
+    // Look for processes with pts/ or ttys in their command or that are shell processes
+    let count = 0;
+
+    for (const child of allChildProcesses) {
+      // Check if this is a PTY-related process
+      // Common indicators: bash, zsh, sh processes with TTY, or processes with pts/ttys in command
+      const command = child.command.toLowerCase();
+      const isPtyShell = (command.includes('bash') || command.includes('zsh') || command.includes('sh'))
+                         && !command.includes('ssh');
+      const hasPtyInCommand = command.includes('pts/') || command.includes('ttys');
+
+      if (isPtyShell || hasPtyInCommand) {
+        count++;
+      }
+
+      // Recursively count in nested children
+      if (child.children && child.children.length > 0) {
+        count += await countAppPtyChildProcesses(child.children);
+      }
+    }
+
+    return count;
+  } catch (error) {
+    console.error('Error counting app PTY child processes:', error);
+    return 0;
+  }
+}
+
+/**
  * Get kernel limits (macOS specific)
  */
 async function getKernelLimits(): Promise<ExtendedDiagnostics['kernelLimits']> {
@@ -715,8 +757,13 @@ async function getKernelLimits(): Promise<ExtendedDiagnostics['kernelLimits']> {
 /**
  * Collect comprehensive diagnostics for posix_spawn failure analysis
  * This gathers extensive system state to help diagnose PTY leaks and resource exhaustion
+ *
+ * @param sessionManagerStats Optional stats from ShellSessionManager for app-specific PTY tracking
  */
-export async function getExtendedDiagnostics(): Promise<ExtendedDiagnostics> {
+export async function getExtendedDiagnostics(sessionManagerStats?: {
+  totalPtyInstancesCreated: number;
+  currentActiveSessions: number;
+}): Promise<ExtendedDiagnostics> {
   // Get base diagnostics
   const baseDiagnostics = await getSystemDiagnostics();
 
@@ -727,6 +774,16 @@ export async function getExtendedDiagnostics(): Promise<ExtendedDiagnostics> {
     getPtyProcesses(),
     getKernelLimits()
   ]);
+
+  // Count PTY child processes of our app
+  const ptyChildProcesses = await countAppPtyChildProcesses(baseDiagnostics.childProcesses);
+
+  // App-specific PTY info
+  const appPtyInfo = {
+    totalPtyInstancesCreated: sessionManagerStats?.totalPtyInstancesCreated || 0,
+    currentActiveSessions: sessionManagerStats?.currentActiveSessions || 0,
+    ptyChildProcesses
+  };
 
   // Get system load
   const loadAvg = os.loadavg();
@@ -755,6 +812,7 @@ export async function getExtendedDiagnostics(): Promise<ExtendedDiagnostics> {
   return {
     ...baseDiagnostics,
     ptyProcesses,
+    appPtyInfo,
     fileDescriptorDetails: fdDetails,
     threadInfo,
     systemLoad,
@@ -839,8 +897,23 @@ export function formatExtendedDiagnostics(diagnostics: ExtendedDiagnostics): str
   }
   lines.push('');
 
-  // PTY Processes
-  lines.push('PTY Processes:');
+  // App PTY Tracking
+  lines.push('App PTY Tracking:');
+  lines.push(`  Total PTY Instances Created: ${diagnostics.appPtyInfo.totalPtyInstancesCreated}`);
+  lines.push(`  Current Active Sessions: ${diagnostics.appPtyInfo.currentActiveSessions}`);
+  lines.push(`  PTY Child Processes: ${diagnostics.appPtyInfo.ptyChildProcesses}`);
+
+  // Calculate potential leak indicator
+  const leaked = diagnostics.appPtyInfo.totalPtyInstancesCreated -
+                 diagnostics.appPtyInfo.currentActiveSessions -
+                 diagnostics.appPtyInfo.ptyChildProcesses;
+  if (leaked > 0) {
+    lines.push(`  ⚠️  Potential Leaked PTYs: ${leaked} (created - active - children)`);
+  }
+  lines.push('');
+
+  // PTY Processes (system-wide)
+  lines.push('PTY Processes (System-wide):');
   lines.push(`  Count: ${diagnostics.ptyProcesses.count}`);
   if (diagnostics.ptyProcesses.details.length > 0) {
     lines.push('  Details:');

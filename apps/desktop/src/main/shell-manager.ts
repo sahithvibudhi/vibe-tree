@@ -156,8 +156,15 @@ class DesktopShellManager {
       try {
         console.log('Running comprehensive diagnostics for posix_spawn failure analysis...');
 
+        // Get session manager stats for app-specific PTY tracking
+        const sessions = this.sessionManager.getAllSessions();
+        const sessionManagerStats = {
+          totalPtyInstancesCreated: this.sessionManager.getTotalPtyInstancesCreated(),
+          currentActiveSessions: sessions.length
+        };
+
         // Collect extended diagnostics
-        const diagnostics = await getExtendedDiagnostics();
+        const diagnostics = await getExtendedDiagnostics(sessionManagerStats);
 
         // Format for text output
         const formattedText = formatExtendedDiagnostics(diagnostics);
@@ -192,6 +199,7 @@ class DesktopShellManager {
             fdUsagePercent: diagnostics.openFileDescriptors && diagnostics.fileDescriptorLimit.soft
               ? ((diagnostics.openFileDescriptors / diagnostics.fileDescriptorLimit.soft) * 100).toFixed(1)
               : null,
+            appPtyInfo: diagnostics.appPtyInfo,
             ptyProcessCount: diagnostics.ptyProcesses.count,
             childProcessCount: diagnostics.childProcesses.length,
             zombieCount: diagnostics.zombieProcessCount,

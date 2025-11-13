@@ -1104,12 +1104,34 @@
                 const s = result.summary;
                 summaryHtml += '<div class="diagnose-status-detail">';
                 summaryHtml += `<strong>Summary:</strong><br>`;
+
+                // App PTY Tracking
+                if (s.appPtyInfo) {
+                  summaryHtml += `<strong style="color: #0066cc;">App PTY Tracking:</strong><br>`;
+                  summaryHtml += `  • Total Created: ${s.appPtyInfo.totalPtyInstancesCreated}<br>`;
+                  summaryHtml += `  • Active Sessions: ${s.appPtyInfo.currentActiveSessions}<br>`;
+                  summaryHtml += `  • PTY Children: ${s.appPtyInfo.ptyChildProcesses}<br>`;
+
+                  // Calculate potential leak
+                  const leaked = s.appPtyInfo.totalPtyInstancesCreated -
+                                 s.appPtyInfo.currentActiveSessions -
+                                 s.appPtyInfo.ptyChildProcesses;
+                  if (leaked > 0) {
+                    summaryHtml += `  • <strong style="color: #c62828;">⚠️ Potential Leaked: ${leaked}</strong><br>`;
+                  } else if (leaked < 0) {
+                    summaryHtml += `  • <span style="color: #666;">Leak Check: OK (${leaked})</span><br>`;
+                  } else {
+                    summaryHtml += `  • <span style="color: #28a745;">✓ No Leaks Detected</span><br>`;
+                  }
+                  summaryHtml += `<br>`;
+                }
+
                 summaryHtml += `• File Descriptors: ${s.openFds || 'N/A'}/${s.fdLimit || 'N/A'}`;
                 if (s.fdUsagePercent) {
                   summaryHtml += ` (${s.fdUsagePercent}% used)`;
                 }
                 summaryHtml += `<br>`;
-                summaryHtml += `• PTY Processes: ${s.ptyProcessCount}<br>`;
+                summaryHtml += `• PTY Processes (System): ${s.ptyProcessCount}<br>`;
                 summaryHtml += `• Child Processes: ${s.childProcessCount}<br>`;
                 if (s.zombieCount > 0) {
                   summaryHtml += `• Zombie Processes: ${s.zombieCount}<br>`;
