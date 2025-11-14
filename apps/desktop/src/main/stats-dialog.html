@@ -1004,12 +1004,29 @@
           const fdUsage = (diag.openFileDescriptors / diag.fileDescriptorLimit.soft * 100).toFixed(1);
           const isHighFdUsage = diag.openFileDescriptors / diag.fileDescriptorLimit.soft > 0.75;
 
-          addMetric(
-            'File Descriptors',
-            `${diag.openFileDescriptors} / ${diag.fileDescriptorLimit.soft} (${fdUsage}%)`,
-            `${diag.fileDescriptorLimit.soft} limit`,
-            { appWarning: isHighFdUsage }
-          );
+          let systemFdInfo = `${diag.fileDescriptorLimit.soft} limit (per-process)`;
+
+          // Add system-wide FD usage if available
+          if (diag.systemFileDescriptors && diag.systemFileDescriptors.current !== null && diag.systemFileDescriptors.limit !== null) {
+            const systemUsage = (diag.systemFileDescriptors.current / diag.systemFileDescriptors.limit * 100).toFixed(1);
+            const isHighSystemUsage = diag.systemFileDescriptors.current / diag.systemFileDescriptors.limit > 0.75;
+
+            systemFdInfo = `${diag.systemFileDescriptors.current} / ${diag.systemFileDescriptors.limit} (${systemUsage}%)`;
+
+            addMetric(
+              'File Descriptors',
+              `${diag.openFileDescriptors} / ${diag.fileDescriptorLimit.soft} (${fdUsage}%)`,
+              systemFdInfo,
+              { appWarning: isHighFdUsage, sysWarning: isHighSystemUsage }
+            );
+          } else {
+            addMetric(
+              'File Descriptors',
+              `${diag.openFileDescriptors} / ${diag.fileDescriptorLimit.soft} (${fdUsage}%)`,
+              systemFdInfo,
+              { appWarning: isHighFdUsage }
+            );
+          }
         }
 
         metricsTableBody.innerHTML = metrics.join('');

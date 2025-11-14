@@ -525,6 +525,12 @@ export interface ExtendedDiagnostics extends SystemDiagnostics {
     ptyDeviceLimit: number | null; // System-wide PTY device limit (kern.tty.ptmx_max)
   };
 
+  // System-wide file descriptor usage (macOS/Linux specific)
+  systemFileDescriptors: {
+    current: number | null; // Current FDs open across entire system
+    limit: number | null; // System-wide FD limit (kern.maxfiles)
+  };
+
   // PTY device information (macOS/BSD specific)
   ptyDeviceInfo: {
     currentCount: number | null; // Current number of PTY devices in use
@@ -772,6 +778,58 @@ async function getKernelLimits(): Promise<ExtendedDiagnostics['kernelLimits']> {
 }
 
 /**
+ * Get system-wide file descriptor usage (macOS/Linux specific)
+ */
+async function getSystemFileDescriptors(): Promise<ExtendedDiagnostics['systemFileDescriptors']> {
+  const result: ExtendedDiagnostics['systemFileDescriptors'] = {
+    current: null,
+    limit: null
+  };
+
+  if (process.platform === 'darwin') {
+    try {
+      // Get system-wide limit
+      const { stdout: limitStdout } = await execAsync('sysctl -n kern.maxfiles');
+      const limit = parseInt(limitStdout.trim(), 10);
+      if (!isNaN(limit)) {
+        result.limit = limit;
+      }
+    } catch (error) {
+      console.error('Error getting system FD limit:', error);
+    }
+
+    try {
+      // Get current system-wide usage
+      // Count all open files across all processes using lsof
+      const { stdout: currentStdout } = await execAsync('lsof 2>/dev/null | wc -l');
+      // lsof includes header line, so subtract 1
+      const current = Math.max(0, parseInt(currentStdout.trim(), 10) - 1);
+      if (!isNaN(current)) {
+        result.current = current;
+      }
+    } catch (error) {
+      console.error('Error getting system FD usage:', error);
+    }
+  } else if (process.platform === 'linux') {
+    try {
+      // Get system-wide limit and current usage from /proc
+      const { stdout: fileNr } = await execAsync('cat /proc/sys/fs/file-nr');
+      const parts = fileNr.trim().split(/\s+/);
+      if (parts.length >= 3) {
+        const current = parseInt(parts[0], 10);
+        const limit = parseInt(parts[2], 10);
+        if (!isNaN(current)) result.current = current;
+        if (!isNaN(limit)) result.limit = limit;
+      }
+    } catch (error) {
+      console.error('Error getting system FD info:', error);
+    }
+  }
+
+  return result;
+}
+
+/**
  * Get PTY device information (macOS/BSD specific)
  * Returns current number of PTY devices in use and system limit
  */
@@ -879,13 +937,14 @@ export async function getExtendedDiagnostics(sessionManagerStats?: {
   const baseDiagnostics = await getSystemDiagnostics();
 
   // Get additional diagnostic info in parallel
-  const [fdDetails, threadInfo, ptyProcesses, kernelLimits, ptyDeviceInfo, appPtyFds] = await Promise.all([
+  const [fdDetails, threadInfo, ptyProcesses, kernelLimits, ptyDeviceInfo, appPtyFds, systemFds] = await Promise.all([
     getFileDescriptorDetails(),
     getThreadInfo(),
     getPtyProcesses(),
     getKernelLimits(),
     getPtyDeviceInfo(),
-    getAppPtyFileDescriptors()
+    getAppPtyFileDescriptors(),
+    getSystemFileDescriptors()
   ]);
 
   // Count PTY child processes of our app
@@ -933,6 +992,7 @@ export async function getExtendedDiagnostics(sessionManagerStats?: {
     threadInfo,
     systemLoad,
     kernelLimits,
+    systemFileDescriptors: systemFds,
     ptyDeviceInfo,
     environmentVariables,
     nodeProcess,
