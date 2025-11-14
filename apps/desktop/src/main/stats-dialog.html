@@ -952,10 +952,15 @@
           const totalCreated = diag.appPtyInfo.totalPtyInstancesCreated;
           const leaked = totalCreated - activeSessions - (diag.appPtyInfo.ptyChildProcesses || 0);
 
+          // Show total created if different from active (indicates churn/leaks)
+          const sessionInfo = totalCreated > activeSessions
+            ? `${totalCreated} total created`
+            : '--';
+
           addMetric(
             'Active PTY Sessions',
             activeSessions,
-            `${totalCreated} total created`,
+            sessionInfo,
             { appWarning: leaked > 0 }
           );
         }
