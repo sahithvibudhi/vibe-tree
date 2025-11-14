@@ -7,7 +7,9 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: 1, // Use only 1 worker for Electron tests
   reporter: 'html',
-  timeout: 60000,
+  // Increased test timeout to accommodate PTY teardown after stress tests
+  // The stress test creates 47+ PTY sessions and cleanup can take time
+  timeout: process.env.CI ? 120000 : 60000, // 2 minutes in CI, 1 minute locally
   // Set globalTimeout to prevent worker teardown timeout issues
   // Increased from 10 minutes to 15 minutes to handle PTY cleanup delays
   globalTimeout: process.env.CI ? 900000 : 0, // 15 minutes in CI, unlimited locally
