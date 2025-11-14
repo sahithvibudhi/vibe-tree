@@ -31,6 +31,14 @@ interface ClaudeTerminalProps {
 // Cache for terminal states per worktree
 const terminalStateCache = new Map<string, string>();
 
+// Cache for scheduler states per process ID
+interface SchedulerState {
+  config: SchedulerConfig;
+  isRunning: boolean;
+  timeoutId: NodeJS.Timeout | null;
+}
+const schedulerStateCache = new Map<string, SchedulerState>();
+
 export function ClaudeTerminal({
   worktreePath,
   theme = 'dark',
@@ -57,12 +65,33 @@ export function ClaudeTerminal({
   const [isDragOver, setIsDragOver] = useState(false);
   const { toast } = useToast();
 
-  // Scheduler state
+  // Scheduler state - only UI state in component, actual scheduler state in cache
   const [schedulerDialogOpen, setSchedulerDialogOpen] = useState(false);
-  const [schedulerConfig, setSchedulerConfig] = useState<SchedulerConfig | null>(null);
-  const [schedulerRunning, setSchedulerRunning] = useState(false);
-  const schedulerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Force re-render when scheduler state changes
+  const [, setSchedulerUpdateTrigger] = useState(0);
   const commandInProgressRef = useRef(false);
+
+  // Helper functions to work with scheduler cache
+  const getSchedulerState = useCallback(() => {
+    if (!processIdRef.current) return null;
+    return schedulerStateCache.get(processIdRef.current) || null;
+  }, []);
+
+  const updateSchedulerState = useCallback((update: Partial<SchedulerState> | null) => {
+    if (!processIdRef.current) return;
+
+    if (update === null) {
+      schedulerStateCache.delete(processIdRef.current);
+    } else {
+      const current = schedulerStateCache.get(processIdRef.current);
+      schedulerStateCache.set(processIdRef.current, {
+        ...current,
+        ...update
+      } as SchedulerState);
+    }
+    // Trigger re-render
+    setSchedulerUpdateTrigger(prev => prev + 1);
+  }, []);
 
   // Search functionality
   const handleSearch = useCallback((query: string, direction: 'next' | 'previous' = 'next') => {
@@ -84,9 +113,9 @@ export function ClaudeTerminal({
 
   // Scheduler functionality
   const stopScheduler = useCallback(async () => {
-    if (schedulerTimeoutRef.current) {
-      clearTimeout(schedulerTimeoutRef.current);
-      schedulerTimeoutRef.current = null;
+    const schedulerState = getSchedulerState();
+    if (schedulerState?.timeoutId) {
+      clearTimeout(schedulerState.timeoutId);
     }
 
     // Wait for any in-progress command to complete naturally instead of cancelling it
@@ -99,8 +128,9 @@ export function ClaudeTerminal({
     // and the command output has been fully rendered in the terminal
     await new Promise(resolve => setTimeout(resolve, 100));
 
-    setSchedulerRunning(false);
-  }, []);
+    // Clear from cache when explicitly stopped
+    updateSchedulerState(null);
+  }, [getSchedulerState, updateSchedulerState]);
 
   const sendScheduledCommand = useCallback((command: string, delayMs: number): Promise<boolean> => {
     if (!processIdRef.current || !terminal) return Promise.resolve(false);
@@ -149,25 +179,32 @@ export function ClaudeTerminal({
     // Stop any existing scheduler
     await stopScheduler();
 
-    setSchedulerConfig(config);
-    setSchedulerRunning(true);
-
     if (config.repeat) {
       // For repeat mode, use chained setTimeout to ensure each command completes
       // before the next one starts. This prevents overlapping executions that
       // cause gibberish input, especially after machine sleep/wake.
       const scheduleNext = async () => {
         // Wait for the delay interval
-        await new Promise(resolve => {
-          schedulerTimeoutRef.current = setTimeout(resolve, config.delayMs);
+        await new Promise<void>(resolve => {
+          const timeoutId = setTimeout(resolve, config.delayMs);
+          // Update cache with timeout ID
+          updateSchedulerState({
+            config,
+            isRunning: true,
+            timeoutId
+          });
         });
 
         // Execute the command and wait for it to complete
         await sendScheduledCommand(config.command, config.delayMs);
 
-        // Schedule the next execution only if scheduler is still running
-        if (schedulerTimeoutRef.current) {
+        // Check if scheduler is still running after command execution
+        const currentState = getSchedulerState();
+        if (currentState?.isRunning) {
           scheduleNext();
+        } else {
+          // For one-time mode or if stopped, clean up
+          updateSchedulerState(null);
         }
       };
 
@@ -175,27 +212,28 @@ export function ClaudeTerminal({
       scheduleNext();
     } else {
       // For one-time mode, use setTimeout
-      schedulerTimeoutRef.current = setTimeout(async () => {
+      const timeoutId = setTimeout(async () => {
         await sendScheduledCommand(config.command, config.delayMs);
-        setSchedulerRunning(false);
-        setSchedulerConfig(null);
+        updateSchedulerState(null);
       }, config.delayMs);
+
+      // Update cache with new state
+      updateSchedulerState({
+        config,
+        isRunning: true,
+        timeoutId
+      });
     }
 
     setSchedulerDialogOpen(false);
-  }, [stopScheduler, sendScheduledCommand]);
+  }, [stopScheduler, sendScheduledCommand, getSchedulerState, updateSchedulerState]);
 
   const handleSchedulerStop = useCallback(async () => {
     await stopScheduler();
-    setSchedulerConfig(null);
   }, [stopScheduler]);
 
-  // Cleanup scheduler on unmount
-  useEffect(() => {
-    return () => {
-      stopScheduler();
-    };
-  }, [stopScheduler]);
+  // No cleanup needed on unmount - scheduler state already in cache
+  // The setTimeout will continue running and state persists in schedulerStateCache
 
   // Notify parent when scheduler status changes
   useEffect(() => {
@@ -482,6 +520,15 @@ export function ClaudeTerminal({
         setCurrentProcessId(result.processId!);
         console.log(`Shell started: ${result.processId}, isNew: ${result.isNew}, worktree: ${worktreePath}`);
 
+        // Scheduler state is already in cache and will be read when needed
+        // No need to restore to component state - we read directly from cache
+        const cachedScheduler = schedulerStateCache.get(result.processId!);
+        if (cachedScheduler && cachedScheduler.isRunning) {
+          console.log(`Scheduler already running for process ${result.processId}`);
+          // Trigger a re-render to show scheduler UI
+          setSchedulerUpdateTrigger(prev => prev + 1);
+        }
+
         // Handle terminal state
         if (result.isNew) {
           // Clear terminal for new shells
@@ -550,7 +597,17 @@ export function ClaudeTerminal({
         // Set up exit listener
         const removeExitListener = window.electronAPI.shell.onExit(result.processId!, (code) => {
           terminal.writeln(`\r\n[Shell exited with code ${code}]`);
+          const exitedProcessId = processIdRef.current;
           processIdRef.current = '';
+
+          // Clean up scheduler state when PTY exits
+          if (exitedProcessId) {
+            const cachedScheduler = schedulerStateCache.get(exitedProcessId);
+            if (cachedScheduler?.timeoutId) {
+              clearTimeout(cachedScheduler.timeoutId);
+            }
+            schedulerStateCache.delete(exitedProcessId);
+          }
         });
 
         // Periodically save terminal state
@@ -791,9 +848,9 @@ export function ClaudeTerminal({
             variant="ghost"
             onClick={() => setSchedulerDialogOpen(true)}
             title="Schedule Command"
-            className={schedulerRunning ? 'text-blue-500' : ''}
+            className={getSchedulerState()?.isRunning ? 'text-blue-500' : ''}
           >
-            <Clock className={`h-4 w-4 ${schedulerRunning ? 'animate-pulse' : ''}`} />
+            <Clock className={`h-4 w-4 ${getSchedulerState()?.isRunning ? 'animate-pulse' : ''}`} />
           </Button>
           <Button
             size="icon"
@@ -947,8 +1004,8 @@ export function ClaudeTerminal({
         onClose={() => setSchedulerDialogOpen(false)}
         onStart={startScheduler}
         onStop={handleSchedulerStop}
-        isRunning={schedulerRunning}
-        currentConfig={schedulerConfig}
+        isRunning={getSchedulerState()?.isRunning || false}
+        currentConfig={getSchedulerState()?.config || null}
       />
     </div>
   );
