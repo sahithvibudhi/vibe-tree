@@ -1112,6 +1112,17 @@
                   summaryHtml += `  • Active Sessions: ${s.appPtyInfo.currentActiveSessions}<br>`;
                   summaryHtml += `  • PTY Children: ${s.appPtyInfo.ptyChildProcesses}<br>`;
 
+                  // App PTY File Descriptors
+                  if (s.appPtyInfo.ptyMasterFds !== null && s.appPtyInfo.ptyMasterFds !== undefined) {
+                    summaryHtml += `  • PTY Master FDs: ${s.appPtyInfo.ptyMasterFds}<br>`;
+                  }
+                  if (s.appPtyInfo.ptySlaveFds !== null && s.appPtyInfo.ptySlaveFds !== undefined) {
+                    summaryHtml += `  • PTY Slave FDs: ${s.appPtyInfo.ptySlaveFds}<br>`;
+                  }
+                  if (s.appPtyInfo.totalPtyFds !== null && s.appPtyInfo.totalPtyFds !== undefined) {
+                    summaryHtml += `  • Total PTY FDs: ${s.appPtyInfo.totalPtyFds}<br>`;
+                  }
+
                   // Calculate potential leak
                   const leaked = s.appPtyInfo.totalPtyInstancesCreated -
                                  s.appPtyInfo.currentActiveSessions -
@@ -1131,6 +1142,24 @@
                   summaryHtml += ` (${s.fdUsagePercent}% used)`;
                 }
                 summaryHtml += `<br>`;
+
+                // PTY Devices (macOS)
+                if (s.ptyDeviceInfo && (s.ptyDeviceInfo.currentCount !== null || s.ptyDeviceInfo.systemLimit !== null)) {
+                  summaryHtml += `• PTY Devices: `;
+                  if (s.ptyDeviceInfo.currentCount !== null && s.ptyDeviceInfo.systemLimit !== null) {
+                    const ptyUsage = (s.ptyDeviceInfo.currentCount / s.ptyDeviceInfo.systemLimit * 100).toFixed(1);
+                    summaryHtml += `${s.ptyDeviceInfo.currentCount}/${s.ptyDeviceInfo.systemLimit} (${ptyUsage}% used)`;
+                    if (s.ptyDeviceInfo.currentCount / s.ptyDeviceInfo.systemLimit > 0.8) {
+                      summaryHtml += ` <strong style="color: #c62828;">⚠️ High Usage</strong>`;
+                    }
+                  } else if (s.ptyDeviceInfo.currentCount !== null) {
+                    summaryHtml += `${s.ptyDeviceInfo.currentCount}`;
+                  } else {
+                    summaryHtml += `Limit: ${s.ptyDeviceInfo.systemLimit}`;
+                  }
+                  summaryHtml += `<br>`;
+                }
+
                 summaryHtml += `• PTY Processes (System): ${s.ptyProcessCount}<br>`;
                 summaryHtml += `• Child Processes: ${s.childProcessCount}<br>`;
                 if (s.zombieCount > 0) {

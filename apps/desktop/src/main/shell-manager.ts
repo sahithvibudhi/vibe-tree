@@ -201,6 +201,7 @@ class DesktopShellManager {
               : null,
             appPtyInfo: diagnostics.appPtyInfo,
             ptyProcessCount: diagnostics.ptyProcesses.count,
+            ptyDeviceInfo: diagnostics.ptyDeviceInfo,
             childProcessCount: diagnostics.childProcesses.length,
             zombieCount: diagnostics.zombieProcessCount,
             warningCount: diagnostics.warnings.length,

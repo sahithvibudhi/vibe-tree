@@ -489,6 +489,9 @@ export interface ExtendedDiagnostics extends SystemDiagnostics {
     totalPtyInstancesCreated: number; // Total PTY instances created by our app during lifetime
     currentActiveSessions: number; // Currently active PTY sessions
     ptyChildProcesses: number; // PTY processes that are direct children of our app process
+    ptyMasterFds: number | null; // Number of /dev/ptmx (PTY master) file descriptors held by the app
+    ptySlaveFds: number | null; // Number of PTY slave (ttys/ttyp) file descriptors held by the app
+    totalPtyFds: number | null; // Total PTY-related file descriptors held by the app
   };
 
   // File descriptor details
@@ -519,6 +522,13 @@ export interface ExtendedDiagnostics extends SystemDiagnostics {
     maxFiles: number | null;
     maxFilesPerProcess: number | null;
     maxProcesses: number | null;
+    ptyDeviceLimit: number | null; // System-wide PTY device limit (kern.tty.ptmx_max)
+  };
+
+  // PTY device information (macOS/BSD specific)
+  ptyDeviceInfo: {
+    currentCount: number | null; // Current number of PTY devices in use
+    systemLimit: number | null; // System-wide PTY device limit
   };
 
   // Environment variables that might affect spawning
@@ -728,7 +738,8 @@ async function getKernelLimits(): Promise<ExtendedDiagnostics['kernelLimits']> {
   const limits: ExtendedDiagnostics['kernelLimits'] = {
     maxFiles: null,
     maxFilesPerProcess: null,
-    maxProcesses: null
+    maxProcesses: null,
+    ptyDeviceLimit: null
   };
 
   if (process.platform === 'darwin') {
@@ -749,9 +760,109 @@ async function getKernelLimits(): Promise<ExtendedDiagnostics['kernelLimits']> {
       const { stdout: maxProc } = await execAsync('sysctl -n kern.maxproc');
       limits.maxProcesses = parseInt(maxProc.trim(), 10);
     } catch {}
+
+    try {
+      // Get PTY device limit
+      const { stdout: ptyMax } = await execAsync('sysctl -n kern.tty.ptmx_max');
+      limits.ptyDeviceLimit = parseInt(ptyMax.trim(), 10);
+    } catch {}
   }
 
   return limits;
+}
+
+/**
+ * Get PTY device information (macOS/BSD specific)
+ * Returns current number of PTY devices in use and system limit
+ */
+async function getPtyDeviceInfo(): Promise<ExtendedDiagnostics['ptyDeviceInfo']> {
+  const info: ExtendedDiagnostics['ptyDeviceInfo'] = {
+    currentCount: null,
+    systemLimit: null
+  };
+
+  if (process.platform === 'darwin') {
+    try {
+      // Get system-wide PTY device limit using sysctl
+      const { stdout: ptyMaxStdout } = await execAsync('sysctl -n kern.tty.ptmx_max');
+      const limit = parseInt(ptyMaxStdout.trim(), 10);
+      if (!isNaN(limit)) {
+        info.systemLimit = limit;
+      }
+    } catch (error) {
+      console.error('Error getting PTY device limit:', error);
+    }
+
+    try {
+      // Count current PTY devices in /dev
+      // PTY devices are named /dev/ttys* on macOS
+      const { stdout: lsStdout } = await execAsync('ls -1 /dev/ttys* 2>/dev/null | wc -l');
+      const count = parseInt(lsStdout.trim(), 10);
+      if (!isNaN(count)) {
+        info.currentCount = count;
+      }
+    } catch (error) {
+      // If ls fails (e.g., no devices), count is 0
+      info.currentCount = 0;
+    }
+  }
+
+  return info;
+}
+
+/**
+ * Get PTY file descriptors held by the current process
+ * Returns counts for PTY master (/dev/ptmx), slave (ttys/ttyp), and total
+ */
+async function getAppPtyFileDescriptors(): Promise<{
+  ptyMasterFds: number | null;
+  ptySlaveFds: number | null;
+  totalPtyFds: number | null;
+}> {
+  const result = {
+    ptyMasterFds: null as number | null,
+    ptySlaveFds: null as number | null,
+    totalPtyFds: null as number | null
+  };
+
+  if (process.platform === 'darwin' || process.platform === 'linux') {
+    const pid = process.pid;
+
+    try {
+      // Count PTY master devices (/dev/ptmx)
+      const { stdout: masterStdout } = await execAsync(`lsof -p ${pid} 2>/dev/null | grep "/dev/ptmx" | wc -l`);
+      const masterCount = parseInt(masterStdout.trim(), 10);
+      if (!isNaN(masterCount)) {
+        result.ptyMasterFds = masterCount;
+      }
+    } catch (error) {
+      result.ptyMasterFds = 0;
+    }
+
+    try {
+      // Count PTY slave devices (ttys/ttyp)
+      const { stdout: slaveStdout } = await execAsync(`lsof -p ${pid} 2>/dev/null | grep -E "ttys|ttyp" | wc -l`);
+      const slaveCount = parseInt(slaveStdout.trim(), 10);
+      if (!isNaN(slaveCount)) {
+        result.ptySlaveFds = slaveCount;
+      }
+    } catch (error) {
+      result.ptySlaveFds = 0;
+    }
+
+    try {
+      // Count total PTY-related file descriptors
+      const { stdout: totalStdout } = await execAsync(`lsof -p ${pid} 2>/dev/null | grep -E "/dev/tty|/dev/ptmx" | wc -l`);
+      const totalCount = parseInt(totalStdout.trim(), 10);
+      if (!isNaN(totalCount)) {
+        result.totalPtyFds = totalCount;
+      }
+    } catch (error) {
+      result.totalPtyFds = 0;
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -768,11 +879,13 @@ export async function getExtendedDiagnostics(sessionManagerStats?: {
   const baseDiagnostics = await getSystemDiagnostics();
 
   // Get additional diagnostic info in parallel
-  const [fdDetails, threadInfo, ptyProcesses, kernelLimits] = await Promise.all([
+  const [fdDetails, threadInfo, ptyProcesses, kernelLimits, ptyDeviceInfo, appPtyFds] = await Promise.all([
     getFileDescriptorDetails(),
     getThreadInfo(),
     getPtyProcesses(),
-    getKernelLimits()
+    getKernelLimits(),
+    getPtyDeviceInfo(),
+    getAppPtyFileDescriptors()
   ]);
 
   // Count PTY child processes of our app
@@ -782,7 +895,10 @@ export async function getExtendedDiagnostics(sessionManagerStats?: {
   const appPtyInfo = {
     totalPtyInstancesCreated: sessionManagerStats?.totalPtyInstancesCreated || 0,
     currentActiveSessions: sessionManagerStats?.currentActiveSessions || 0,
-    ptyChildProcesses
+    ptyChildProcesses,
+    ptyMasterFds: appPtyFds.ptyMasterFds,
+    ptySlaveFds: appPtyFds.ptySlaveFds,
+    totalPtyFds: appPtyFds.totalPtyFds
   };
 
   // Get system load
@@ -817,6 +933,7 @@ export async function getExtendedDiagnostics(sessionManagerStats?: {
     threadInfo,
     systemLoad,
     kernelLimits,
+    ptyDeviceInfo,
     environmentVariables,
     nodeProcess,
     timestamp: new Date().toISOString()
@@ -903,6 +1020,17 @@ export function formatExtendedDiagnostics(diagnostics: ExtendedDiagnostics): str
   lines.push(`  Current Active Sessions: ${diagnostics.appPtyInfo.currentActiveSessions}`);
   lines.push(`  PTY Child Processes: ${diagnostics.appPtyInfo.ptyChildProcesses}`);
 
+  // App PTY File Descriptors
+  if (diagnostics.appPtyInfo.ptyMasterFds !== null) {
+    lines.push(`  PTY Master FDs (/dev/ptmx): ${diagnostics.appPtyInfo.ptyMasterFds}`);
+  }
+  if (diagnostics.appPtyInfo.ptySlaveFds !== null) {
+    lines.push(`  PTY Slave FDs (ttys/ttyp): ${diagnostics.appPtyInfo.ptySlaveFds}`);
+  }
+  if (diagnostics.appPtyInfo.totalPtyFds !== null) {
+    lines.push(`  Total PTY FDs: ${diagnostics.appPtyInfo.totalPtyFds}`);
+  }
+
   // Calculate potential leak indicator
   const leaked = diagnostics.appPtyInfo.totalPtyInstancesCreated -
                  diagnostics.appPtyInfo.currentActiveSessions -
@@ -922,6 +1050,27 @@ export function formatExtendedDiagnostics(diagnostics: ExtendedDiagnostics): str
     });
   }
   lines.push('');
+
+  // PTY Devices (macOS/BSD)
+  if (process.platform === 'darwin') {
+    lines.push('PTY Devices:');
+    if (diagnostics.ptyDeviceInfo.currentCount !== null) {
+      lines.push(`  Current Count: ${diagnostics.ptyDeviceInfo.currentCount}`);
+    }
+    if (diagnostics.ptyDeviceInfo.systemLimit !== null) {
+      lines.push(`  System Limit: ${diagnostics.ptyDeviceInfo.systemLimit}`);
+    }
+    if (diagnostics.ptyDeviceInfo.currentCount !== null && diagnostics.ptyDeviceInfo.systemLimit !== null) {
+      const usage = (diagnostics.ptyDeviceInfo.currentCount / diagnostics.ptyDeviceInfo.systemLimit * 100).toFixed(1);
+      lines.push(`  Usage: ${usage}%`);
+
+      // Add warning if usage is high
+      if (diagnostics.ptyDeviceInfo.currentCount / diagnostics.ptyDeviceInfo.systemLimit > 0.8) {
+        lines.push(`  ⚠️  WARNING: PTY device usage is high (${usage}%)`);
+      }
+    }
+    lines.push('');
+  }
 
   // Child Processes Summary
   const totalChildren = countProcessesInTree(diagnostics.childProcesses);
