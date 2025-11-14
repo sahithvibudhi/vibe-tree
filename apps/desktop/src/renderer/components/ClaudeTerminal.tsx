@@ -181,7 +181,7 @@ export function ClaudeTerminal({
       // For repeat mode, use chained setTimeout to ensure each command completes
       // before the next one starts. This prevents overlapping executions that
       // cause gibberish input, especially after machine sleep/wake.
-      const scheduleNext = async () => {
+      const scheduleNext = async (): Promise<void> => {
         // Wait for the delay interval
         await new Promise<void>(resolve => {
           const timeoutId = setTimeout(resolve, config.delayMs);
@@ -208,15 +208,17 @@ export function ClaudeTerminal({
         // Check if scheduler is still running after command execution
         const currentState = getSchedulerState();
         if (currentState?.isRunning) {
-          scheduleNext();
+          // Recursively schedule next execution
+          // This intentionally creates a promise chain that continues until stopped
+          return scheduleNext();
         } else {
           // For one-time mode or if stopped, clean up
           updateSchedulerState(null);
         }
       };
 
-      // Start the chain
-      scheduleNext();
+      // Start the chain and store the promise to allow proper cleanup
+      void scheduleNext();
     } else {
       // For one-time mode, use setTimeout
       const timeoutId = setTimeout(async () => {
