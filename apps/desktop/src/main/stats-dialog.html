@@ -934,27 +934,28 @@
         addSection('PTY Devices');
 
         if (diag.appPtyInfo && diag.ptyDeviceInfo) {
-          const totalPtyFds = diag.appPtyInfo.totalPtyFds || 0;
+          // Use master FDs as they directly represent PTY sessions
+          const ptyMasterFds = diag.appPtyInfo.ptyMasterFds || 0;
+          const activeSessions = diag.appPtyInfo.currentActiveSessions;
           const currentCount = diag.ptyDeviceInfo.currentCount || 0;
           const systemLimit = diag.ptyDeviceInfo.systemLimit || 0;
           const usage = systemLimit > 0 ? (currentCount / systemLimit * 100).toFixed(1) : '0';
           const isHighUsage = systemLimit > 0 && currentCount / systemLimit > 0.8;
 
           addMetric(
-            'PTY Devices Used',
-            totalPtyFds,
+            'PTY Master Devices',
+            ptyMasterFds,
             `${currentCount} / ${systemLimit} (${usage}%)`,
-            { appWarning: totalPtyFds > systemLimit * 0.5, sysWarning: isHighUsage }
+            { appWarning: ptyMasterFds > systemLimit * 0.5, sysWarning: isHighUsage }
           );
 
-          const activeSessions = diag.appPtyInfo.currentActiveSessions;
           const totalCreated = diag.appPtyInfo.totalPtyInstancesCreated;
           const leaked = totalCreated - activeSessions - (diag.appPtyInfo.ptyChildProcesses || 0);
 
           addMetric(
             'Active PTY Sessions',
             activeSessions,
-            `${totalCreated} created`,
+            `${totalCreated} total created`,
             { appWarning: leaked > 0 }
           );
         }
