@@ -73,7 +73,7 @@ test.describe('Terminal Arithmetic Test', () => {
     }
   });
 
-  test.skip('should open terminal window and execute arithmetic', async () => {
+  test('should open terminal window and execute arithmetic', async () => {
     test.setTimeout(60000);
 
     await page.waitForLoadState('domcontentloaded');

@@ -79,7 +79,7 @@ test.describe('Worktree Terminal Content Preservation', () => {
     }
   });
 
-  test.skip('should preserve terminal content when switching between worktrees', async () => {
+  test('should preserve terminal content when switching between worktrees', async () => {
     /**
      * TODO: This test consistently hangs in CI after 2 minutes, causing afterEach to timeout.
      * The test involves PTY processes and worktree switching which appears to cause the same

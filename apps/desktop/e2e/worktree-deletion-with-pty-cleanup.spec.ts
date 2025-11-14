@@ -88,7 +88,7 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     }
   });
 
-  test.skip('should show deletion reporting dialog and kill PTY processes when deleting worktree', async () => {
+  test('should show deletion reporting dialog and kill PTY processes when deleting worktree', async () => {
     /**
      * TODO: This test consistently hangs in CI after 3 minutes, causing afterEach to timeout.
      * The test involves PTY processes and worktree deletion which appears to cause the same
@@ -224,7 +224,7 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     expect(branches).not.toContain('test-branch');
   });
 
-  test.skip('should report errors in deletion dialog if PTY cleanup fails', async () => {
+  test('should report errors in deletion dialog if PTY cleanup fails', async () => {
     /**
      * TODO: This test consistently hangs in CI after 3 minutes, causing afterEach to timeout.
      * Same issue as other PTY cleanup tests. See errors/scheduler-tests-hang-in-ci.md for analysis.
@@ -335,7 +335,7 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     expect(fs.existsSync(testWorktreePath)).toBe(true);
   });
 
-  test.skip('should display error in deletion dialog when folder deletion fails', async () => {
+  test('should display error in deletion dialog when folder deletion fails', async () => {
     /**
      * TODO: This test consistently hangs in CI after 3 minutes, causing afterEach to timeout.
      * The test involves PTY processes and worktree deletion which appears to cause the same

@@ -73,7 +73,7 @@ test.describe('Terminal Search Functionality', () => {
     }
   });
 
-  test.skip('should open search bar and search for text in terminal', async () => {
+  test('should open search bar and search for text in terminal', async () => {
     test.setTimeout(60000);
 
     await page.waitForLoadState('domcontentloaded');
@@ -218,7 +218,7 @@ test.describe('Terminal Search Functionality', () => {
     expect(focusedElement).toContain('xterm');
   });
 
-  test.skip('should handle empty search queries gracefully', async () => {
+  test('should handle empty search queries gracefully', async () => {
     test.setTimeout(60000);
 
     await page.waitForLoadState('domcontentloaded');

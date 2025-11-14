@@ -97,7 +97,7 @@ test.describe('Terminal Settings', () => {
     }
   });
 
-  test.skip('should open terminal settings from menu and persist font changes', async () => {
+  test('should open terminal settings from menu and persist font changes', async () => {
     // Check if window.electronAPI exists
     const hasAPI = await page.evaluate(() => {
       return typeof window.electronAPI !== 'undefined' &&
@@ -260,7 +260,7 @@ test.describe('Terminal Settings', () => {
     await page.click('button:has-text("Done")');
   });
 
-  test.skip('should apply font settings to all terminals', async () => {
+  test('should apply font settings to all terminals', async () => {
     // Open terminal settings
     await electronApp.evaluate(({ BrowserWindow }) => {
       const windows = BrowserWindow.getAllWindows();
@@ -292,7 +292,7 @@ test.describe('Terminal Settings', () => {
     expect(parseFloat(fontSize)).toBeGreaterThan(14);
   });
 
-  test.skip('should handle custom font input', async () => {
+  test('should handle custom font input', async () => {
     // Open terminal settings
     await electronApp.evaluate(({ BrowserWindow }) => {
       const windows = BrowserWindow.getAllWindows();

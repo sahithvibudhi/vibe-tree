@@ -118,7 +118,7 @@ test.describe('Terminal Split Close Retry', () => {
     }
   });
 
-  test.skip('should allow closing terminal split', async () => {
+  test('should allow closing terminal split', async () => {
     test.setTimeout(60000);
 
     await page.waitForLoadState('domcontentloaded');
@@ -164,7 +164,7 @@ test.describe('Terminal Split Close Retry', () => {
     await expect(disabledCloseButton).toBeDisabled();
   });
 
-  test.skip('should allow multiple rapid close attempts on different terminals', async () => {
+  test('should allow multiple rapid close attempts on different terminals', async () => {
     /**
      * TODO: This test times out in CI when trying to click the split terminal button.
      * The split button may not be visible/clickable or the app may be in an unresponsive state.
@@ -217,7 +217,7 @@ test.describe('Terminal Split Close Retry', () => {
     await expect(disabledCloseButton).toBeDisabled();
   });
 
-  test.skip('should display detailed backtrace when terminal close fails', async () => {
+  test('should display detailed backtrace when terminal close fails', async () => {
     /**
      * TODO: This test times out in CI, similar to other tests in this file.
      * All terminal split/close tests appear to have timing/stability issues in CI.

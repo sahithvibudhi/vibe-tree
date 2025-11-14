@@ -117,7 +117,7 @@ test.describe('Terminal Split Feature', () => {
     }
   });
 
-  test.skip('should split terminal and manage multiple terminals', async () => {
+  test('should split terminal and manage multiple terminals', async () => {
     /**
      * TODO: This test times out in CI (2 minute timeout).
      * Part of systemic terminal operation failures affecting:
@@ -203,7 +203,7 @@ test.describe('Terminal Split Feature', () => {
     await expect(splitButtonAfter).toBeVisible();
   });
 
-  test.skip('should split terminal horizontally and manage multiple terminals', async () => {
+  test('should split terminal horizontally and manage multiple terminals', async () => {
     /**
      * TODO: Skipping all remaining terminal split tests - part of systemic CI terminal failures.
      * See terminal-split-timeout.md for details.
@@ -277,7 +277,7 @@ test.describe('Terminal Split Feature', () => {
     expect(secondTerminalContent).toContain('Terminal Bottom');
   });
 
-  test.skip('should maintain independent PTY sessions for split terminals', async () => {
+  test('should maintain independent PTY sessions for split terminals', async () => {
     /**
      * TODO: Skipping all remaining terminal split tests - part of systemic CI terminal failures.
      * See terminal-split-timeout.md for details.
