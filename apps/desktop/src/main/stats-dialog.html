@@ -1013,6 +1013,17 @@
             sessionInfo,
             { appWarning: leaked > 0 }
           );
+
+          // Show potential leak warning if master FDs > active sessions
+          const potentialLeaks = ptyMasterFds - activeSessions;
+          if (potentialLeaks > 0) {
+            addMetric(
+              'Leaked PTY Masters',
+              `${potentialLeaks} (${ptyMasterFds} FDs - ${activeSessions} sessions)`,
+              '--',
+              { appWarning: true }
+            );
+          }
         }
 
         // Processes Section
