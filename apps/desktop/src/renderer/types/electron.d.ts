@@ -31,8 +31,10 @@ export interface ElectronAPI {
     openExternal: (url: string) => Promise<void>;
     terminate: (processId: string) => Promise<{ success: boolean; error?: string }>;
     terminateForWorktree: (worktreePath: string) => Promise<{ success: boolean; count: number }>;
+    getWorktreeSessions: () => Promise<Record<string, number>>;
     onOutput: (processId: string, callback: (data: string) => void) => () => void;
     onExit: (processId: string, callback: (code: number) => void) => () => void;
+    onSessionsChanged: (callback: (sessions: Record<string, number>) => void) => () => void;
   };
   ide: {
     detect: () => Promise<Array<{ name: string; command: string }>>;

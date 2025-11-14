@@ -43,6 +43,7 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
   const [terminalSettings, setTerminalSettings] = useState<TerminalSettings | null>(null);
   const [panelWidth, setPanelWidth] = useState<number>(320); // Default 320px (w-80)
   const [isResizing, setIsResizing] = useState(false);
+  const [worktreeSessionCounts, setWorktreeSessionCounts] = useState<Record<string, number>>({});
   const { toast } = useToast();
 
   const loadWorktrees = useCallback(async () => {
@@ -60,6 +61,7 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
     }
     setRefreshing(false);
   }, [projectPath, toast, onWorktreesChange]);
+
 
   const handleCreateStressTest = async () => {
     setLoading(true);
@@ -161,6 +163,21 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
 
     const unsubscribe = window.electronAPI.terminalSettings.onChange((newSettings) => {
       setTerminalSettings(newSettings);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  // Listen for terminal session changes
+  useEffect(() => {
+    // Load initial session counts
+    window.electronAPI.shell.getWorktreeSessions().then(setWorktreeSessionCounts);
+
+    // Subscribe to session changes
+    const unsubscribe = window.electronAPI.shell.onSessionsChanged((sessions) => {
+      setWorktreeSessionCounts(sessions);
     });
 
     return () => {
@@ -429,7 +446,14 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
               >
                 <GitBranch className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="truncate" style={{ fontSize: `${worktreeFontSize}px`, fontWeight: 'bold' }}>
+                  <div
+                    className="truncate"
+                    style={{
+                      fontSize: `${worktreeFontSize}px`,
+                      fontWeight: 'bold',
+                      color: worktreeSessionCounts[worktree.path] > 0 ? '#60a5fa' : undefined
+                    }}
+                  >
                     {worktree.branch
                       ? worktree.branch.replace('refs/heads/', '')
                       : `Detached HEAD (${worktree.head.substring(0, 8)})`}

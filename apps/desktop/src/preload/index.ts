@@ -34,6 +34,8 @@ const api = {
       ipcRenderer.invoke('shell:terminate-for-worktree', worktreePath),
     getStats: () =>
       ipcRenderer.invoke('shell:get-stats'),
+    getWorktreeSessions: () =>
+      ipcRenderer.invoke('shell:get-worktree-sessions'),
     onOutput: (processId: string, callback: (data: string) => void) => {
       const channel = `shell:output:${processId}`;
       const listener = (_: unknown, data: string) => callback(data);
@@ -45,6 +47,11 @@ const api = {
       const listener = (_: unknown, code: number) => callback(code);
       ipcRenderer.on(channel, listener);
       return () => ipcRenderer.removeListener(channel, listener);
+    },
+    onSessionsChanged: (callback: (sessions: Record<string, number>) => void) => {
+      const listener = (_: unknown, sessions: Record<string, number>) => callback(sessions);
+      ipcRenderer.on('shell:sessions-changed', listener);
+      return () => ipcRenderer.removeListener('shell:sessions-changed', listener);
     },
   },
   ide: {
