@@ -1001,16 +1001,6 @@
           );
         }
 
-        // System Load Section
-        if (diag.systemLoad) {
-          addSection('System');
-          const load1 = diag.systemLoad.load1.toFixed(2);
-          const load5 = diag.systemLoad.load5.toFixed(2);
-          const load15 = diag.systemLoad.load15.toFixed(2);
-
-          addMetric('Load Average (1m, 5m, 15m)', '-', `${load1}, ${load5}, ${load15}`);
-        }
-
         metricsTableBody.innerHTML = metrics.join('');
       }
 
