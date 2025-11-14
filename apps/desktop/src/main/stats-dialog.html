@@ -559,6 +559,98 @@
     .diagnose-file-path:hover {
       text-decoration: underline;
     }
+
+    .metrics-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .metrics-table thead {
+      background: #f5f5f5;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .metrics-table th {
+      text-align: left;
+      padding: 10px 12px;
+      font-weight: 600;
+      border-bottom: 2px solid #ddd;
+      color: #333;
+    }
+
+    .metrics-table th:first-child {
+      width: 40%;
+    }
+
+    .metrics-table th:nth-child(2) {
+      width: 30%;
+      text-align: right;
+      color: #0066cc;
+    }
+
+    .metrics-table th:nth-child(3) {
+      width: 30%;
+      text-align: right;
+      color: #666;
+    }
+
+    .metrics-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .metrics-table tbody tr:hover {
+      background: #f9f9f9;
+    }
+
+    .metrics-table .metric-name {
+      color: #555;
+      font-weight: 500;
+    }
+
+    .metrics-table .metric-value {
+      text-align: right;
+      color: #333;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    }
+
+    .metrics-table .metric-value-app {
+      color: #0066cc;
+      font-weight: 500;
+    }
+
+    .metrics-table .metric-warning {
+      color: #c62828;
+      font-weight: 600;
+    }
+
+    .metrics-table .metric-good {
+      color: #28a745;
+      font-weight: 500;
+    }
+
+    .metrics-table .metric-subtext {
+      font-size: 11px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .metrics-section-header {
+      font-weight: 700;
+      background: #e8e8e8;
+      color: #333;
+    }
+
+    .metrics-section-header td {
+      padding: 10px 12px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
   </style>
 </head>
 <body>
@@ -592,8 +684,19 @@
 
       <!-- System Diagnostics Section -->
       <div class="diagnostics-section">
-        <div class="diagnostics-header">System Diagnostics</div>
-        <div class="diagnostics-content" id="diagnosticsContent"></div>
+        <div class="diagnostics-header">System Metrics</div>
+        <table class="metrics-table" id="metricsTable">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>VibeTree</th>
+              <th>System Wide</th>
+            </tr>
+          </thead>
+          <tbody id="metricsTableBody">
+            <!-- Metrics will be populated here -->
+          </tbody>
+        </table>
       </div>
 
       <!-- Diagnose Button Section -->
@@ -876,63 +979,131 @@
         errorSection.classList.add('hidden');
       }
 
-      // Update system diagnostics section
+      // Update system diagnostics section with metrics table
       if (stats.systemDiagnostics) {
         const diag = stats.systemDiagnostics;
-        const diagContent = document.getElementById('diagnosticsContent');
+        const metricsTableBody = document.getElementById('metricsTableBody');
 
-        const fdDisplay = diag.openFileDescriptors !== null && diag.fileDescriptorLimit.soft !== null
-          ? `${diag.openFileDescriptors} / ${diag.fileDescriptorLimit.soft}`
-          : diag.openFileDescriptors !== null
-            ? `${diag.openFileDescriptors}`
-            : 'Unknown';
+        const metrics = [];
 
-        const processDisplay = diag.currentProcessCount !== null && diag.processLimit !== null
-          ? `${diag.currentProcessCount} / ${diag.processLimit}`
-          : diag.currentProcessCount !== null
-            ? `${diag.currentProcessCount}`
-            : 'Unknown';
+        // Helper function to add metric row
+        const addMetric = (name, appValue, systemValue, options = {}) => {
+          const appClass = options.appWarning ? 'metric-warning' : options.appGood ? 'metric-good' : 'metric-value-app';
+          const sysClass = options.sysWarning ? 'metric-warning' : 'metric-value';
 
-        const memUsage = ((1 - diag.freeMemory / diag.totalMemory) * 100).toFixed(1);
+          metrics.push(`
+            <tr>
+              <td class="metric-name">${name}</td>
+              <td class="metric-value ${appClass}">${appValue || '-'}</td>
+              <td class="metric-value ${sysClass}">${systemValue || '-'}</td>
+            </tr>
+          `);
+        };
 
-        const processTreeMemDisplay = diag.processTreeMemory
-          ? `
-            <div class="diagnostics-item">
-              <span class="diagnostics-label">Process Tree Memory:</span>
-              <div style="margin-left: 16px;">
-                Current Process: ${formatMemory(diag.processTreeMemory.currentProcessRSS)}<br>
-                Total (with children): ${formatMemory(diag.processTreeMemory.totalTreeRSS)}
-              </div>
-            </div>
-          `
-          : '';
+        // Helper function to add section header
+        const addSection = (name) => {
+          metrics.push(`
+            <tr class="metrics-section-header">
+              <td colspan="3">${name}</td>
+            </tr>
+          `);
+        };
 
-        diagContent.innerHTML = `
-          <div class="diagnostics-item">
-            <span class="diagnostics-label">Platform:</span> ${diag.platform}
-          </div>
-          <div class="diagnostics-item">
-            <span class="diagnostics-label">File Descriptors:</span>
-            <div style="margin-left: 16px;">
-              ${fdDisplay}
-            </div>
-          </div>
-          <div class="diagnostics-item">
-            <span class="diagnostics-label">Processes:</span>
-            <div style="margin-left: 16px;">
-              ${processDisplay}
-            </div>
-          </div>
-          ${processTreeMemDisplay}
-          <div class="diagnostics-item">
-            <span class="diagnostics-label">System Memory:</span>
-            <div style="margin-left: 16px;">
-              Total: ${(diag.totalMemory / (1024 ** 3)).toFixed(2)} GB<br>
-              Free: ${(diag.freeMemory / (1024 ** 3)).toFixed(2)} GB<br>
-              Used: ${memUsage}%
-            </div>
-          </div>
-        `;
+        // Memory Section
+        addSection('Memory');
+
+        if (diag.processTreeMemory) {
+          const appMem = formatMemory(diag.processTreeMemory.currentProcessRSS);
+          const treeMem = formatMemory(diag.processTreeMemory.totalTreeRSS);
+          const totalGB = (diag.totalMemory / (1024 ** 3)).toFixed(2) + ' GB';
+          const usedPercent = ((1 - diag.freeMemory / diag.totalMemory) * 100).toFixed(1) + '%';
+
+          addMetric('Process Memory (RSS)', appMem, totalGB);
+          addMetric('Process Tree Memory', treeMem, usedPercent);
+        }
+
+        // PTY Devices Section
+        addSection('PTY Devices');
+
+        if (diag.appPtyInfo) {
+          const totalCreated = diag.appPtyInfo.totalPtyInstancesCreated;
+          const activeSessions = diag.appPtyInfo.currentActiveSessions;
+          const ptyChildren = diag.appPtyInfo.ptyChildProcesses;
+
+          addMetric('PTY Instances Created', totalCreated, '-');
+          addMetric('Active PTY Sessions', activeSessions, '-');
+          addMetric('PTY Child Processes', ptyChildren, '-');
+
+          if (diag.appPtyInfo.ptyMasterFds !== null && diag.appPtyInfo.ptyMasterFds !== undefined) {
+            addMetric('PTY Master FDs (/dev/ptmx)', diag.appPtyInfo.ptyMasterFds, '-');
+          }
+          if (diag.appPtyInfo.totalPtyFds !== null && diag.appPtyInfo.totalPtyFds !== undefined) {
+            addMetric('Total PTY FDs', diag.appPtyInfo.totalPtyFds, '-');
+          }
+        }
+
+        if (diag.ptyDeviceInfo && diag.ptyDeviceInfo.systemLimit !== null) {
+          const currentCount = diag.ptyDeviceInfo.currentCount || 0;
+          const systemLimit = diag.ptyDeviceInfo.systemLimit;
+          const usage = (currentCount / systemLimit * 100).toFixed(1);
+          const isHighUsage = currentCount / systemLimit > 0.8;
+
+          addMetric(
+            'PTY Devices (System)',
+            '-',
+            `${currentCount} / ${systemLimit} (${usage}%)`,
+            { sysWarning: isHighUsage }
+          );
+        }
+
+        // Processes Section
+        addSection('Processes');
+
+        if (diag.childProcesses) {
+          function countTotal(procs) {
+            let count = procs.length;
+            procs.forEach(p => {
+              if (p.children) count += countTotal(p.children);
+            });
+            return count;
+          }
+          const childCount = countTotal(diag.childProcesses);
+          const processCount = diag.currentProcessCount || '-';
+          const processLimit = diag.processLimit || '-';
+
+          addMetric('Child Processes', childCount, `${processCount} / ${processLimit}`);
+
+          if (diag.zombieProcessCount > 0) {
+            addMetric('Zombie Processes', diag.zombieProcessCount, '-', { appWarning: true });
+          }
+        }
+
+        // File Descriptors Section
+        addSection('File Descriptors');
+
+        if (diag.openFileDescriptors !== null && diag.fileDescriptorLimit.soft !== null) {
+          const fdUsage = (diag.openFileDescriptors / diag.fileDescriptorLimit.soft * 100).toFixed(1);
+          const isHighFdUsage = diag.openFileDescriptors / diag.fileDescriptorLimit.soft > 0.75;
+
+          addMetric(
+            'Open File Descriptors',
+            diag.openFileDescriptors,
+            `${diag.openFileDescriptors} / ${diag.fileDescriptorLimit.soft} (${fdUsage}%)`,
+            { appWarning: isHighFdUsage }
+          );
+        }
+
+        // System Load Section
+        if (diag.systemLoad) {
+          addSection('System Load');
+          const load1 = diag.systemLoad.load1.toFixed(2);
+          const load5 = diag.systemLoad.load5.toFixed(2);
+          const load15 = diag.systemLoad.load15.toFixed(2);
+
+          addMetric('Load Average', '-', `${load1}, ${load5}, ${load15}`);
+        }
+
+        metricsTableBody.innerHTML = metrics.join('');
       }
 
       // Update child processes section
