@@ -479,87 +479,6 @@
       background: #004bb5;
     }
 
-    .diagnose-action-button {
-      padding: 10px 24px;
-      background: #28a745;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .diagnose-action-button:hover {
-      background: #218838;
-    }
-
-    .diagnose-action-button:active {
-      background: #1e7e34;
-    }
-
-    .diagnose-action-button:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
-
-    .diagnose-status {
-      margin-top: 12px;
-      padding: 12px;
-      border-radius: 6px;
-      font-size: 13px;
-    }
-
-    .diagnose-status.hidden {
-      display: none;
-    }
-
-    .diagnose-status.running {
-      background: #d1ecf1;
-      border: 1px solid #bee5eb;
-      color: #0c5460;
-    }
-
-    .diagnose-status.success {
-      background: #d4edda;
-      border: 1px solid #c3e6cb;
-      color: #155724;
-    }
-
-    .diagnose-status.error {
-      background: #f8d7da;
-      border: 1px solid #f5c6cb;
-      color: #721c24;
-    }
-
-    .diagnose-status-title {
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
-    .diagnose-status-detail {
-      font-size: 12px;
-      margin: 4px 0;
-      color: #666;
-    }
-
-    .diagnose-file-path {
-      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-      font-size: 11px;
-      color: #0066cc;
-      word-break: break-all;
-      margin: 4px 0;
-      padding: 4px 8px;
-      background: rgba(0, 0, 0, 0.05);
-      border-radius: 3px;
-      cursor: pointer;
-    }
-
-    .diagnose-file-path:hover {
-      text-decoration: underline;
-    }
-
     .metrics-table {
       width: 100%;
       border-collapse: collapse;
@@ -697,18 +616,6 @@
             <!-- Metrics will be populated here -->
           </tbody>
         </table>
-      </div>
-
-      <!-- Diagnose Button Section -->
-      <div class="diagnostics-section">
-        <div class="diagnostics-header">Posix Spawn Diagnostics</div>
-        <div style="margin-top: 8px;">
-          <p style="color: #666; font-size: 12px; margin-bottom: 12px;">
-            Run comprehensive diagnostics to analyze posix_spawn failures. This will collect detailed system information including file descriptors, PTY processes, memory usage, and more. Reports are saved to ~/.vibetree/diagnostics/
-          </p>
-          <button id="diagnoseButton" class="diagnose-action-button">Run Diagnostics</button>
-          <div id="diagnoseStatus" class="diagnose-status hidden"></div>
-        </div>
       </div>
     </div>
 
@@ -1016,43 +923,39 @@
           const appMem = formatMemory(diag.processTreeMemory.currentProcessRSS);
           const treeMem = formatMemory(diag.processTreeMemory.totalTreeRSS);
           const totalGB = (diag.totalMemory / (1024 ** 3)).toFixed(2) + ' GB';
+          const freeGB = (diag.freeMemory / (1024 ** 3)).toFixed(2) + ' GB';
           const usedPercent = ((1 - diag.freeMemory / diag.totalMemory) * 100).toFixed(1) + '%';
 
-          addMetric('Process Memory (RSS)', appMem, totalGB);
-          addMetric('Process Tree Memory', treeMem, usedPercent);
+          addMetric('Process Memory', appMem, `${totalGB} total`);
+          addMetric('Process Tree Memory', treeMem, `${freeGB} free (${usedPercent} used)`);
         }
 
         // PTY Devices Section
         addSection('PTY Devices');
 
-        if (diag.appPtyInfo) {
-          const totalCreated = diag.appPtyInfo.totalPtyInstancesCreated;
-          const activeSessions = diag.appPtyInfo.currentActiveSessions;
-          const ptyChildren = diag.appPtyInfo.ptyChildProcesses;
-
-          addMetric('PTY Instances Created', totalCreated, '-');
-          addMetric('Active PTY Sessions', activeSessions, '-');
-          addMetric('PTY Child Processes', ptyChildren, '-');
-
-          if (diag.appPtyInfo.ptyMasterFds !== null && diag.appPtyInfo.ptyMasterFds !== undefined) {
-            addMetric('PTY Master FDs (/dev/ptmx)', diag.appPtyInfo.ptyMasterFds, '-');
-          }
-          if (diag.appPtyInfo.totalPtyFds !== null && diag.appPtyInfo.totalPtyFds !== undefined) {
-            addMetric('Total PTY FDs', diag.appPtyInfo.totalPtyFds, '-');
-          }
-        }
-
-        if (diag.ptyDeviceInfo && diag.ptyDeviceInfo.systemLimit !== null) {
+        if (diag.appPtyInfo && diag.ptyDeviceInfo) {
+          const totalPtyFds = diag.appPtyInfo.totalPtyFds || 0;
           const currentCount = diag.ptyDeviceInfo.currentCount || 0;
-          const systemLimit = diag.ptyDeviceInfo.systemLimit;
-          const usage = (currentCount / systemLimit * 100).toFixed(1);
-          const isHighUsage = currentCount / systemLimit > 0.8;
+          const systemLimit = diag.ptyDeviceInfo.systemLimit || 0;
+          const usage = systemLimit > 0 ? (currentCount / systemLimit * 100).toFixed(1) : '0';
+          const isHighUsage = systemLimit > 0 && currentCount / systemLimit > 0.8;
 
           addMetric(
-            'PTY Devices (System)',
-            '-',
+            'PTY Devices Used',
+            totalPtyFds,
             `${currentCount} / ${systemLimit} (${usage}%)`,
-            { sysWarning: isHighUsage }
+            { appWarning: totalPtyFds > systemLimit * 0.5, sysWarning: isHighUsage }
+          );
+
+          const activeSessions = diag.appPtyInfo.currentActiveSessions;
+          const totalCreated = diag.appPtyInfo.totalPtyInstancesCreated;
+          const leaked = totalCreated - activeSessions - (diag.appPtyInfo.ptyChildProcesses || 0);
+
+          addMetric(
+            'Active PTY Sessions',
+            activeSessions,
+            `${totalCreated} created`,
+            { appWarning: leaked > 0 }
           );
         }
 
@@ -1068,10 +971,15 @@
             return count;
           }
           const childCount = countTotal(diag.childProcesses);
-          const processCount = diag.currentProcessCount || '-';
-          const processLimit = diag.processLimit || '-';
+          const processCount = diag.currentProcessCount || 0;
+          const processLimit = diag.processLimit || 0;
+          const processUsage = processLimit > 0 ? (processCount / processLimit * 100).toFixed(1) : '0';
 
-          addMetric('Child Processes', childCount, `${processCount} / ${processLimit}`);
+          addMetric(
+            'Child Processes',
+            childCount,
+            `${processCount} / ${processLimit} (${processUsage}%)`
+          );
 
           if (diag.zombieProcessCount > 0) {
             addMetric('Zombie Processes', diag.zombieProcessCount, '-', { appWarning: true });
@@ -1086,21 +994,21 @@
           const isHighFdUsage = diag.openFileDescriptors / diag.fileDescriptorLimit.soft > 0.75;
 
           addMetric(
-            'Open File Descriptors',
+            'File Descriptors',
             diag.openFileDescriptors,
-            `${diag.openFileDescriptors} / ${diag.fileDescriptorLimit.soft} (${fdUsage}%)`,
+            `${diag.fileDescriptorLimit.soft} limit (${fdUsage}% used)`,
             { appWarning: isHighFdUsage }
           );
         }
 
         // System Load Section
         if (diag.systemLoad) {
-          addSection('System Load');
+          addSection('System');
           const load1 = diag.systemLoad.load1.toFixed(2);
           const load5 = diag.systemLoad.load5.toFixed(2);
           const load15 = diag.systemLoad.load15.toFixed(2);
 
-          addMetric('Load Average', '-', `${load1}, ${load5}, ${load15}`);
+          addMetric('Load Average (1m, 5m, 15m)', '-', `${load1}, ${load5}, ${load15}`);
         }
 
         metricsTableBody.innerHTML = metrics.join('');
@@ -1250,143 +1158,6 @@
         });
       }
 
-      // Setup diagnose button handler
-      const diagnoseButton = document.getElementById('diagnoseButton');
-      const diagnoseStatus = document.getElementById('diagnoseStatus');
-
-      if (diagnoseButton && diagnoseStatus) {
-        diagnoseButton.addEventListener('click', async () => {
-          try {
-            // Disable button and show running status
-            diagnoseButton.disabled = true;
-            diagnoseStatus.className = 'diagnose-status running';
-            diagnoseStatus.innerHTML = '<div class="diagnose-status-title">Running diagnostics...</div>';
-
-            // Run diagnostics
-            const result = await window.statsDialog.runDiagnostics();
-
-            if (result.success) {
-              // Show success status with summary
-              diagnoseStatus.className = 'diagnose-status success';
-
-              let summaryHtml = '<div class="diagnose-status-title">✓ Diagnostics completed successfully</div>';
-
-              if (result.summary) {
-                const s = result.summary;
-                summaryHtml += '<div class="diagnose-status-detail">';
-                summaryHtml += `<strong>Summary:</strong><br>`;
-
-                // App PTY Tracking
-                if (s.appPtyInfo) {
-                  summaryHtml += `<strong style="color: #0066cc;">App PTY Tracking:</strong><br>`;
-                  summaryHtml += `  • Total Created: ${s.appPtyInfo.totalPtyInstancesCreated}<br>`;
-                  summaryHtml += `  • Active Sessions: ${s.appPtyInfo.currentActiveSessions}<br>`;
-                  summaryHtml += `  • PTY Children: ${s.appPtyInfo.ptyChildProcesses}<br>`;
-
-                  // App PTY File Descriptors
-                  if (s.appPtyInfo.ptyMasterFds !== null && s.appPtyInfo.ptyMasterFds !== undefined) {
-                    summaryHtml += `  • PTY Master FDs: ${s.appPtyInfo.ptyMasterFds}<br>`;
-                  }
-                  if (s.appPtyInfo.ptySlaveFds !== null && s.appPtyInfo.ptySlaveFds !== undefined) {
-                    summaryHtml += `  • PTY Slave FDs: ${s.appPtyInfo.ptySlaveFds}<br>`;
-                  }
-                  if (s.appPtyInfo.totalPtyFds !== null && s.appPtyInfo.totalPtyFds !== undefined) {
-                    summaryHtml += `  • Total PTY FDs: ${s.appPtyInfo.totalPtyFds}<br>`;
-                  }
-
-                  // Calculate potential leak
-                  const leaked = s.appPtyInfo.totalPtyInstancesCreated -
-                                 s.appPtyInfo.currentActiveSessions -
-                                 s.appPtyInfo.ptyChildProcesses;
-                  if (leaked > 0) {
-                    summaryHtml += `  • <strong style="color: #c62828;">⚠️ Potential Leaked: ${leaked}</strong><br>`;
-                  } else if (leaked < 0) {
-                    summaryHtml += `  • <span style="color: #666;">Leak Check: OK (${leaked})</span><br>`;
-                  } else {
-                    summaryHtml += `  • <span style="color: #28a745;">✓ No Leaks Detected</span><br>`;
-                  }
-                  summaryHtml += `<br>`;
-                }
-
-                summaryHtml += `• File Descriptors: ${s.openFds || 'N/A'}/${s.fdLimit || 'N/A'}`;
-                if (s.fdUsagePercent) {
-                  summaryHtml += ` (${s.fdUsagePercent}% used)`;
-                }
-                summaryHtml += `<br>`;
-
-                // PTY Devices (macOS)
-                if (s.ptyDeviceInfo && (s.ptyDeviceInfo.currentCount !== null || s.ptyDeviceInfo.systemLimit !== null)) {
-                  summaryHtml += `• PTY Devices: `;
-                  if (s.ptyDeviceInfo.currentCount !== null && s.ptyDeviceInfo.systemLimit !== null) {
-                    const ptyUsage = (s.ptyDeviceInfo.currentCount / s.ptyDeviceInfo.systemLimit * 100).toFixed(1);
-                    summaryHtml += `${s.ptyDeviceInfo.currentCount}/${s.ptyDeviceInfo.systemLimit} (${ptyUsage}% used)`;
-                    if (s.ptyDeviceInfo.currentCount / s.ptyDeviceInfo.systemLimit > 0.8) {
-                      summaryHtml += ` <strong style="color: #c62828;">⚠️ High Usage</strong>`;
-                    }
-                  } else if (s.ptyDeviceInfo.currentCount !== null) {
-                    summaryHtml += `${s.ptyDeviceInfo.currentCount}`;
-                  } else {
-                    summaryHtml += `Limit: ${s.ptyDeviceInfo.systemLimit}`;
-                  }
-                  summaryHtml += `<br>`;
-                }
-
-                summaryHtml += `• PTY Processes (System): ${s.ptyProcessCount}<br>`;
-                summaryHtml += `• Child Processes: ${s.childProcessCount}<br>`;
-                if (s.zombieCount > 0) {
-                  summaryHtml += `• Zombie Processes: ${s.zombieCount}<br>`;
-                }
-                if (s.threadCount) {
-                  summaryHtml += `• Threads: ${s.threadCount}<br>`;
-                }
-                if (s.systemLoad) {
-                  summaryHtml += `• System Load: ${s.systemLoad.load1.toFixed(2)}, ${s.systemLoad.load5.toFixed(2)}, ${s.systemLoad.load15.toFixed(2)}<br>`;
-                }
-                if (s.warningCount > 0) {
-                  summaryHtml += `• <strong>Warnings: ${s.warningCount}</strong><br>`;
-                }
-                summaryHtml += '</div>';
-              }
-
-              summaryHtml += '<div style="margin-top: 8px;"><strong>Reports saved to:</strong></div>';
-              summaryHtml += `<div class="diagnose-file-path" title="Click to copy">${result.textFilePath}</div>`;
-              summaryHtml += `<div class="diagnose-file-path" title="Click to copy">${result.jsonFilePath}</div>`;
-
-              diagnoseStatus.innerHTML = summaryHtml;
-
-              // Add click handlers to copy paths
-              diagnoseStatus.querySelectorAll('.diagnose-file-path').forEach(el => {
-                el.addEventListener('click', () => {
-                  navigator.clipboard.writeText(el.textContent).then(() => {
-                    const originalText = el.textContent;
-                    el.textContent = 'Copied!';
-                    setTimeout(() => {
-                      el.textContent = originalText;
-                    }, 1000);
-                  });
-                });
-              });
-            } else {
-              // Show error status
-              diagnoseStatus.className = 'diagnose-status error';
-              diagnoseStatus.innerHTML = `
-                <div class="diagnose-status-title">✗ Diagnostics failed</div>
-                <div class="diagnose-status-detail">${result.error || 'Unknown error'}</div>
-              `;
-            }
-          } catch (error) {
-            console.error('Error running diagnostics:', error);
-            diagnoseStatus.className = 'diagnose-status error';
-            diagnoseStatus.innerHTML = `
-              <div class="diagnose-status-title">✗ Diagnostics failed</div>
-              <div class="diagnose-status-detail">${error instanceof Error ? error.message : 'Unknown error'}</div>
-            `;
-          } finally {
-            // Re-enable button
-            diagnoseButton.disabled = false;
-          }
-        });
-      }
     }
 
     // Run initialization when DOM is ready
