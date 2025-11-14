@@ -6,6 +6,7 @@ Multiple scheduler-related E2E tests consistently hang in CI environments, causi
 ## Affected Tests
 1. `e2e/terminal-scheduler-overlap.spec.ts:86` - "should prevent overlapping execution even with fast repeat interval"
 2. `e2e/project-switch-scheduler-persist.spec.ts:78` - "should persist scheduler when switching between projects"
+3. `e2e/worktree-deletion-with-pty-cleanup.spec.ts:91` - "should show deletion reporting dialog and kill PTY processes when deleting worktree"
 
 ## Symptoms
 - Tests run for 3-4 minutes before timing out
