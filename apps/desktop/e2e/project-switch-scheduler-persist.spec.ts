@@ -95,7 +95,7 @@ test.describe('Project Switch Scheduler Persistence Test', () => {
 
     // Helper to set next dialog path
     const setNextDialogPath = async (repoPath: string) => {
-      await electronApp.evaluate(async ({ }, path) => {
+      await electronApp.evaluate(async (_context, path) => {
         (global as { mockPaths?: string[] }).mockPaths?.push(path);
       }, repoPath);
     };
@@ -147,7 +147,7 @@ test.describe('Project Switch Scheduler Persistence Test', () => {
     expect(terminalContent).toContain('Project 1 Scheduler');
 
     // Open second project (this should create a new tab)
-    const addProjectButton = page.locator('button[title="Add Project"]').or(page.locator('button').filter({ has: page.locator('svg.lucide-plus') }));
+    const addProjectButton = page.locator('button[title="Add Project"]').or(page.locator('button').filter({ has: page.locator('svg.lucide-plus') })).first();
     await setNextDialogPath(dummyRepoPath2);
     await addProjectButton.click();
     await page.waitForTimeout(3000);
