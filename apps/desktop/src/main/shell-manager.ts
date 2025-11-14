@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcMain, BrowserWindow } from 'electron';
 import * as pty from 'node-pty';
 import { ShellSessionManager, getSystemDiagnostics, getExtendedDiagnostics, formatExtendedDiagnostics } from '@vibetree/core';
 import { terminalSettingsManager } from './terminal-settings';
@@ -15,6 +15,28 @@ class DesktopShellManager {
 
   constructor() {
     this.setupIpcHandlers();
+  }
+
+  /**
+   * Broadcast terminal session changes to all renderer processes
+   */
+  private broadcastSessionChange() {
+    const sessions = this.sessionManager.getAllSessions();
+    const worktreeSessionCounts = new Map<string, number>();
+
+    sessions.forEach(session => {
+      const count = worktreeSessionCounts.get(session.worktreePath) || 0;
+      worktreeSessionCounts.set(session.worktreePath, count + 1);
+    });
+
+    const sessionData = Object.fromEntries(worktreeSessionCounts);
+
+    // Send to all windows
+    BrowserWindow.getAllWindows().forEach(window => {
+      if (!window.isDestroyed()) {
+        window.webContents.send('shell:sessions-changed', sessionData);
+      }
+    });
   }
 
   /**
@@ -75,7 +97,12 @@ class DesktopShellManager {
               // Frame was disposed - remove this listener
               this.sessionManager.removeExitListener(processId, listenerId);
             }
+            // Broadcast session change when terminal exits
+            this.broadcastSessionChange();
           });
+
+          // Broadcast session change for new terminal
+          this.broadcastSessionChange();
         } else {
           // For existing sessions, we need to update the listener to use the current event.sender
           // because the renderer might have changed
@@ -121,18 +148,28 @@ class DesktopShellManager {
 
     ipcMain.handle('shell:terminate', async (_, processId: string) => {
       const result = await this.sessionManager.terminateSession(processId);
+      this.broadcastSessionChange();
       return result;
     });
 
     ipcMain.handle('shell:terminate-for-worktree', async (_, worktreePath: string) => {
       const count = await this.sessionManager.terminateSessionsForWorktree(worktreePath);
+      this.broadcastSessionChange();
       return { success: true, count };
     });
 
     ipcMain.handle('shell:get-stats', async () => {
       const sessions = this.sessionManager.getAllSessions();
       const spawnErrors = this.sessionManager.getSpawnErrors();
-      const systemDiagnostics = await getSystemDiagnostics();
+
+      // Get session manager stats for app-specific PTY tracking
+      const sessionManagerStats = {
+        totalPtyInstancesCreated: this.sessionManager.getTotalPtyInstancesCreated(),
+        currentActiveSessions: sessions.length
+      };
+
+      // Get extended diagnostics with app-specific metrics
+      const extendedDiagnostics = await getExtendedDiagnostics(sessionManagerStats);
 
       return {
         activeProcessCount: sessions.length,
@@ -148,8 +185,22 @@ class DesktopShellManager {
           error: e.error,
           errorCode: e.errorCode
         })),
-        systemDiagnostics
+        systemDiagnostics: extendedDiagnostics,
+        // For backward compatibility
+        extendedDiagnostics
       };
+    });
+
+    ipcMain.handle('shell:get-worktree-sessions', async () => {
+      const sessions = this.sessionManager.getAllSessions();
+      const worktreeSessionCounts = new Map<string, number>();
+
+      sessions.forEach(session => {
+        const count = worktreeSessionCounts.get(session.worktreePath) || 0;
+        worktreeSessionCounts.set(session.worktreePath, count + 1);
+      });
+
+      return Object.fromEntries(worktreeSessionCounts);
     });
 
     ipcMain.handle('shell:diagnose', async () => {
@@ -201,6 +252,7 @@ class DesktopShellManager {
               : null,
             appPtyInfo: diagnostics.appPtyInfo,
             ptyProcessCount: diagnostics.ptyProcesses.count,
+            ptyDeviceInfo: diagnostics.ptyDeviceInfo,
             childProcessCount: diagnostics.childProcesses.length,
             zombieCount: diagnostics.zombieProcessCount,
             warningCount: diagnostics.warnings.length,

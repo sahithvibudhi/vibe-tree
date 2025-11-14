@@ -479,85 +479,135 @@
       background: #004bb5;
     }
 
-    .diagnose-action-button {
-      padding: 10px 24px;
-      background: #28a745;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .diagnose-action-button:hover {
-      background: #218838;
-    }
-
-    .diagnose-action-button:active {
-      background: #1e7e34;
-    }
-
-    .diagnose-action-button:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
-
-    .diagnose-status {
-      margin-top: 12px;
-      padding: 12px;
-      border-radius: 6px;
+    .metrics-table {
+      width: 100%;
+      border-collapse: collapse;
       font-size: 13px;
+      margin-top: 8px;
     }
 
-    .diagnose-status.hidden {
-      display: none;
+    .metrics-table thead {
+      background: #f5f5f5;
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
 
-    .diagnose-status.running {
-      background: #d1ecf1;
-      border: 1px solid #bee5eb;
-      color: #0c5460;
-    }
-
-    .diagnose-status.success {
-      background: #d4edda;
-      border: 1px solid #c3e6cb;
-      color: #155724;
-    }
-
-    .diagnose-status.error {
-      background: #f8d7da;
-      border: 1px solid #f5c6cb;
-      color: #721c24;
-    }
-
-    .diagnose-status-title {
+    .metrics-table th {
+      text-align: left;
+      padding: 10px 12px;
       font-weight: 600;
-      margin-bottom: 6px;
+      border-bottom: 2px solid #ddd;
+      color: #333;
     }
 
-    .diagnose-status-detail {
-      font-size: 12px;
-      margin: 4px 0;
+    .metrics-table th:first-child {
+      width: 40%;
+    }
+
+    .metrics-table th:nth-child(2) {
+      width: 30%;
+      text-align: right;
+      color: #0066cc;
+    }
+
+    .metrics-table th:nth-child(3) {
+      width: 30%;
+      text-align: right;
       color: #666;
     }
 
-    .diagnose-file-path {
-      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-      font-size: 11px;
-      color: #0066cc;
-      word-break: break-all;
-      margin: 4px 0;
-      padding: 4px 8px;
-      background: rgba(0, 0, 0, 0.05);
-      border-radius: 3px;
-      cursor: pointer;
+    .metrics-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #eee;
     }
 
-    .diagnose-file-path:hover {
-      text-decoration: underline;
+    .metrics-table tbody tr:hover {
+      background: #f9f9f9;
+    }
+
+    .metrics-table .metric-name {
+      color: #555;
+      font-weight: 500;
+    }
+
+    .metrics-table .metric-value {
+      text-align: right;
+      color: #333;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    }
+
+    .metrics-table .metric-value-app {
+      color: #0066cc;
+      font-weight: 500;
+    }
+
+    .metrics-table .metric-warning {
+      color: #c62828;
+      font-weight: 600;
+    }
+
+    .metrics-table .metric-good {
+      color: #28a745;
+      font-weight: 500;
+    }
+
+    .metrics-table .metric-subtext {
+      font-size: 11px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .metrics-section-header {
+      font-weight: 700;
+      background: #e8e8e8;
+      color: #333;
+    }
+
+    .metrics-section-header td {
+      padding: 10px 12px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+
+    .loading-overlay.hidden {
+      display: none;
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #007aff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .loading-text {
+      margin-top: 16px;
+      color: #666;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
 </head>
@@ -576,6 +626,12 @@
   </div>
 
   <div class="tab-content-wrapper">
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Collecting system metrics...</div>
+    </div>
+
     <!-- System Diagnostics Tab -->
     <div class="tab-panel active" id="tab-system">
       <!-- Warnings Section -->
@@ -592,20 +648,19 @@
 
       <!-- System Diagnostics Section -->
       <div class="diagnostics-section">
-        <div class="diagnostics-header">System Diagnostics</div>
-        <div class="diagnostics-content" id="diagnosticsContent"></div>
-      </div>
-
-      <!-- Diagnose Button Section -->
-      <div class="diagnostics-section">
-        <div class="diagnostics-header">Posix Spawn Diagnostics</div>
-        <div style="margin-top: 8px;">
-          <p style="color: #666; font-size: 12px; margin-bottom: 12px;">
-            Run comprehensive diagnostics to analyze posix_spawn failures. This will collect detailed system information including file descriptors, PTY processes, memory usage, and more. Reports are saved to ~/.vibetree/diagnostics/
-          </p>
-          <button id="diagnoseButton" class="diagnose-action-button">Run Diagnostics</button>
-          <div id="diagnoseStatus" class="diagnose-status hidden"></div>
-        </div>
+        <div class="diagnostics-header">System Metrics</div>
+        <table class="metrics-table" id="metricsTable">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>VibeTree</th>
+              <th>System Wide</th>
+            </tr>
+          </thead>
+          <tbody id="metricsTableBody">
+            <!-- Metrics will be populated here -->
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -876,63 +931,161 @@
         errorSection.classList.add('hidden');
       }
 
-      // Update system diagnostics section
+      // Update system diagnostics section with metrics table
       if (stats.systemDiagnostics) {
         const diag = stats.systemDiagnostics;
-        const diagContent = document.getElementById('diagnosticsContent');
+        const metricsTableBody = document.getElementById('metricsTableBody');
 
-        const fdDisplay = diag.openFileDescriptors !== null && diag.fileDescriptorLimit.soft !== null
-          ? `${diag.openFileDescriptors} / ${diag.fileDescriptorLimit.soft}`
-          : diag.openFileDescriptors !== null
-            ? `${diag.openFileDescriptors}`
-            : 'Unknown';
+        const metrics = [];
 
-        const processDisplay = diag.currentProcessCount !== null && diag.processLimit !== null
-          ? `${diag.currentProcessCount} / ${diag.processLimit}`
-          : diag.currentProcessCount !== null
-            ? `${diag.currentProcessCount}`
-            : 'Unknown';
+        // Helper function to add metric row
+        const addMetric = (name, appValue, systemValue, options = {}) => {
+          const appClass = options.appWarning ? 'metric-warning' : options.appGood ? 'metric-good' : 'metric-value-app';
+          const sysClass = options.sysWarning ? 'metric-warning' : 'metric-value';
 
-        const memUsage = ((1 - diag.freeMemory / diag.totalMemory) * 100).toFixed(1);
+          metrics.push(`
+            <tr>
+              <td class="metric-name">${name}</td>
+              <td class="metric-value ${appClass}">${appValue || '-'}</td>
+              <td class="metric-value ${sysClass}">${systemValue || '-'}</td>
+            </tr>
+          `);
+        };
 
-        const processTreeMemDisplay = diag.processTreeMemory
-          ? `
-            <div class="diagnostics-item">
-              <span class="diagnostics-label">Process Tree Memory:</span>
-              <div style="margin-left: 16px;">
-                Current Process: ${formatMemory(diag.processTreeMemory.currentProcessRSS)}<br>
-                Total (with children): ${formatMemory(diag.processTreeMemory.totalTreeRSS)}
-              </div>
-            </div>
-          `
-          : '';
+        // Helper function to add section header
+        const addSection = (name) => {
+          metrics.push(`
+            <tr class="metrics-section-header">
+              <td colspan="3">${name}</td>
+            </tr>
+          `);
+        };
 
-        diagContent.innerHTML = `
-          <div class="diagnostics-item">
-            <span class="diagnostics-label">Platform:</span> ${diag.platform}
-          </div>
-          <div class="diagnostics-item">
-            <span class="diagnostics-label">File Descriptors:</span>
-            <div style="margin-left: 16px;">
-              ${fdDisplay}
-            </div>
-          </div>
-          <div class="diagnostics-item">
-            <span class="diagnostics-label">Processes:</span>
-            <div style="margin-left: 16px;">
-              ${processDisplay}
-            </div>
-          </div>
-          ${processTreeMemDisplay}
-          <div class="diagnostics-item">
-            <span class="diagnostics-label">System Memory:</span>
-            <div style="margin-left: 16px;">
-              Total: ${(diag.totalMemory / (1024 ** 3)).toFixed(2)} GB<br>
-              Free: ${(diag.freeMemory / (1024 ** 3)).toFixed(2)} GB<br>
-              Used: ${memUsage}%
-            </div>
-          </div>
-        `;
+        // Memory Section
+        addSection('Memory');
+
+        if (diag.processTreeMemory) {
+          const appMem = formatMemory(diag.processTreeMemory.currentProcessRSS);
+          const treeMem = formatMemory(diag.processTreeMemory.totalTreeRSS);
+          const totalGB = (diag.totalMemory / (1024 ** 3)).toFixed(2) + ' GB';
+          const freeGB = (diag.freeMemory / (1024 ** 3)).toFixed(2) + ' GB';
+          const usedGB = ((diag.totalMemory - diag.freeMemory) / (1024 ** 3)).toFixed(2) + ' GB';
+          const usedPercent = ((1 - diag.freeMemory / diag.totalMemory) * 100).toFixed(1) + '%';
+
+          // Calculate app's percentage of total memory
+          const appPercent = (diag.processTreeMemory.currentProcessRSS / (1024 * 1024) / (diag.totalMemory / (1024 ** 3)) * 100).toFixed(2);
+          const treePercent = (diag.processTreeMemory.totalTreeRSS / (1024 * 1024) / (diag.totalMemory / (1024 ** 3)) * 100).toFixed(2);
+
+          addMetric('Process Memory', `${appMem} (${appPercent}%)`, `${totalGB} total`);
+          addMetric('Process Tree Memory', `${treeMem} (${treePercent}%)`, `${usedGB} / ${totalGB} (${usedPercent})`);
+        }
+
+        // PTY Devices Section
+        addSection('PTY Devices');
+
+        if (diag.appPtyInfo && diag.ptyDeviceInfo) {
+          // Use master FDs as they directly represent PTY sessions
+          const ptyMasterFds = diag.appPtyInfo.ptyMasterFds || 0;
+          const activeSessions = diag.appPtyInfo.currentActiveSessions;
+          const currentCount = diag.ptyDeviceInfo.currentCount || 0;
+          const systemLimit = diag.ptyDeviceInfo.systemLimit || 0;
+          const usage = systemLimit > 0 ? (currentCount / systemLimit * 100).toFixed(1) : '0';
+          const isHighUsage = systemLimit > 0 && currentCount / systemLimit > 0.8;
+
+          addMetric(
+            'PTY Master Devices',
+            ptyMasterFds,
+            `${currentCount} / ${systemLimit} (${usage}%)`,
+            { appWarning: ptyMasterFds > systemLimit * 0.5, sysWarning: isHighUsage }
+          );
+
+          const totalCreated = diag.appPtyInfo.totalPtyInstancesCreated;
+          const leaked = totalCreated - activeSessions - (diag.appPtyInfo.ptyChildProcesses || 0);
+
+          // Show total created if different from active (indicates churn/leaks)
+          const sessionInfo = totalCreated > activeSessions
+            ? `${totalCreated} total created`
+            : '--';
+
+          addMetric(
+            'Active PTY Sessions',
+            activeSessions,
+            sessionInfo,
+            { appWarning: leaked > 0 }
+          );
+
+          // Show potential leak warning if master FDs > active sessions
+          const potentialLeaks = ptyMasterFds - activeSessions;
+          if (potentialLeaks > 0) {
+            addMetric(
+              'Leaked PTY Masters',
+              `${potentialLeaks} (${ptyMasterFds} FDs - ${activeSessions} sessions)`,
+              '--',
+              { appWarning: true }
+            );
+          }
+        }
+
+        // Processes Section
+        addSection('Processes');
+
+        if (diag.childProcesses) {
+          function countTotal(procs) {
+            let count = procs.length;
+            procs.forEach(p => {
+              if (p.children) count += countTotal(p.children);
+            });
+            return count;
+          }
+          const childCount = countTotal(diag.childProcesses);
+          const processCount = diag.currentProcessCount || 0;
+          const processLimit = diag.processLimit || 0;
+          const processUsage = processLimit > 0 ? (processCount / processLimit * 100).toFixed(1) : '0';
+
+          addMetric(
+            'Child Processes',
+            childCount,
+            `${processCount} / ${processLimit} (${processUsage}%)`
+          );
+
+          if (diag.zombieProcessCount > 0) {
+            addMetric('Zombie Processes', diag.zombieProcessCount, '-', { appWarning: true });
+          }
+        }
+
+        // File Descriptors Section
+        addSection('File Descriptors');
+
+        if (diag.openFileDescriptors !== null && diag.fileDescriptorLimit.soft !== null) {
+          const fdUsage = (diag.openFileDescriptors / diag.fileDescriptorLimit.soft * 100).toFixed(1);
+          const isHighFdUsage = diag.openFileDescriptors / diag.fileDescriptorLimit.soft > 0.75;
+
+          let systemFdInfo = `${diag.fileDescriptorLimit.soft} limit (per-process)`;
+
+          // Add system-wide FD usage if available
+          if (diag.systemFileDescriptors && diag.systemFileDescriptors.current !== null && diag.systemFileDescriptors.limit !== null) {
+            const systemUsage = (diag.systemFileDescriptors.current / diag.systemFileDescriptors.limit * 100).toFixed(1);
+            const isHighSystemUsage = diag.systemFileDescriptors.current / diag.systemFileDescriptors.limit > 0.75;
+
+            systemFdInfo = `${diag.systemFileDescriptors.current} / ${diag.systemFileDescriptors.limit} (${systemUsage}%)`;
+
+            addMetric(
+              'File Descriptors',
+              `${diag.openFileDescriptors} / ${diag.fileDescriptorLimit.soft} (${fdUsage}%)`,
+              systemFdInfo,
+              { appWarning: isHighFdUsage, sysWarning: isHighSystemUsage }
+            );
+          } else {
+            addMetric(
+              'File Descriptors',
+              `${diag.openFileDescriptors} / ${diag.fileDescriptorLimit.soft} (${fdUsage}%)`,
+              systemFdInfo,
+              { appWarning: isHighFdUsage }
+            );
+          }
+        }
+
+        metricsTableBody.innerHTML = metrics.join('');
       }
 
       // Update child processes section
@@ -1024,13 +1177,21 @@
 
     // Initialize the dialog
     async function initDialog() {
+      const loadingOverlay = document.getElementById('loadingOverlay');
+
       try {
+        // Show loading overlay
+        loadingOverlay.classList.remove('hidden');
+
         if (window.statsDialog && window.statsDialog.getStats) {
           const stats = await window.statsDialog.getStats();
           updateStats(stats);
         }
       } catch (error) {
         console.error('Failed to load stats:', error);
+      } finally {
+        // Hide loading overlay after stats are loaded
+        loadingOverlay.classList.add('hidden');
       }
 
       // Setup tab switching
@@ -1079,114 +1240,6 @@
         });
       }
 
-      // Setup diagnose button handler
-      const diagnoseButton = document.getElementById('diagnoseButton');
-      const diagnoseStatus = document.getElementById('diagnoseStatus');
-
-      if (diagnoseButton && diagnoseStatus) {
-        diagnoseButton.addEventListener('click', async () => {
-          try {
-            // Disable button and show running status
-            diagnoseButton.disabled = true;
-            diagnoseStatus.className = 'diagnose-status running';
-            diagnoseStatus.innerHTML = '<div class="diagnose-status-title">Running diagnostics...</div>';
-
-            // Run diagnostics
-            const result = await window.statsDialog.runDiagnostics();
-
-            if (result.success) {
-              // Show success status with summary
-              diagnoseStatus.className = 'diagnose-status success';
-
-              let summaryHtml = '<div class="diagnose-status-title">✓ Diagnostics completed successfully</div>';
-
-              if (result.summary) {
-                const s = result.summary;
-                summaryHtml += '<div class="diagnose-status-detail">';
-                summaryHtml += `<strong>Summary:</strong><br>`;
-
-                // App PTY Tracking
-                if (s.appPtyInfo) {
-                  summaryHtml += `<strong style="color: #0066cc;">App PTY Tracking:</strong><br>`;
-                  summaryHtml += `  • Total Created: ${s.appPtyInfo.totalPtyInstancesCreated}<br>`;
-                  summaryHtml += `  • Active Sessions: ${s.appPtyInfo.currentActiveSessions}<br>`;
-                  summaryHtml += `  • PTY Children: ${s.appPtyInfo.ptyChildProcesses}<br>`;
-
-                  // Calculate potential leak
-                  const leaked = s.appPtyInfo.totalPtyInstancesCreated -
-                                 s.appPtyInfo.currentActiveSessions -
-                                 s.appPtyInfo.ptyChildProcesses;
-                  if (leaked > 0) {
-                    summaryHtml += `  • <strong style="color: #c62828;">⚠️ Potential Leaked: ${leaked}</strong><br>`;
-                  } else if (leaked < 0) {
-                    summaryHtml += `  • <span style="color: #666;">Leak Check: OK (${leaked})</span><br>`;
-                  } else {
-                    summaryHtml += `  • <span style="color: #28a745;">✓ No Leaks Detected</span><br>`;
-                  }
-                  summaryHtml += `<br>`;
-                }
-
-                summaryHtml += `• File Descriptors: ${s.openFds || 'N/A'}/${s.fdLimit || 'N/A'}`;
-                if (s.fdUsagePercent) {
-                  summaryHtml += ` (${s.fdUsagePercent}% used)`;
-                }
-                summaryHtml += `<br>`;
-                summaryHtml += `• PTY Processes (System): ${s.ptyProcessCount}<br>`;
-                summaryHtml += `• Child Processes: ${s.childProcessCount}<br>`;
-                if (s.zombieCount > 0) {
-                  summaryHtml += `• Zombie Processes: ${s.zombieCount}<br>`;
-                }
-                if (s.threadCount) {
-                  summaryHtml += `• Threads: ${s.threadCount}<br>`;
-                }
-                if (s.systemLoad) {
-                  summaryHtml += `• System Load: ${s.systemLoad.load1.toFixed(2)}, ${s.systemLoad.load5.toFixed(2)}, ${s.systemLoad.load15.toFixed(2)}<br>`;
-                }
-                if (s.warningCount > 0) {
-                  summaryHtml += `• <strong>Warnings: ${s.warningCount}</strong><br>`;
-                }
-                summaryHtml += '</div>';
-              }
-
-              summaryHtml += '<div style="margin-top: 8px;"><strong>Reports saved to:</strong></div>';
-              summaryHtml += `<div class="diagnose-file-path" title="Click to copy">${result.textFilePath}</div>`;
-              summaryHtml += `<div class="diagnose-file-path" title="Click to copy">${result.jsonFilePath}</div>`;
-
-              diagnoseStatus.innerHTML = summaryHtml;
-
-              // Add click handlers to copy paths
-              diagnoseStatus.querySelectorAll('.diagnose-file-path').forEach(el => {
-                el.addEventListener('click', () => {
-                  navigator.clipboard.writeText(el.textContent).then(() => {
-                    const originalText = el.textContent;
-                    el.textContent = 'Copied!';
-                    setTimeout(() => {
-                      el.textContent = originalText;
-                    }, 1000);
-                  });
-                });
-              });
-            } else {
-              // Show error status
-              diagnoseStatus.className = 'diagnose-status error';
-              diagnoseStatus.innerHTML = `
-                <div class="diagnose-status-title">✗ Diagnostics failed</div>
-                <div class="diagnose-status-detail">${result.error || 'Unknown error'}</div>
-              `;
-            }
-          } catch (error) {
-            console.error('Error running diagnostics:', error);
-            diagnoseStatus.className = 'diagnose-status error';
-            diagnoseStatus.innerHTML = `
-              <div class="diagnose-status-title">✗ Diagnostics failed</div>
-              <div class="diagnose-status-detail">${error instanceof Error ? error.message : 'Unknown error'}</div>
-            `;
-          } finally {
-            // Re-enable button
-            diagnoseButton.disabled = false;
-          }
-        });
-      }
     }
 
     // Run initialization when DOM is ready
