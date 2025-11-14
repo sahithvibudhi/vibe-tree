@@ -238,9 +238,9 @@ export function ClaudeTerminal({
   // Notify parent when scheduler status changes
   useEffect(() => {
     if (onSchedulerStatusChange) {
-      onSchedulerStatusChange(schedulerRunning);
+      onSchedulerStatusChange(getSchedulerState()?.isRunning || false);
     }
-  }, [schedulerRunning, onSchedulerStatusChange]);
+  }, [getSchedulerState, onSchedulerStatusChange]);
 
   // Load terminal settings and listen for changes
   useEffect(() => {
