@@ -52,7 +52,8 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      backgroundThrottling: false // Prevent timer throttling when app is in background (needed for scheduler)
     }
   });
 

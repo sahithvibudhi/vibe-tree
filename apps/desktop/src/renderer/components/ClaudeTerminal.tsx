@@ -67,6 +67,7 @@ export function ClaudeTerminal({
   const [schedulerDialogOpen, setSchedulerDialogOpen] = useState(false);
   // Force re-render when scheduler state changes
   const [, setSchedulerUpdateTrigger] = useState(0);
+  const commandInProgressRef = useRef(false);
 
   // Helper functions to work with scheduler cache
   const getSchedulerState = useCallback(() => {
@@ -109,24 +110,43 @@ export function ClaudeTerminal({
   }, [handleSearch]);
 
   // Scheduler functionality
-  const stopScheduler = useCallback(() => {
+  const stopScheduler = useCallback(async () => {
     const schedulerState = getSchedulerState();
     if (schedulerState?.timeoutId) {
       clearTimeout(schedulerState.timeoutId);
     }
+
+    // Wait for any in-progress command to complete naturally instead of cancelling it
+    // This prevents partial commands from appearing in the terminal
+    while (commandInProgressRef.current) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+
+    // Additional small delay to ensure the shell has processed the ENTER key
+    // and the command output has been fully rendered in the terminal
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     // Clear from cache when explicitly stopped
     updateSchedulerState(null);
   }, [getSchedulerState, updateSchedulerState]);
 
-  const sendScheduledCommand = useCallback((command: string): Promise<void> => {
-    if (!processIdRef.current || !terminal) return Promise.resolve();
+  const sendScheduledCommand = useCallback((command: string, delayMs: number): Promise<boolean> => {
+    if (!processIdRef.current || !terminal) return Promise.resolve(false);
 
-    return new Promise((resolve) => {
-      // Simulate typing through xterm terminal instance
-      // This ensures the input goes through the same path as real user typing,
-      // which is critical for interactive apps like Claude Code that process
-      // input character-by-character in raw terminal mode
+    // Prevent overlapping command executions by checking if one is already in progress
+    if (commandInProgressRef.current) {
+      console.warn('Command already in progress, skipping overlapping execution');
+      return Promise.resolve(false);
+    }
 
+    commandInProgressRef.current = true;
+
+    // Simulate typing through xterm terminal instance
+    // This ensures the input goes through the same path as real user typing,
+    // which is critical for interactive apps like Claude Code that process
+    // input character-by-character in raw terminal mode
+
+    return new Promise<boolean>((resolve) => {
       // Type each character with a small delay to simulate realistic typing
       let charIndex = 0;
       const typeNextChar = () => {
@@ -137,11 +157,15 @@ export function ClaudeTerminal({
           charIndex++;
           setTimeout(typeNextChar, 10); // 10ms between characters
         } else {
-          // After all characters, wait 1 second before sending ENTER key (\r)
+          // After all characters, wait before sending ENTER key (\r)
+          // Use min(delayMs/2, 1000) to ensure we don't wait too long for short intervals
+          // but also don't exceed 1 second for long intervals
+          const enterKeyDelay = Math.min(delayMs / 2, 1000);
           setTimeout(() => {
             window.electronAPI.shell.write(processIdRef.current, '\r');
-            resolve(); // Resolve the promise after the command is fully sent
-          }, 1000);
+            commandInProgressRef.current = false;
+            resolve(true);
+          }, enterKeyDelay);
         }
       };
 
@@ -149,23 +173,46 @@ export function ClaudeTerminal({
     });
   }, [terminal]);
 
-  const startScheduler = useCallback((config: SchedulerConfig) => {
+  const startScheduler = useCallback(async (config: SchedulerConfig) => {
     // Stop any existing scheduler
-    stopScheduler();
+    await stopScheduler();
 
-    const scheduleNext = () => {
-      const timeoutId = setTimeout(async () => {
-        // Send the command and wait for it to complete
-        await sendScheduledCommand(config.command);
+    if (config.repeat) {
+      // For repeat mode, use chained setTimeout to ensure each command completes
+      // before the next one starts. This prevents overlapping executions that
+      // cause gibberish input, especially after machine sleep/wake.
+      const scheduleNext = async () => {
+        // Wait for the delay interval
+        await new Promise<void>(resolve => {
+          const timeoutId = setTimeout(resolve, config.delayMs);
+          // Update cache with timeout ID
+          updateSchedulerState({
+            config,
+            isRunning: true,
+            timeoutId
+          });
+        });
+
+        // Execute the command and wait for it to complete
+        await sendScheduledCommand(config.command, config.delayMs);
 
         // Check if scheduler is still running after command execution
         const currentState = getSchedulerState();
-        if (config.repeat && currentState?.isRunning) {
+        if (currentState?.isRunning) {
           scheduleNext();
         } else {
           // For one-time mode or if stopped, clean up
           updateSchedulerState(null);
         }
+      };
+
+      // Start the chain
+      scheduleNext();
+    } else {
+      // For one-time mode, use setTimeout
+      const timeoutId = setTimeout(async () => {
+        await sendScheduledCommand(config.command, config.delayMs);
+        updateSchedulerState(null);
       }, config.delayMs);
 
       // Update cache with new state
@@ -174,16 +221,13 @@ export function ClaudeTerminal({
         isRunning: true,
         timeoutId
       });
-    };
-
-    // Start the scheduling chain
-    scheduleNext();
+    }
 
     setSchedulerDialogOpen(false);
   }, [stopScheduler, sendScheduledCommand, getSchedulerState, updateSchedulerState]);
 
-  const handleSchedulerStop = useCallback(() => {
-    stopScheduler();
+  const handleSchedulerStop = useCallback(async () => {
+    await stopScheduler();
   }, [stopScheduler]);
 
   // No cleanup needed on unmount - scheduler state already in cache

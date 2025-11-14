@@ -48,6 +48,7 @@ export class ShellSessionManager {
   private cleanupInterval: NodeJS.Timeout | null = null;
   private spawnErrors: SpawnError[] = []; // Track recent spawn errors
   private maxSpawnErrors = 10; // Keep last 10 errors
+  private totalPtyInstancesCreated = 0; // Track total PTY instances created during app lifetime
 
   private constructor() {
     // Cleanup timer disabled - keep sessions alive for Claude feedback
@@ -94,6 +95,13 @@ export class ShellSessionManager {
    */
   getSpawnErrors(): SpawnError[] {
     return [...this.spawnErrors];
+  }
+
+  /**
+   * Get total number of PTY instances created during app lifetime
+   */
+  getTotalPtyInstancesCreated(): number {
+    return this.totalPtyInstancesCreated;
   }
 
   /**
@@ -153,6 +161,9 @@ export class ShellSessionManager {
       const shellArgs = shell.includes('zsh') || shell.includes('bash') ? ['-l'] : [];
 
       const ptyProcess = spawnFunction(shell, shellArgs, options);
+
+      // Increment total PTY instances counter
+      this.totalPtyInstancesCreated++;
 
       const session: ShellSession = {
         id: sessionId,
