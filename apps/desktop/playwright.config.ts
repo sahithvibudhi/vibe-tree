@@ -9,7 +9,8 @@ export default defineConfig({
   reporter: 'html',
   timeout: 60000,
   // Set globalTimeout to prevent worker teardown timeout issues
-  globalTimeout: process.env.CI ? 600000 : 0, // 10 minutes in CI, unlimited locally
+  // Increased from 10 minutes to 15 minutes to handle PTY cleanup delays
+  globalTimeout: process.env.CI ? 900000 : 0, // 15 minutes in CI, unlimited locally
   use: {
     trace: 'on-first-retry',
   },
