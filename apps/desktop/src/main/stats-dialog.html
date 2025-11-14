@@ -924,10 +924,15 @@
           const treeMem = formatMemory(diag.processTreeMemory.totalTreeRSS);
           const totalGB = (diag.totalMemory / (1024 ** 3)).toFixed(2) + ' GB';
           const freeGB = (diag.freeMemory / (1024 ** 3)).toFixed(2) + ' GB';
+          const usedGB = ((diag.totalMemory - diag.freeMemory) / (1024 ** 3)).toFixed(2) + ' GB';
           const usedPercent = ((1 - diag.freeMemory / diag.totalMemory) * 100).toFixed(1) + '%';
 
-          addMetric('Process Memory', appMem, `${totalGB} total`);
-          addMetric('Process Tree Memory', treeMem, `${freeGB} free (${usedPercent} used)`);
+          // Calculate app's percentage of total memory
+          const appPercent = (diag.processTreeMemory.currentProcessRSS / (1024 * 1024) / (diag.totalMemory / (1024 ** 3)) * 100).toFixed(2);
+          const treePercent = (diag.processTreeMemory.totalTreeRSS / (1024 * 1024) / (diag.totalMemory / (1024 ** 3)) * 100).toFixed(2);
+
+          addMetric('Process Memory', `${appMem} (${appPercent}%)`, `${totalGB} total`);
+          addMetric('Process Tree Memory', `${treeMem} (${treePercent}%)`, `${usedGB} / ${totalGB} (${usedPercent})`);
         }
 
         // PTY Devices Section
