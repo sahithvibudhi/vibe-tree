@@ -1001,8 +1001,8 @@
 
           addMetric(
             'File Descriptors',
-            diag.openFileDescriptors,
-            `${diag.fileDescriptorLimit.soft} limit (${fdUsage}% used)`,
+            `${diag.openFileDescriptors} / ${diag.fileDescriptorLimit.soft} (${fdUsage}%)`,
+            `${diag.fileDescriptorLimit.soft} limit`,
             { appWarning: isHighFdUsage }
           );
         }
