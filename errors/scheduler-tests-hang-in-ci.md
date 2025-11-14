@@ -10,6 +10,7 @@ Multiple scheduler-related E2E tests consistently hang in CI environments, causi
 4. `e2e/worktree-deletion-with-pty-cleanup.spec.ts:227` - "should report errors in deletion dialog if PTY cleanup fails"
 5. `e2e/worktree-deletion-with-pty-cleanup.spec.ts:338` - "should display error in deletion dialog when folder deletion fails"
 6. `e2e/worktree-switch-double-char-bug.spec.ts:100` - "should NOT display double characters when switching between worktrees"
+7. `e2e/worktree-terminal-content-preservation.spec.ts:82` - "should preserve terminal content when switching between worktrees"
 
 ## Symptoms
 - Tests run for 3-4 minutes before timing out
@@ -62,5 +63,6 @@ Tests are skipped with `.skip()` to allow CI to pass while documenting the need 
 - `apps/desktop/e2e/project-switch-scheduler-persist.spec.ts`
 - `apps/desktop/e2e/worktree-deletion-with-pty-cleanup.spec.ts`
 - `apps/desktop/e2e/worktree-switch-double-char-bug.spec.ts`
+- `apps/desktop/e2e/worktree-terminal-content-preservation.spec.ts`
 - `apps/desktop/e2e/helpers/test-launcher.ts` (closeElectronApp function)
 - `apps/desktop/src/renderer/components/ClaudeTerminal.tsx` (scheduler implementation)
