@@ -193,6 +193,15 @@ export function ClaudeTerminal({
           });
         });
 
+        // Check if scheduler is still running before executing the command
+        // This prevents race conditions where stopScheduler() is called during the delay
+        const stateBeforeCommand = getSchedulerState();
+        if (!stateBeforeCommand?.isRunning) {
+          // Scheduler was stopped during the delay, clean up
+          updateSchedulerState(null);
+          return;
+        }
+
         // Execute the command and wait for it to complete
         await sendScheduledCommand(config.command, config.delayMs);
 
