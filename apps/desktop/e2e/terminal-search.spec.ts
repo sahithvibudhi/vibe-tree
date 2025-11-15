@@ -73,7 +73,7 @@ test.describe('Terminal Search Functionality', () => {
     }
   });
 
-  test.skip('should open search bar and search for text in terminal', async () => {
+  test('should open search bar and search for text in terminal', async () => {
     /**
      * TODO: This test consistently hangs in CI after 3 minutes, causing worker teardown to timeout.
      * The test involves opening a terminal (PTY process) and typing commands, which causes
@@ -224,7 +224,7 @@ test.describe('Terminal Search Functionality', () => {
     expect(focusedElement).toContain('xterm');
   });
 
-  test.skip('should handle empty search queries gracefully', async () => {
+  test('should handle empty search queries gracefully', async () => {
     /**
      * TODO: This test involves opening a terminal (PTY process) and likely hangs in CI.
      * Skipping to prevent CI timeouts.

@@ -73,7 +73,7 @@ test.describe('Terminal Arithmetic Test', () => {
     }
   });
 
-  test.skip('should open terminal window and execute arithmetic', async () => {
+  test('should open terminal window and execute arithmetic', async () => {
     /**
      * TODO: This test consistently hangs in CI after 3 minutes, causing worker teardown to timeout.
      * The test involves opening a terminal (PTY process) and executing commands, which causes

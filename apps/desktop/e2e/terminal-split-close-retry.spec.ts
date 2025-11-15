@@ -118,7 +118,7 @@ test.describe('Terminal Split Close Retry', () => {
     }
   });
 
-  test.skip('should allow closing terminal split', async () => {
+  test('should allow closing terminal split', async () => {
     /**
      * TODO: This test consistently hangs in CI after 3 minutes, causing worker teardown to timeout.
      * The test involves opening a terminal (PTY process) and splitting/closing terminals, which causes
@@ -170,7 +170,7 @@ test.describe('Terminal Split Close Retry', () => {
     await expect(disabledCloseButton).toBeDisabled();
   });
 
-  test.skip('should allow multiple rapid close attempts on different terminals', async () => {
+  test('should allow multiple rapid close attempts on different terminals', async () => {
     /**
      * TODO: This test consistently hangs in CI after 2.6 minutes, causing worker teardown to timeout.
      * The test involves opening a terminal (PTY process) and splitting terminals multiple times,
@@ -225,7 +225,7 @@ test.describe('Terminal Split Close Retry', () => {
     await expect(disabledCloseButton).toBeDisabled();
   });
 
-  test.skip('should display detailed backtrace when terminal close fails', async () => {
+  test('should display detailed backtrace when terminal close fails', async () => {
     /**
      * TODO: This test consistently hangs in CI after 3 minutes per attempt, causing worker teardown to timeout.
      * The test involves opening terminals (PTY processes) and splitting/closing them, which causes

@@ -97,7 +97,7 @@ test.describe('Terminal Settings', () => {
     }
   });
 
-  test.skip('should open terminal settings from menu and persist font changes', async () => {
+  test('should open terminal settings from menu and persist font changes', async () => {
     /**
      * TODO: This test consistently hangs in CI after failing to load terminal, causing worker teardown to timeout.
      * The test involves opening a terminal (PTY process) which causes the Electron app to become
@@ -266,7 +266,7 @@ test.describe('Terminal Settings', () => {
     await page.click('button:has-text("Done")');
   });
 
-  test.skip('should apply font settings to all terminals', async () => {
+  test('should apply font settings to all terminals', async () => {
     /**
      * TODO: This test involves opening a terminal (PTY process) and likely hangs in CI.
      * Skipping to prevent CI timeouts.
@@ -302,7 +302,7 @@ test.describe('Terminal Settings', () => {
     expect(parseFloat(fontSize)).toBeGreaterThan(14);
   });
 
-  test.skip('should handle custom font input', async () => {
+  test('should handle custom font input', async () => {
     /**
      * TODO: This test involves opening a terminal (PTY process) and likely hangs in CI.
      * Skipping to prevent CI timeouts.

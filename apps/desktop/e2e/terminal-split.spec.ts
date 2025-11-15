@@ -117,7 +117,7 @@ test.describe('Terminal Split Feature', () => {
     }
   });
 
-  test.skip('should split terminal and manage multiple terminals', async () => {
+  test('should split terminal and manage multiple terminals', async () => {
     /**
      * TODO: This test consistently hangs in CI after 3 minutes per attempt, causing worker teardown to timeout.
      * The test involves opening terminals (PTY processes) and splitting them, which causes the Electron app
@@ -201,7 +201,7 @@ test.describe('Terminal Split Feature', () => {
     await expect(splitButtonAfter).toBeVisible();
   });
 
-  test.skip('should split terminal horizontally and manage multiple terminals', async () => {
+  test('should split terminal horizontally and manage multiple terminals', async () => {
     /**
      * TODO: This test consistently hangs in CI after 3 minutes per attempt, causing worker teardown to timeout.
      * The test involves opening terminals (PTY processes) and splitting them horizontally, which causes the
@@ -278,7 +278,7 @@ test.describe('Terminal Split Feature', () => {
     expect(secondTerminalContent).toContain('Terminal Bottom');
   });
 
-  test.skip('should maintain independent PTY sessions for split terminals', async () => {
+  test('should maintain independent PTY sessions for split terminals', async () => {
     /**
      * TODO: This test consistently hangs in CI after timeout at line 295, causing worker teardown to timeout.
      * The test involves opening terminals (PTY processes) and splitting them, which causes the Electron app
