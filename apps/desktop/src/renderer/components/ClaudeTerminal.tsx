@@ -255,16 +255,26 @@ export function ClaudeTerminal({
     await stopScheduler();
   }, [stopScheduler]);
 
-  // Cleanup scheduler on component unmount
-  // Empty dependency array ensures this only runs on true unmount, not on every render
-  // This allows the scheduler to persist across project switches (using the cache)
-  // while still cleaning up during Playwright worker teardown
+  // Reset AbortController on mount and setup window unload cleanup
+  // This ensures:
+  // 1. AbortController is fresh on each mount (fixes project switch persistence)
+  // 2. Cleanup only happens on window close/Playwright teardown
   useEffect(() => {
-    return () => {
-      // Abort any pending scheduler promises
+    // Reset AbortController on each mount to handle project switches
+    // Without this reset, the aborted state persists when remounting the same component
+    schedulerAbortControllerRef.current = new AbortController();
+
+    // Setup cleanup for window close/Playwright teardown
+    const handleUnload = () => {
       schedulerAbortControllerRef.current.abort();
     };
-  }, []); // Empty array - only cleanup on unmount
+
+    window.addEventListener('beforeunload', handleUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload);
+    };
+  }, []);
 
   // Load terminal settings and listen for changes
   useEffect(() => {
