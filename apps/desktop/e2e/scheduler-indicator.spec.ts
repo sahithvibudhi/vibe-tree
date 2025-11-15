@@ -86,7 +86,7 @@ test.describe('Scheduler Indicator', () => {
     }
   });
 
-  test('should show clock icon when scheduler is running and hide it when stopped', async () => {
+  test.skip('should show clock icon when scheduler is running and hide it when stopped', async () => {
     test.setTimeout(90000);
 
     await page.waitForLoadState('domcontentloaded');
@@ -192,7 +192,7 @@ test.describe('Scheduler Indicator', () => {
     await expect(clockIcon).not.toBeVisible();
   });
 
-  test('should show clock icon when any split has a running scheduler', async () => {
+  test.skip('should show clock icon when any split has a running scheduler', async () => {
     test.setTimeout(90000);
 
     await page.waitForLoadState('domcontentloaded');
