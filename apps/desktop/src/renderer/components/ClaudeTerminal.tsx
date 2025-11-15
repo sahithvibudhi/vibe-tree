@@ -68,6 +68,8 @@ export function ClaudeTerminal({
   // Force re-render when scheduler state changes
   const [, setSchedulerUpdateTrigger] = useState(0);
   const commandInProgressRef = useRef(false);
+  // AbortController to cancel pending scheduler promises on unmount
+  const schedulerAbortControllerRef = useRef<AbortController>(new AbortController());
 
   // Helper functions to work with scheduler cache
   const getSchedulerState = useCallback(() => {
@@ -182,6 +184,12 @@ export function ClaudeTerminal({
       // before the next one starts. This prevents overlapping executions that
       // cause gibberish input, especially after machine sleep/wake.
       const scheduleNext = async (): Promise<void> => {
+        // Check if component unmounted (abort signal)
+        if (schedulerAbortControllerRef.current.signal.aborted) {
+          updateSchedulerState(null);
+          return;
+        }
+
         // Wait for the delay interval
         await new Promise<void>(resolve => {
           const timeoutId = setTimeout(resolve, config.delayMs);
@@ -192,6 +200,12 @@ export function ClaudeTerminal({
             timeoutId
           });
         });
+
+        // Check again after delay - component may have unmounted during wait
+        if (schedulerAbortControllerRef.current.signal.aborted) {
+          updateSchedulerState(null);
+          return;
+        }
 
         // Check if scheduler is still running before executing the command
         // This prevents race conditions where stopScheduler() is called during the delay
@@ -240,6 +254,17 @@ export function ClaudeTerminal({
   const handleSchedulerStop = useCallback(async () => {
     await stopScheduler();
   }, [stopScheduler]);
+
+  // Cleanup scheduler on component unmount
+  // Empty dependency array ensures this only runs on true unmount, not on every render
+  // This allows the scheduler to persist across project switches (using the cache)
+  // while still cleaning up during Playwright worker teardown
+  useEffect(() => {
+    return () => {
+      // Abort any pending scheduler promises
+      schedulerAbortControllerRef.current.abort();
+    };
+  }, []); // Empty array - only cleanup on unmount
 
   // Load terminal settings and listen for changes
   useEffect(() => {
