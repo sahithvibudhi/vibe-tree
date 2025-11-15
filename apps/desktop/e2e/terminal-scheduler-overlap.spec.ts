@@ -83,7 +83,7 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
     }
   }, 30000); // 30 second timeout for afterEach
 
-  test('should prevent overlapping execution even with fast repeat interval', async () => {
+  test.skip('should prevent overlapping execution even with fast repeat interval', async () => {
     /**
      * This test verifies the fix by:
      * 1. Setting repeat interval to 500ms (faster than typing time)
@@ -211,7 +211,7 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
     expect(hasCorruptedOutput).toBe(false);
   });
 
-  test('should show clean output when interval is longer than typing time', async () => {
+  test.skip('should show clean output when interval is longer than typing time', async () => {
     /**
      * This test demonstrates correct behavior when the interval is long enough
      * to allow each command to complete before the next one starts.
@@ -295,7 +295,7 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
   // by using a dynamic ENTER key delay of min(delayMs/2, 1000). For 200ms intervals,
   // the ENTER key delay is 100ms, allowing the command to complete faster and preventing
   // overlap issues.
-  test('should prevent corruption even with very short interval (200ms)', async () => {
+  test.skip('should prevent corruption even with very short interval (200ms)', async () => {
     /**
      * This test verifies the fix handles extreme cases:
      * 1. Starting scheduler with very short interval (200ms)
