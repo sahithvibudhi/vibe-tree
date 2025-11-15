@@ -118,11 +118,12 @@ test.describe('Terminal Split Close Retry', () => {
     }
   });
 
-  test('should allow closing terminal split', async () => {
+  test.skip('should allow closing terminal split', async () => {
     /**
-     * TODO: This test consistently hangs in CI after 3 minutes, causing worker teardown to timeout.
-     * The test involves opening a terminal (PTY process) and splitting/closing terminals, which causes
-     * the Electron app to become unresponsive during teardown in the CI environment.
+     * TODO: This test consistently hangs in CI after 3 minutes per attempt, causing worker teardown to timeout.
+     * The test involves opening a terminal (PTY process) and splitting/closing terminals, which causes the
+     * Electron app to become unresponsive during teardown in the CI environment. Failed 3 times (9+ minutes
+     * total) at line 105 in afterEach hook trying to close the Electron app.
      * See errors/scheduler-tests-hang-in-ci.md for detailed analysis.
      */
     test.setTimeout(60000);
