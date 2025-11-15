@@ -241,8 +241,19 @@ export function ClaudeTerminal({
     await stopScheduler();
   }, [stopScheduler]);
 
-  // No cleanup needed on unmount - scheduler state already in cache
-  // The setTimeout will continue running and state persists in schedulerStateCache
+  // Cleanup scheduler on unmount to prevent worker teardown timeout
+  // This ensures all pending scheduler promises are cancelled when the component unmounts
+  useEffect(() => {
+    return () => {
+      // Stop scheduler on component unmount
+      const state = getSchedulerState();
+      if (state?.timeoutId) {
+        clearTimeout(state?.timeoutId);
+      }
+      // Mark as not running to break any pending promise chains
+      updateSchedulerState(state ? { ...state, isRunning: false } : null);
+    };
+  }, [getSchedulerState, updateSchedulerState]);
 
   // Load terminal settings and listen for changes
   useEffect(() => {
