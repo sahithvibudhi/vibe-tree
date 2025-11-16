@@ -35,6 +35,9 @@ export interface ElectronAPI {
     onOutput: (processId: string, callback: (data: string) => void) => () => void;
     onExit: (processId: string, callback: (code: number) => void) => () => void;
     onSessionsChanged: (callback: (sessions: Record<string, number>) => void) => () => void;
+    setSchedulerState: (processId: string, isRunning: boolean) => Promise<{ success: boolean }>;
+    getWorktreeSchedulers: () => Promise<Record<string, number>>;
+    onSchedulersChanged: (callback: (schedulers: Record<string, number>) => void) => () => void;
   };
   ide: {
     detect: () => Promise<Array<{ name: string; command: string }>>;

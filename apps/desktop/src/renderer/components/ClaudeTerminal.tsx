@@ -82,14 +82,25 @@ export function ClaudeTerminal({
   const updateSchedulerState = useCallback((update: Partial<SchedulerState> | null) => {
     if (!processIdRef.current) return;
 
+    const processId = processIdRef.current;
     if (update === null) {
-      schedulerStateCache.delete(processIdRef.current);
+      schedulerStateCache.delete(processId);
+      // Notify main process that scheduler stopped
+      window.electronAPI.shell.setSchedulerState(processId, false).catch(err => {
+        console.error('Failed to update scheduler state in main process:', err);
+      });
     } else {
-      const current = schedulerStateCache.get(processIdRef.current);
-      schedulerStateCache.set(processIdRef.current, {
+      const current = schedulerStateCache.get(processId);
+      schedulerStateCache.set(processId, {
         ...current,
         ...update
       } as SchedulerState);
+      // Notify main process if scheduler is running
+      if (update.isRunning !== undefined) {
+        window.electronAPI.shell.setSchedulerState(processId, update.isRunning).catch(err => {
+          console.error('Failed to update scheduler state in main process:', err);
+        });
+      }
     }
     // Trigger re-render
     setSchedulerUpdateTrigger(prev => prev + 1);

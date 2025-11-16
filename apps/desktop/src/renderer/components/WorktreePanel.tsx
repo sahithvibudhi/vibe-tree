@@ -46,6 +46,7 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
   const [panelWidth, setPanelWidth] = useState<number>(320); // Default 320px (w-80)
   const [isResizing, setIsResizing] = useState(false);
   const [worktreeSessionCounts, setWorktreeSessionCounts] = useState<Record<string, number>>({});
+  const [worktreeSchedulerCounts, setWorktreeSchedulerCounts] = useState<Record<string, number>>({});
   const { toast } = useToast();
   const { getWorktreeSchedulerStatus } = useProjects();
 
@@ -181,6 +182,21 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
     // Subscribe to session changes
     const unsubscribe = window.electronAPI.shell.onSessionsChanged((sessions) => {
       setWorktreeSessionCounts(sessions);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  // Listen for scheduler state changes
+  useEffect(() => {
+    // Load initial scheduler counts
+    window.electronAPI.shell.getWorktreeSchedulers().then(setWorktreeSchedulerCounts);
+
+    // Subscribe to scheduler changes
+    const unsubscribe = window.electronAPI.shell.onSchedulersChanged((schedulers) => {
+      setWorktreeSchedulerCounts(schedulers);
     });
 
     return () => {
@@ -457,7 +473,11 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
                     style={{
                       fontSize: `${worktreeFontSize}px`,
                       fontWeight: 'bold',
-                      color: worktreeSessionCounts[worktree.path] > 0 ? '#60a5fa' : undefined
+                      color: worktreeSchedulerCounts[worktree.path] > 0
+                        ? '#22c55e' // green for scheduler
+                        : worktreeSessionCounts[worktree.path] > 0
+                          ? '#60a5fa' // blue for terminal session
+                          : undefined
                     }}
                   >
                     {worktree.branch

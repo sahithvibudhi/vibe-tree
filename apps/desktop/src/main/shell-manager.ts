@@ -12,6 +12,7 @@ import * as os from 'os';
  */
 class DesktopShellManager {
   private sessionManager = ShellSessionManager.getInstance();
+  private schedulerStates = new Map<string, boolean>(); // processId -> isRunning
 
   constructor() {
     this.setupIpcHandlers();
@@ -35,6 +36,32 @@ class DesktopShellManager {
     BrowserWindow.getAllWindows().forEach(window => {
       if (!window.isDestroyed()) {
         window.webContents.send('shell:sessions-changed', sessionData);
+      }
+    });
+  }
+
+  /**
+   * Broadcast scheduler state changes to all renderer processes
+   */
+  private broadcastSchedulerChange() {
+    const sessions = this.sessionManager.getAllSessions();
+    const worktreeSchedulerCounts = new Map<string, number>();
+
+    // Count how many schedulers are running per worktree
+    sessions.forEach(session => {
+      const hasScheduler = this.schedulerStates.get(session.id);
+      if (hasScheduler) {
+        const count = worktreeSchedulerCounts.get(session.worktreePath) || 0;
+        worktreeSchedulerCounts.set(session.worktreePath, count + 1);
+      }
+    });
+
+    const schedulerData = Object.fromEntries(worktreeSchedulerCounts);
+
+    // Send to all windows
+    BrowserWindow.getAllWindows().forEach(window => {
+      if (!window.isDestroyed()) {
+        window.webContents.send('shell:schedulers-changed', schedulerData);
       }
     });
   }
@@ -201,6 +228,31 @@ class DesktopShellManager {
       });
 
       return Object.fromEntries(worktreeSessionCounts);
+    });
+
+    ipcMain.handle('shell:set-scheduler-state', async (_, processId: string, isRunning: boolean) => {
+      if (isRunning) {
+        this.schedulerStates.set(processId, true);
+      } else {
+        this.schedulerStates.delete(processId);
+      }
+      this.broadcastSchedulerChange();
+      return { success: true };
+    });
+
+    ipcMain.handle('shell:get-worktree-schedulers', async () => {
+      const sessions = this.sessionManager.getAllSessions();
+      const worktreeSchedulerCounts = new Map<string, number>();
+
+      sessions.forEach(session => {
+        const hasScheduler = this.schedulerStates.get(session.id);
+        if (hasScheduler) {
+          const count = worktreeSchedulerCounts.get(session.worktreePath) || 0;
+          worktreeSchedulerCounts.set(session.worktreePath, count + 1);
+        }
+      });
+
+      return Object.fromEntries(worktreeSchedulerCounts);
     });
 
     ipcMain.handle('shell:diagnose', async () => {

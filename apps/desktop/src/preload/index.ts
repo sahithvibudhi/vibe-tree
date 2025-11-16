@@ -53,6 +53,15 @@ const api = {
       ipcRenderer.on('shell:sessions-changed', listener);
       return () => ipcRenderer.removeListener('shell:sessions-changed', listener);
     },
+    setSchedulerState: (processId: string, isRunning: boolean) =>
+      ipcRenderer.invoke('shell:set-scheduler-state', processId, isRunning),
+    getWorktreeSchedulers: () =>
+      ipcRenderer.invoke('shell:get-worktree-schedulers'),
+    onSchedulersChanged: (callback: (schedulers: Record<string, number>) => void) => {
+      const listener = (_: unknown, schedulers: Record<string, number>) => callback(schedulers);
+      ipcRenderer.on('shell:schedulers-changed', listener);
+      return () => ipcRenderer.removeListener('shell:schedulers-changed', listener);
+    },
   },
   ide: {
     detect: () => ipcRenderer.invoke('ide:detect'),
