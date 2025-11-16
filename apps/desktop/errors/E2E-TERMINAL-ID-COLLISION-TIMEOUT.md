@@ -4,26 +4,37 @@
 `e2e/terminal-id-collision.spec.ts:63 - should not leak PTYs when rapidly splitting terminals`
 
 ## Error Type
-TimeoutError - Playwright locator.click
+TimeoutError - Playwright locator.toBeVisible
 
 ## Error Message
 ```
-TimeoutError: locator.click: Timeout 30000ms exceeded.
+Error: expect(locator).toBeVisible(): Locator resolved to 0 elements
+Timeout 30000ms exceeded.
 
-    85 |   const worktreeButton = window.locator('button[data-worktree-branch="main"]');
-  > 86 |   await worktreeButton.click();
-         |                        ^
-    87 |
-    88 |   // Wait for first terminal to load
-    89 |   await window.waitForSelector('.xterm-screen', { timeout: 10000 });
+    83 |   const worktreeButton = window.locator('button[data-worktree-branch="main"]');
+  > 84 |   await expect(worktreeButton).toBeVisible({ timeout: 30000 });
+         |                               ^
+    85 |   await worktreeButton.click();
 ```
 
 ## Root Cause
-The test waits only 2000ms after clicking "Open Project Folder" (line 82) before attempting to click on the worktree button. On CI, the worktree list loading and rendering takes longer due to slower I/O and git operations, causing the button to not be present when the click is attempted.
+The test uses raw `electron.launch()` directly instead of the retry-enabled helper functions used by all other successful e2e tests. This causes multiple issues on CI:
 
-Additionally, the test uses `electron.launch()` directly instead of the retry-enabled helper function `launchElectronApp`, which doesn't provide resilience against launch failures.
+1. **No launch retry mechanism** - If Electron launch fails or is slow, test fails immediately
+2. **Uses `beforeAll/afterAll`** instead of `beforeEach/afterEach` - Single test setup/teardown is fragile
+3. **Missing proper page/window management** - Not using `launchElectronAppWithWindow()` helper
+4. **No `waitForLoadState` call** - Test doesn't ensure page is properly loaded before interactions
+5. **Dialog mocking may not work correctly** - Without proper window setup, dialog mocking can fail silently
+
+Comparing to other successful tests (e.g., `terminal-split.spec.ts`, `terminal-split-close-retry.spec.ts`):
+- They use `launchElectronAppWithWindow()` helper with retry logic
+- They use `beforeEach/afterEach` for proper isolation
+- They call `page.waitForLoadState('domcontentloaded')` before interactions
+- They use consistent helper functions for navigation
 
 ## Fix
-1. Add explicit wait for worktree button to be visible before clicking, with appropriate timeout
-2. Use the consistent helper function pattern from other tests
-3. Add retry logic for worktree button click to handle slow CI environments
+1. Refactor test to use `launchElectronAppWithWindow()` helper like other e2e tests
+2. Change from `beforeAll/afterAll` to `beforeEach/afterEach` pattern
+3. Use the same `navigateToWorktree()` helper pattern that works in other tests
+4. Add proper `page.waitForLoadState()` calls
+5. Use consistent test patterns matching `terminal-split.spec.ts` and `terminal-split-close-retry.spec.ts`
