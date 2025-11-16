@@ -78,11 +78,9 @@ test('should not leak PTYs when rapidly splitting terminals', async () => {
   const openButton = window.locator('button', { hasText: 'Open Project Folder' });
   await openButton.click();
 
-  // Wait for worktree list to appear
-  await window.waitForTimeout(2000);
-
-  // Click on main branch worktree
+  // Wait for worktree list to appear and button to be visible
   const worktreeButton = window.locator('button[data-worktree-branch="main"]');
+  await expect(worktreeButton).toBeVisible({ timeout: 30000 });
   await worktreeButton.click();
 
   // Wait for first terminal to load
