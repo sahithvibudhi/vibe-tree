@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { createHtmlPortalNode, InPortal, OutPortal, HtmlPortalNode } from 'react-reverse-portal';
 import { ClaudeTerminal } from './ClaudeTerminal';
+import { generateTerminalId } from '../utils/terminalIdGenerator';
 
 interface TerminalManagerProps {
   worktreePath: string;
@@ -37,7 +38,7 @@ export function TerminalManager({ worktreePath, projectId, theme }: TerminalMana
       console.log('Creating initial terminal for:', worktreePath);
       
       // Create a new terminal instance for this worktree
-      const terminalId = `${worktreePath}-${Date.now()}`;
+      const terminalId = generateTerminalId(worktreePath);
       const portalNode = createHtmlPortalNode();
       const terminal: TerminalInstance = {
         id: terminalId,
@@ -65,9 +66,9 @@ export function TerminalManager({ worktreePath, projectId, theme }: TerminalMana
     if (!worktreeData) return;
 
     console.log('Splitting terminal:', existingTerminalId);
-    
+
     // Create a new terminal instance
-    const newTerminalId = `${worktreePath}-${Date.now()}`;
+    const newTerminalId = generateTerminalId(worktreePath);
     const portalNode = createHtmlPortalNode();
     const newTerminal: TerminalInstance = {
       id: newTerminalId,
