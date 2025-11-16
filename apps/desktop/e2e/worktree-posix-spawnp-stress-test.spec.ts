@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { ElectronApplication, _electron as electron } from 'playwright';
+import { ElectronApplication } from 'playwright';
 import { closeElectronApp, launchElectronApp } from './helpers/test-launcher';
 import path from 'path';
 import fs from 'fs';
