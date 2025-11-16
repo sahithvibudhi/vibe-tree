@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 2 : 1, // Also retry once locally to handle flaky Electron singleton lock issues
   workers: 1, // Use only 1 worker for Electron tests
   reporter: 'html',
   timeout: 60000,

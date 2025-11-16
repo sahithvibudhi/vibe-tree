@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { ElectronApplication, Page, _electron as electron } from 'playwright';
+import { closeElectronApp, launchElectronAppWithWindow } from './helpers/test-launcher';
 import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
@@ -73,6 +74,9 @@ async function navigateToWorktree(electronApp: ElectronApplication, page: Page, 
 }
 
 test.describe('Terminal Split Close Retry', () => {
+  // Set timeout for all tests including beforeEach/afterEach hooks
+  test.describe.configure({ timeout: 120000 });
+
   let electronApp: ElectronApplication;
   let page: Page;
   let dummyRepoPath: string;
@@ -81,30 +85,22 @@ test.describe('Terminal Split Close Retry', () => {
     // Create a dummy git repository for testing
     dummyRepoPath = createDummyRepo();
 
-    const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
-    console.log('Using test main file:', testMainPath);
-
-    // In CI, we need to specify the app directory explicitly
     const appDir = path.join(__dirname, '..');
+    console.log('Using test main file:', path.join(__dirname, '../dist/main/test-index.js'));
 
-    electronApp = await electron.launch({
-      env: {
-        ...process.env,
-        NODE_ENV: 'test',
-        TEST_MODE: 'true',
-        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
-      },
-      args: [testMainPath],
+    const result = await launchElectronAppWithWindow({
+      disableQuitDialog: true,
       cwd: appDir,
+      maxRetries: 3
     });
-
-    page = await electronApp.firstWindow();
+    electronApp = result.electronApp;
+    page = result.page;
     await page.waitForLoadState('domcontentloaded');
-  }, 45000);
+  });
 
   test.afterEach(async () => {
     if (electronApp) {
-      await electronApp.evaluate(() => process.exit(0));
+      await closeElectronApp(electronApp);
     }
 
     // Clean up the dummy repository
@@ -118,8 +114,7 @@ test.describe('Terminal Split Close Retry', () => {
     }
   });
 
-  // Skip this test - it times out intermittently due to PTY cleanup timing issues
-  test.skip('should allow closing terminal split', async () => {
+  test('should allow closing terminal split', async () => {
     test.setTimeout(60000);
 
     await page.waitForLoadState('domcontentloaded');

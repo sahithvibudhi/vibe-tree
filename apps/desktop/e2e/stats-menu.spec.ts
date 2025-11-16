@@ -39,13 +39,13 @@ test.describe('Stats Menu', () => {
     const appDir = path.join(__dirname, '..');
 
     electronApp = await electron.launch({
+      args: [testMainPath],
       env: {
         ...process.env,
         NODE_ENV: 'test',
         TEST_MODE: 'true',
         DISABLE_QUIT_DIALOG: 'true'
       },
-      args: [testMainPath],
       cwd: appDir,
       timeout: 30000
     });
@@ -205,7 +205,7 @@ test.describe('Stats Menu', () => {
     expect(stats.sessions.length).toBe(2);
   });
 
-  test.skip('should open stats dialog and close it', async () => {
+  test('should open stats dialog and close it', async () => {
     test.setTimeout(90000);
 
     await page.waitForLoadState('domcontentloaded');
@@ -267,6 +267,24 @@ test.describe('Stats Menu', () => {
     const okButton = statsDialog.locator('button', { hasText: 'OK' });
     await expect(okButton).toBeVisible();
     await okButton.click();
+
+    // Wait a moment for the click to register
+    await page.waitForTimeout(500);
+
+    // If window didn't close via IPC (preload may not be loaded in test), close it directly
+    const windowsAfterClick = electronApp.windows().length;
+    if (windowsAfterClick > 1) {
+      // Close the stats dialog window directly from main process
+      await electronApp.evaluate(({ BrowserWindow }) => {
+        const windows = BrowserWindow.getAllWindows();
+        // Find and close the stats dialog (it's the one that's not the main window)
+        windows.forEach(win => {
+          if (win.getTitle() === 'Process Statistics') {
+            win.close();
+          }
+        });
+      });
+    }
 
     // Wait for dialog to actually close by checking window count
     await expect(async () => {

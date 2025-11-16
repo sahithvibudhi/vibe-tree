@@ -1,12 +1,15 @@
 import { test, expect } from '@playwright/test';
-import { ElectronApplication, Page, _electron as electron } from 'playwright';
-import { closeElectronApp } from './helpers/test-launcher';
+import { ElectronApplication, Page } from 'playwright';
+import { closeElectronApp, launchElectronAppWithWindow } from './helpers/test-launcher';
 import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
 import os from 'os';
 
 test.describe('Terminal Settings', () => {
+  // Set timeout for all tests including beforeEach/afterEach hooks
+  test.describe.configure({ timeout: 120000 });
+
   let electronApp: ElectronApplication;
   let page: Page;
   let dummyRepoPath: string;
@@ -29,26 +32,15 @@ test.describe('Terminal Settings', () => {
 
     console.log(`Created dummy repo at: ${dummyRepoPath}`);
 
-    // Use test index if available
-    const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
-    const mainPath = fs.existsSync(testMainPath) ? testMainPath : path.join(__dirname, '..');
+    const appDir = path.join(__dirname, '..');
 
-    console.log(`Using test main file: ${mainPath}`);
-
-    // Launch Electron app
-    electronApp = await electron.launch({
-      args: [mainPath],
-      env: {
-        ...process.env,
-        NODE_ENV: 'test',
-        TEST_MODE: 'true',
-        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
-      },
-      timeout: 30000
+    // Launch Electron app with retry logic
+    const result = await launchElectronAppWithWindow({
+      cwd: appDir,
+      maxRetries: 3
     });
-
-    // Get the first window that opens
-    page = await electronApp.firstWindow({ timeout: 30000 });
+    electronApp = result.electronApp;
+    page = result.page;
 
     // Wait for the page to be ready
     await page.waitForLoadState('domcontentloaded');
@@ -99,6 +91,8 @@ test.describe('Terminal Settings', () => {
   });
 
   test('should open terminal settings from menu and persist font changes', async () => {
+    test.setTimeout(120000); // Increased timeout for retry logic
+
     // Check if window.electronAPI exists
     const hasAPI = await page.evaluate(() => {
       return typeof window.electronAPI !== 'undefined' &&
@@ -262,6 +256,8 @@ test.describe('Terminal Settings', () => {
   });
 
   test('should apply font settings to all terminals', async () => {
+    test.setTimeout(120000); // Increased timeout for retry logic
+
     // Open terminal settings
     await electronApp.evaluate(({ BrowserWindow }) => {
       const windows = BrowserWindow.getAllWindows();
@@ -294,6 +290,8 @@ test.describe('Terminal Settings', () => {
   });
 
   test('should handle custom font input', async () => {
+    test.setTimeout(120000); // Increased timeout for retry logic
+
     // Open terminal settings
     await electronApp.evaluate(({ BrowserWindow }) => {
       const windows = BrowserWindow.getAllWindows();

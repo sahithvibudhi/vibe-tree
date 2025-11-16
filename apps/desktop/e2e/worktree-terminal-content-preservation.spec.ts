@@ -37,6 +37,7 @@ test.describe('Worktree Terminal Content Preservation', () => {
     console.log('Created dummy repo with main and wt1 branches at:', dummyRepoPath);
 
     const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
+    const appDir = path.join(__dirname, '..');
     console.log('Using test main file:', testMainPath);
 
     electronApp = await electron.launch({
@@ -47,9 +48,11 @@ test.describe('Worktree Terminal Content Preservation', () => {
         DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
       },
       args: [testMainPath],
+      cwd: appDir,
+      timeout: 30000
     });
 
-    page = await electronApp.firstWindow();
+    page = await electronApp.firstWindow({ timeout: 30000 });
     await page.waitForLoadState('domcontentloaded');
   }, 45000);
 
@@ -79,8 +82,7 @@ test.describe('Worktree Terminal Content Preservation', () => {
     }
   });
 
-  // Skip this test - it times out intermittently due to terminal state switching timing
-  test.skip('should preserve terminal content when switching between worktrees', async () => {
+  test('should preserve terminal content when switching between worktrees', async () => {
     test.setTimeout(60000);
     
     // Note: With react-reverse-portal implementation, only the current terminal

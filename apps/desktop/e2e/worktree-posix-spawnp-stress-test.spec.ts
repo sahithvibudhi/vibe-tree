@@ -1,11 +1,15 @@
 import { test, expect } from '@playwright/test';
 import { ElectronApplication, _electron as electron } from 'playwright';
+import { closeElectronApp, launchElectronApp } from './helpers/test-launcher';
 import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
 import os from 'os';
 
 test.describe('Worktree posix_spawnp Stress Test', () => {
+  // Set timeout for all tests including beforeEach/afterEach hooks
+  test.describe.configure({ timeout: 180000 });
+
   let electronApp: ElectronApplication;
   let dummyRepoPath: string;
   const createdWorktrees: string[] = [];
@@ -35,28 +39,21 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
 
     console.log('Created dummy repo at:', dummyRepoPath);
 
-    const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
-    console.log('Using test main file:', testMainPath);
-
     const appDir = path.join(__dirname, '..');
+    console.log('Using test main file:', path.join(__dirname, '../dist/main/test-index.js'));
 
-    electronApp = await electron.launch({
-      env: {
-        ...process.env,
-        NODE_ENV: 'test',
-        TEST_MODE: 'true',
-        DISABLE_QUIT_DIALOG: 'true'
-      },
-      args: [testMainPath],
+    electronApp = await launchElectronApp({
+      disableQuitDialog: true,
       cwd: appDir,
+      maxRetries: 3
     });
 
     await electronApp.firstWindow();
-  }, 60000);
+  });
 
   test.afterEach(async () => {
     if (electronApp) {
-      await electronApp.evaluate(() => process.exit(0));
+      await closeElectronApp(electronApp);
     }
 
     // Clean up all created worktrees
@@ -90,10 +87,7 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
   //
   // NOTE: CI uses ulimit -n 128 to artificially limit file descriptors.
   // PTY sessions are kept alive with sleep commands to ensure they hold file descriptors.
-  // Skip this test - it requires CI-specific ulimit configuration (ulimit -n 128)
-  // and creates hundreds of worktrees that conflict with other tests.
-  // When run without proper resource constraints, it hits OS limits unpredictably.
-  test.skip('should verify PTY cleanup frees resources', async () => {
+  test('should verify PTY cleanup frees resources', async () => {
     test.setTimeout(120000); // 2 minutes timeout
 
     let worktreeCount = 0;

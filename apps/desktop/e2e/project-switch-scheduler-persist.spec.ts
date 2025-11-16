@@ -1,12 +1,15 @@
 import { test, expect } from '@playwright/test';
-import { ElectronApplication, Page, _electron as electron } from 'playwright';
-import { closeElectronApp } from './helpers/test-launcher';
+import { ElectronApplication, Page } from 'playwright';
+import { closeElectronApp, launchElectronAppWithWindow } from './helpers/test-launcher';
 import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
 import os from 'os';
 
 test.describe('Project Switch Scheduler Persistence Test', () => {
+  // Set timeout for all tests including beforeEach/afterEach hooks
+  test.describe.configure({ timeout: 180000 });
+
   let electronApp: ElectronApplication;
   let page: Page;
   let dummyRepoPath1: string;
@@ -39,23 +42,17 @@ test.describe('Project Switch Scheduler Persistence Test', () => {
 
     console.log('Created dummy repos at:', dummyRepoPath1, dummyRepoPath2);
 
-    const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
     const appDir = path.join(__dirname, '..');
 
-    electronApp = await electron.launch({
-      env: {
-        ...process.env,
-        NODE_ENV: 'test',
-        TEST_MODE: 'true',
-        DISABLE_QUIT_DIALOG: 'true'
-      },
-      args: [testMainPath],
+    const result = await launchElectronAppWithWindow({
+      disableQuitDialog: true,
       cwd: appDir,
+      maxRetries: 3
     });
-
-    page = await electronApp.firstWindow();
+    electronApp = result.electronApp;
+    page = result.page;
     await page.waitForLoadState('domcontentloaded');
-  }, 45000);
+  });
 
   test.afterEach(async () => {
     if (electronApp) {
@@ -173,8 +170,8 @@ test.describe('Project Switch Scheduler Persistence Test', () => {
     await project1Tab.click();
     await page.waitForTimeout(2000);
 
-    // Verify project 1 tab is now active
-    await expect(project1Tab).toHaveAttribute('data-state', 'active');
+    // Verify project 1 tab is now active (wait for state change)
+    await expect(project1Tab).toHaveAttribute('data-state', 'active', { timeout: 10000 });
 
     // Check if scheduler is still running (button should still be blue)
     const schedulerButtonAfterSwitch = page.locator('button[title="Schedule Command"]').first();

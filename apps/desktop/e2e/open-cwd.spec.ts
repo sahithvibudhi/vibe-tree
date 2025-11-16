@@ -1,12 +1,15 @@
 import { test, expect } from '@playwright/test';
-import { ElectronApplication, Page, _electron as electron } from 'playwright';
-import { closeElectronApp } from './helpers/test-launcher';
+import { ElectronApplication, Page } from 'playwright';
+import { closeElectronApp, launchElectronAppWithWindow } from './helpers/test-launcher';
 import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
 import os from 'os';
 
 test.describe('Open Current Working Directory', () => {
+  // Set timeout for all tests including beforeEach/afterEach hooks
+  test.describe.configure({ timeout: 120000 });
+
   let electronApp: ElectronApplication;
   let page: Page;
   let testRepoPath: string;
@@ -15,46 +18,32 @@ test.describe('Open Current Working Directory', () => {
     // Create a test git repository
     const timestamp = Date.now();
     testRepoPath = path.join(os.tmpdir(), `test-cwd-repo-${timestamp}`);
-    
+
     // Create the directory and initialize git repo
     fs.mkdirSync(testRepoPath, { recursive: true });
     execSync('git init -q', { cwd: testRepoPath });
     execSync('git config user.email "test@example.com"', { cwd: testRepoPath });
     execSync('git config user.name "Test User"', { cwd: testRepoPath });
-    
+
     // Create a dummy file and make initial commit
     fs.writeFileSync(path.join(testRepoPath, 'README.md'), '# Test CWD Repository\n');
     fs.writeFileSync(path.join(testRepoPath, 'test-marker.txt'), 'This is the CWD test repo\n');
     execSync('git add .', { cwd: testRepoPath });
     execSync('git commit -q -m "Initial commit"', { cwd: testRepoPath });
-    
+
     console.log('Created test repo at:', testRepoPath);
 
-    // Launch the app from the test repository directory
-    const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
-    console.log('Using test main file:', testMainPath);
+    console.log('Using test main file:', path.join(__dirname, '../dist/main/test-index.js'));
 
-    // Change to the test repo directory before launching
-    const originalCwd = process.cwd();
-    process.chdir(testRepoPath);
-
-    electronApp = await electron.launch({
-      env: {
-        ...process.env,
-        NODE_ENV: 'test',
-        TEST_MODE: 'true',
-        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
-      },
-      args: [testMainPath],
-      cwd: testRepoPath, // Set the working directory for the Electron app
+    const result = await launchElectronAppWithWindow({
+      disableQuitDialog: true,
+      cwd: testRepoPath,
+      maxRetries: 3
     });
-
-    // Restore original working directory
-    process.chdir(originalCwd);
-
-    page = await electronApp.firstWindow();
+    electronApp = result.electronApp;
+    page = result.page;
     await page.waitForLoadState('domcontentloaded');
-  }, 45000);
+  });
 
   test.afterEach(async () => {
     if (electronApp) {

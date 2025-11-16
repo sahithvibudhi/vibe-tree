@@ -1,8 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { ElectronApplication, Page, _electron as electron } from 'playwright';
+import { ElectronApplication, Page } from 'playwright';
 import path from 'path';
-import fs from 'fs';
-import { closeElectronApp } from './helpers/test-launcher';
+import { closeElectronApp, launchElectronAppWithWindow } from './helpers/test-launcher';
 import { waitUntil } from './test-utils';
 
 interface MenuItem {
@@ -16,24 +15,23 @@ interface MenuItem {
 }
 
 test.describe('Application Menu Structure', () => {
+  // Set timeout for all tests including beforeEach/afterEach hooks
+  test.describe.configure({ timeout: 120000 });
+
   let electronApp: ElectronApplication;
   let page: Page;
 
   test.beforeEach(async () => {
-    const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
-    const mainPath = fs.existsSync(testMainPath) ? testMainPath : path.join(__dirname, '..');
+    const appDir = path.join(__dirname, '..');
 
-    electronApp = await electron.launch({
-      args: [mainPath],
-      env: {
-        ...process.env,
-        NODE_ENV: 'test',
-        TEST_MODE: 'true',
-        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
-      },
+    const result = await launchElectronAppWithWindow({
+      disableQuitDialog: true,
+      cwd: appDir,
+      maxRetries: 3
     });
+    electronApp = result.electronApp;
+    page = result.page;
 
-    page = await electronApp.firstWindow();
     await page.waitForLoadState('domcontentloaded');
   });
 

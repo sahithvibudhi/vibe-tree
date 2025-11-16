@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { ElectronApplication, Page, _electron as electron } from 'playwright';
-import { closeElectronApp } from './helpers/test-launcher';
+import { closeElectronApp, launchElectronAppWithWindow } from './helpers/test-launcher';
 import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
@@ -72,6 +72,9 @@ async function navigateToWorktree(electronApp: ElectronApplication, page: Page, 
 }
 
 test.describe('Terminal Split Feature', () => {
+  // Set timeout for all tests including beforeEach/afterEach hooks
+  test.describe.configure({ timeout: 120000 });
+
   let electronApp: ElectronApplication;
   let page: Page;
   let dummyRepoPath: string;
@@ -80,26 +83,18 @@ test.describe('Terminal Split Feature', () => {
     // Create a dummy git repository for testing
     dummyRepoPath = createDummyRepo();
 
-    const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
-    console.log('Using test main file:', testMainPath);
-
-    // In CI, we need to specify the app directory explicitly
     const appDir = path.join(__dirname, '..');
+    console.log('Using test main file:', path.join(__dirname, '../dist/main/test-index.js'));
 
-    electronApp = await electron.launch({
-      env: {
-        ...process.env,
-        NODE_ENV: 'test',
-        TEST_MODE: 'true',
-        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
-      },
-      args: [testMainPath],
+    const result = await launchElectronAppWithWindow({
+      disableQuitDialog: true,
       cwd: appDir,
+      maxRetries: 3
     });
-
-    page = await electronApp.firstWindow();
+    electronApp = result.electronApp;
+    page = result.page;
     await page.waitForLoadState('domcontentloaded');
-  }, 45000);
+  });
 
   test.afterEach(async () => {
     if (electronApp) {
@@ -194,8 +189,7 @@ test.describe('Terminal Split Feature', () => {
     await expect(splitButtonAfter).toBeVisible();
   });
 
-  // Skip this test - it times out intermittently due to terminal initialization timing
-  test.skip('should split terminal horizontally and manage multiple terminals', async () => {
+  test('should split terminal horizontally and manage multiple terminals', async () => {
     test.setTimeout(60000);
 
     await page.waitForLoadState('domcontentloaded');
