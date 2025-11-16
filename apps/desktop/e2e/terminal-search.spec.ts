@@ -51,9 +51,10 @@ test.describe('Terminal Search Functionality', () => {
       },
       args: [testMainPath],
       cwd: appDir,
+      timeout: 30000
     });
 
-    page = await electronApp.firstWindow();
+    page = await electronApp.firstWindow({ timeout: 30000 });
     await page.waitForLoadState('domcontentloaded');
   }, 45000);
 

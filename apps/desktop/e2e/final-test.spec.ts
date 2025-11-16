@@ -23,11 +23,12 @@ test.describe('VibeTree Desktop App', () => {
         NODE_ENV: 'test',
         TEST_MODE: 'true',
         DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
-      }
+      },
+      timeout: 30000
     });
 
     // Wait for the first BrowserWindow to open
-    page = await electronApp.firstWindow();
+    page = await electronApp.firstWindow({ timeout: 30000 });
 
     // Wait for the page to be fully loaded
     await page.waitForLoadState('domcontentloaded');

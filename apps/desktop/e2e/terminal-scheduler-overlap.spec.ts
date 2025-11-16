@@ -61,9 +61,10 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
       },
       args: [testMainPath],
       cwd: appDir,
+      timeout: 30000
     });
 
-    page = await electronApp.firstWindow();
+    page = await electronApp.firstWindow({ timeout: 30000 });
     await page.waitForLoadState('domcontentloaded');
   }, 45000);
 

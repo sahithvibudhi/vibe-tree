@@ -44,10 +44,11 @@ test.describe('Terminal Settings', () => {
         TEST_MODE: 'true',
         DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
       },
+      timeout: 30000
     });
 
     // Get the first window that opens
-    page = await electronApp.firstWindow();
+    page = await electronApp.firstWindow({ timeout: 30000 });
 
     // Wait for the page to be ready
     await page.waitForLoadState('domcontentloaded');
