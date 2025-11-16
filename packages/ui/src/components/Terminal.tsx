@@ -202,10 +202,15 @@ export const Terminal: React.FC<TerminalProps> = ({
     
     // Configure WebLinksAddon with custom handler for opening links
     const webLinksAddon = new WebLinksAddon((event, uri) => {
+      // Prevent default browser behavior to avoid opening in in-app browser
+      event.preventDefault();
+
       // Check if we're in Electron environment
       if (window.electronAPI && window.electronAPI.shell && window.electronAPI.shell.openExternal) {
-        // Open in default browser using Electron's shell.openExternal
-        window.electronAPI.shell.openExternal(uri);
+        // Open in default system browser using Electron's shell.openExternal
+        window.electronAPI.shell.openExternal(uri).catch((error) => {
+          console.error('Failed to open external link:', uri, error);
+        });
       } else {
         // Fallback to opening in new tab for web environment
         window.open(uri, '_blank');

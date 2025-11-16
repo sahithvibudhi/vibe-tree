@@ -345,9 +345,14 @@ export function ClaudeTerminal({
     fitAddonRef.current = fitAddon;
     
     // Configure WebLinksAddon with custom handler for opening links
-    const webLinksAddon = new WebLinksAddon((_event, uri) => {
-      // Open in default browser using Electron's shell.openExternal
-      window.electronAPI.shell.openExternal(uri);
+    const webLinksAddon = new WebLinksAddon((event, uri) => {
+      // Prevent default browser behavior to avoid opening in in-app browser
+      event.preventDefault();
+
+      // Open in default system browser using Electron's shell.openExternal
+      window.electronAPI.shell.openExternal(uri).catch((error) => {
+        console.error('Failed to open external link:', uri, error);
+      });
     });
     term.loadAddon(webLinksAddon);
     
