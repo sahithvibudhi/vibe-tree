@@ -38,6 +38,17 @@ interface SchedulerState {
 }
 const schedulerStateCache = new Map<string, SchedulerState>();
 
+// Export the cache for external access
+export { schedulerStateCache };
+
+// Custom event for scheduler state changes
+export const SCHEDULER_STATE_CHANGED_EVENT = 'scheduler-state-changed';
+
+// Helper to broadcast scheduler state changes
+const broadcastSchedulerStateChange = () => {
+  window.dispatchEvent(new CustomEvent(SCHEDULER_STATE_CHANGED_EVENT));
+};
+
 export function ClaudeTerminal({
   worktreePath,
   theme = 'dark',
@@ -91,6 +102,8 @@ export function ClaudeTerminal({
     }
     // Trigger re-render
     setSchedulerUpdateTrigger(prev => prev + 1);
+    // Broadcast change for external listeners (e.g., WorktreePanel)
+    broadcastSchedulerStateChange();
   }, []);
 
   // Search functionality
@@ -641,6 +654,8 @@ export function ClaudeTerminal({
               clearTimeout(cachedScheduler.timeoutId);
             }
             schedulerStateCache.delete(exitedProcessId);
+            // Broadcast the change
+            broadcastSchedulerStateChange();
           }
         });
 
