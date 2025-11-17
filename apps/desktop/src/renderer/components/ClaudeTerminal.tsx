@@ -68,6 +68,8 @@ export function ClaudeTerminal({
   // Force re-render when scheduler state changes
   const [, setSchedulerUpdateTrigger] = useState(0);
   const commandInProgressRef = useRef(false);
+  // AbortController to cancel pending scheduler promises on unmount
+  const schedulerAbortControllerRef = useRef<AbortController>(new AbortController());
 
   // Helper functions to work with scheduler cache
   const getSchedulerState = useCallback(() => {
@@ -181,7 +183,13 @@ export function ClaudeTerminal({
       // For repeat mode, use chained setTimeout to ensure each command completes
       // before the next one starts. This prevents overlapping executions that
       // cause gibberish input, especially after machine sleep/wake.
-      const scheduleNext = async () => {
+      const scheduleNext = async (): Promise<void> => {
+        // Check if component unmounted (abort signal)
+        if (schedulerAbortControllerRef.current.signal.aborted) {
+          updateSchedulerState(null);
+          return;
+        }
+
         // Wait for the delay interval
         await new Promise<void>(resolve => {
           const timeoutId = setTimeout(resolve, config.delayMs);
@@ -192,6 +200,12 @@ export function ClaudeTerminal({
             timeoutId
           });
         });
+
+        // Check again after delay - component may have unmounted during wait
+        if (schedulerAbortControllerRef.current.signal.aborted) {
+          updateSchedulerState(null);
+          return;
+        }
 
         // Check if scheduler is still running before executing the command
         // This prevents race conditions where stopScheduler() is called during the delay
@@ -208,15 +222,17 @@ export function ClaudeTerminal({
         // Check if scheduler is still running after command execution
         const currentState = getSchedulerState();
         if (currentState?.isRunning) {
-          scheduleNext();
+          // Recursively schedule next execution
+          // This intentionally creates a promise chain that continues until stopped
+          return scheduleNext();
         } else {
           // For one-time mode or if stopped, clean up
           updateSchedulerState(null);
         }
       };
 
-      // Start the chain
-      scheduleNext();
+      // Start the chain and store the promise to allow proper cleanup
+      void scheduleNext();
     } else {
       // For one-time mode, use setTimeout
       const timeoutId = setTimeout(async () => {
@@ -239,8 +255,26 @@ export function ClaudeTerminal({
     await stopScheduler();
   }, [stopScheduler]);
 
-  // No cleanup needed on unmount - scheduler state already in cache
-  // The setTimeout will continue running and state persists in schedulerStateCache
+  // Reset AbortController on mount and setup window unload cleanup
+  // This ensures:
+  // 1. AbortController is fresh on each mount (fixes project switch persistence)
+  // 2. Cleanup only happens on window close/Playwright teardown
+  useEffect(() => {
+    // Reset AbortController on each mount to handle project switches
+    // Without this reset, the aborted state persists when remounting the same component
+    schedulerAbortControllerRef.current = new AbortController();
+
+    // Setup cleanup for window close/Playwright teardown
+    const handleUnload = () => {
+      schedulerAbortControllerRef.current.abort();
+    };
+
+    window.addEventListener('beforeunload', handleUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload);
+    };
+  }, []);
 
   // Load terminal settings and listen for changes
   useEffect(() => {
