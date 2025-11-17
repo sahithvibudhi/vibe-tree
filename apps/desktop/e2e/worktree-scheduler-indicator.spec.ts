@@ -224,7 +224,7 @@ test.describe('Worktree Scheduler Indicator Test', () => {
     await page.waitForTimeout(3000);
 
     // Create a second worktree
-    const addWorktreeButton = page.locator('button svg.lucide-plus').locator('..');
+    const addWorktreeButton = page.locator('[data-testid="add-worktree-button"]');
     await expect(addWorktreeButton).toBeVisible();
     await addWorktreeButton.click();
 

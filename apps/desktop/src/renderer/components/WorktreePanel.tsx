@@ -419,6 +419,7 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
               size="icon"
               variant="ghost"
               onClick={() => setShowNewBranchDialog(true)}
+              data-testid="add-worktree-button"
             >
               <Plus className="h-4 w-4" />
             </Button>
