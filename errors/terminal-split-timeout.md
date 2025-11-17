@@ -37,6 +37,7 @@ All tests in this file have been skipped to unblock CI:
 - Added `test.skip` to all 3 failing tests
 - Added TODO comments explaining the issue
 - Documented as part of systemic terminal test failures
+- **Fixed in commit bca35905** - Skipped all 3 terminal-split tests that hang in CI
 
 ## Related Issues
 - terminal-scheduler-overlap.spec.ts: All 3 tests skipped
