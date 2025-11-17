@@ -261,6 +261,32 @@ export function ClaudeTerminal({
   useEffect(() => {
     if (!terminalRef.current) return;
 
+    // Patch window.open to handle xterm-addon-web-links default behavior
+    // The default handler calls window.open() without URL, then sets location.href
+    // This causes issues in Electron because setWindowOpenHandler doesn't get the URL
+    const originalWindowOpen = window.open;
+    const patchedWindowOpen = function(this: Window, ...args: unknown[]): Window | null {
+      // If called without URL (xterm's pattern), return a fake window that captures href assignment
+      if (args.length === 0 || args[0] === '' || args[0] === 'about:blank' || args[0] === undefined) {
+        const fakeWindow = {
+          opener: null,
+          location: {
+            set href(url: string) {
+              // Open the URL in external browser
+              window.electronAPI.shell.openExternal(url).catch((error: Error) => {
+                console.error('Failed to open external link:', url, error);
+              });
+            },
+            get href() { return ''; }
+          }
+        };
+        return fakeWindow as unknown as Window;
+      }
+      // Otherwise, use original behavior
+      return originalWindowOpen.apply(this, args as Parameters<typeof originalWindowOpen>);
+    };
+    window.open = patchedWindowOpen.bind(window);
+
     // If we don't have settings yet, load defaults
     const settings = terminalSettings || {
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
@@ -345,9 +371,23 @@ export function ClaudeTerminal({
     fitAddonRef.current = fitAddon;
     
     // Configure WebLinksAddon with custom handler for opening links
-    const webLinksAddon = new WebLinksAddon((event, uri) => {
-      // Prevent default browser behavior to avoid opening in in-app browser
-      event.preventDefault();
+    // We must provide a custom handler because the default behavior calls window.open()
+    // without the URL, which causes Electron to open about:blank
+    const webLinksAddon = new WebLinksAddon((_event, uri) => {
+      // Validate that the URI is a valid URL with a recognized protocol
+      // This prevents trying to open terminal output that looks like URLs but aren't
+      const validProtocols = ['http:', 'https:', 'ftp:', 'ftps:', 'file:', 'mailto:', 'tel:'];
+      try {
+        const parsedUrl = new URL(uri);
+        if (!validProtocols.includes(parsedUrl.protocol)) {
+          console.warn('Ignoring link with unrecognized protocol:', uri);
+          return;
+        }
+      } catch (error) {
+        // URI is not a valid URL, ignore it
+        console.warn('Ignoring invalid URL:', uri);
+        return;
+      }
 
       // Open in default system browser using Electron's shell.openExternal
       window.electronAPI.shell.openExternal(uri).catch((error) => {
@@ -466,6 +506,8 @@ export function ClaudeTerminal({
       console.log(`[ClaudeTerminal] Cleanup for: ${worktreePath}`);
       window.removeEventListener('resize', handleResize);
       resizeObserver.disconnect();
+      // Restore original window.open
+      window.open = originalWindowOpen;
       // Clean up listeners
       removeListenersRef.current.forEach(remove => remove());
       removeListenersRef.current = [];
