@@ -44,9 +44,33 @@ export { schedulerStateCache };
 // Custom event for scheduler state changes
 export const SCHEDULER_STATE_CHANGED_EVENT = 'scheduler-state-changed';
 
-// Helper to broadcast scheduler state changes
-const broadcastSchedulerStateChange = () => {
-  window.dispatchEvent(new CustomEvent(SCHEDULER_STATE_CHANGED_EVENT));
+// Track active schedulers by worktree path
+const activeSchedulersByWorktree = new Map<string, Set<string>>();
+
+// Export for external access
+export { activeSchedulersByWorktree };
+
+// Helper to broadcast scheduler state changes with worktree path
+const broadcastSchedulerStateChange = (worktreePath: string, processId: string, isRunning: boolean) => {
+  // Update the worktree-based tracking
+  if (isRunning) {
+    if (!activeSchedulersByWorktree.has(worktreePath)) {
+      activeSchedulersByWorktree.set(worktreePath, new Set());
+    }
+    activeSchedulersByWorktree.get(worktreePath)!.add(processId);
+  } else {
+    const schedulers = activeSchedulersByWorktree.get(worktreePath);
+    if (schedulers) {
+      schedulers.delete(processId);
+      if (schedulers.size === 0) {
+        activeSchedulersByWorktree.delete(worktreePath);
+      }
+    }
+  }
+
+  window.dispatchEvent(new CustomEvent(SCHEDULER_STATE_CHANGED_EVENT, {
+    detail: { worktreePath, processId, isRunning }
+  }));
 };
 
 export function ClaudeTerminal({
@@ -91,6 +115,8 @@ export function ClaudeTerminal({
   const updateSchedulerState = useCallback((update: Partial<SchedulerState> | null) => {
     if (!processIdRef.current) return;
 
+    const isRunning = update?.isRunning ?? false;
+
     if (update === null) {
       schedulerStateCache.delete(processIdRef.current);
     } else {
@@ -103,8 +129,8 @@ export function ClaudeTerminal({
     // Trigger re-render
     setSchedulerUpdateTrigger(prev => prev + 1);
     // Broadcast change for external listeners (e.g., WorktreePanel)
-    broadcastSchedulerStateChange();
-  }, []);
+    broadcastSchedulerStateChange(worktreePath, processIdRef.current, isRunning);
+  }, [worktreePath]);
 
   // Search functionality
   const handleSearch = useCallback((query: string, direction: 'next' | 'previous' = 'next') => {
@@ -654,8 +680,8 @@ export function ClaudeTerminal({
               clearTimeout(cachedScheduler.timeoutId);
             }
             schedulerStateCache.delete(exitedProcessId);
-            // Broadcast the change
-            broadcastSchedulerStateChange();
+            // Broadcast the change (scheduler is no longer running)
+            broadcastSchedulerStateChange(worktreePath, exitedProcessId, false);
           }
         });
 

@@ -8,8 +8,7 @@ import { useToast } from './ui/use-toast';
 import { isProtectedBranch } from '../utils/worktree';
 import { DeletionReportingDialog } from './DeletionReportingDialog';
 import type { TerminalSettings } from '../types/terminal-settings';
-import { schedulerStateCache, SCHEDULER_STATE_CHANGED_EVENT } from './ClaudeTerminal';
-import { getProcessIdsForWorktree } from './TerminalManager';
+import { activeSchedulersByWorktree, SCHEDULER_STATE_CHANGED_EVENT } from './ClaudeTerminal';
 
 interface Worktree {
   path: string;
@@ -191,20 +190,8 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
   // Listen for scheduler state changes
   useEffect(() => {
     const updateSchedulerStatus = () => {
-      const worktreesWithActiveSchedulers = new Set<string>();
-
-      // Check each worktree for active schedulers
-      worktrees.forEach(worktree => {
-        const processIds = getProcessIdsForWorktree(worktree.path);
-        const hasActiveScheduler = processIds.some(processId => {
-          const schedulerState = schedulerStateCache.get(processId);
-          return schedulerState?.isRunning === true;
-        });
-        if (hasActiveScheduler) {
-          worktreesWithActiveSchedulers.add(worktree.path);
-        }
-      });
-
+      // Use the activeSchedulersByWorktree map directly
+      const worktreesWithActiveSchedulers = new Set<string>(activeSchedulersByWorktree.keys());
       setWorktreesWithSchedulers(worktreesWithActiveSchedulers);
     };
 
@@ -221,7 +208,7 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
     return () => {
       window.removeEventListener(SCHEDULER_STATE_CHANGED_EVENT, handleSchedulerChange);
     };
-  }, [worktrees]);
+  }, []);
 
   // Load panel width from localStorage on mount
   useEffect(() => {
