@@ -1,10 +1,10 @@
 import { ipcMain, BrowserWindow } from 'electron';
-import * as pty from 'node-pty';
 import { ShellSessionManager, getSystemDiagnostics, getExtendedDiagnostics, formatExtendedDiagnostics } from '@vibetree/core';
 import { terminalSettingsManager } from './terminal-settings';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import * as pty from 'node-pty';
 
 /**
  * Desktop shell manager - thin wrapper around shared ShellSessionManager
@@ -64,8 +64,8 @@ class DesktopShellManager {
     ipcMain.handle('shell:start', async (event, worktreePath: string, cols?: number, rows?: number, forceNew?: boolean, terminalId?: string) => {
       // Get current terminal settings
       const settings = terminalSettingsManager.getSettings();
-      
-      // Start session with node-pty spawn function and locale settings
+
+      // Start session using direct pty.spawn
       const result = await this.sessionManager.startSession(
         worktreePath,
         cols,

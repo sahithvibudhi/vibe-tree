@@ -1,4 +1,5 @@
 import * as crypto from 'crypto';
+import * as fs from 'fs';
 
 // Type definitions to avoid importing node-pty directly
 export interface IPty {
@@ -6,6 +7,7 @@ export interface IPty {
   write(data: string): void;
   resize(cols: number, rows: number): void;
   kill(signal?: string): void;
+  destroy?(): void; // Optional: destroys the socket and closes the PTY master FD
   onData(callback: (data: string) => void): { dispose: () => void };
   onExit(callback: (event: { exitCode: number }) => void): { dispose: () => void };
 }
@@ -149,22 +151,72 @@ export async function killPtyForce(ptyProcess: IPty): Promise<void> {
 
     // Send SIGKILL to force kill
     try {
+      // Debug: Write to file for diagnostics
+      const debugLog = (msg: string) => {
+        try {
+          fs.appendFileSync('/tmp/pty-kill-debug.log', `${new Date().toISOString()} ${msg}\n`);
+        } catch (e) { /* ignore */ }
+        console.log(msg);
+      };
+
       if (process.platform !== 'win32') {
-        // Send SIGKILL to process group to ensure all processes are killed
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ptyAny = ptyProcess as any;
+
+        // Debug: Log what properties exist on ptyProcess
+        debugLog(`PTY process ${pid} properties: ${Object.keys(ptyAny).join(', ')}`);
+        debugLog(`PTY process ${pid} has _socket: ${!!ptyAny._socket}`);
+        debugLog(`PTY process ${pid} has destroy: ${typeof ptyProcess.destroy}`);
+
+        // CRITICAL FIX: Remove ALL event listeners BEFORE destroying socket
+        // This prevents memory leaks and ensures the socket can be properly garbage collected
+        if (ptyAny._internalee && typeof ptyAny._internalee.removeAllListeners === 'function') {
+          debugLog(`Removing all internal event listeners for ${pid}`);
+          ptyAny._internalee.removeAllListeners();
+        }
+
+        // Remove listeners from the socket directly
+        if (ptyAny._socket && typeof ptyAny._socket.removeAllListeners === 'function') {
+          debugLog(`Removing all socket event listeners for ${pid}`);
+          ptyAny._socket.removeAllListeners();
+        }
+
+        // CRITICAL: Call destroy() FIRST to close the PTY socket/FD
+        // This must happen before we kill the process group
+        if (typeof ptyProcess.destroy === 'function') {
+          debugLog(`Calling ptyProcess.destroy() for ${pid} to close PTY master FD`);
+          ptyProcess.destroy();
+          debugLog(`Called ptyProcess.destroy() for ${pid}`);
+        } else if (ptyAny._socket && typeof ptyAny._socket.destroy === 'function') {
+          // Fallback to direct socket destruction
+          debugLog(`Destroying PTY socket directly for ${pid}`);
+          ptyAny._socket.destroy();
+          debugLog(`Destroyed PTY socket for ${pid}`);
+        }
+
+        // Clear internal references to help garbage collection
+        if (ptyAny._socket) {
+          debugLog(`Clearing socket reference for ${pid}`);
+          ptyAny._socket = null;
+        }
+        if (ptyAny._internalee) {
+          debugLog(`Clearing internal event emitter reference for ${pid}`);
+          ptyAny._internalee = null;
+        }
+
+        // After closing the FD, also send SIGKILL to process group to ensure all child processes are terminated
         try {
           process.kill(-pid, 'SIGKILL');
-          console.log(`Sent SIGKILL to process group -${pid}`);
+          debugLog(`Sent SIGKILL to process group -${pid}`);
         } catch (pgError) {
-          console.warn(`Could not kill process group -${pid}, falling back to PTY process:`, pgError);
-          ptyProcess.kill('SIGKILL');
-          console.log(`Sent SIGKILL to PTY process ${pid}`);
+          debugLog(`Could not kill process group -${pid}: ${pgError}`);
         }
       } else {
         ptyProcess.kill('SIGKILL');
         console.log(`Sent SIGKILL to PTY process ${pid}`);
       }
     } catch (error) {
-      console.error(`Error sending SIGKILL to PTY process ${pid}:`, error);
+      console.error(`Error in killPtyForce for PTY process ${pid}:`, error);
       cleanup('timeout');
       return;
     }

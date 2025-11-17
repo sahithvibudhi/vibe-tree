@@ -26,6 +26,7 @@ interface ShellSession {
   listeners: Map<string, (data: string) => void>;
   exitListeners: Map<string, (code: number) => void>;
   dataDisposable?: { dispose: () => void }; // Store the PTY data listener disposable
+  exitDisposable?: { dispose: () => void }; // Store the PTY exit listener disposable
   outputBuffer: string[]; // Buffer to store terminal output for replay
   maxBufferSize: number; // Maximum buffer size in characters
 }
@@ -177,8 +178,8 @@ export class ShellSessionManager {
         maxBufferSize: 100000 // Approximately 100KB of text
       };
 
-      // Handle PTY exit
-      onPtyExit(ptyProcess, (exitCode) => {
+      // Handle PTY exit - store the disposable to prevent FD leaks
+      session.exitDisposable = onPtyExit(ptyProcess, (exitCode) => {
         // Notify all exit listeners
         session.exitListeners.forEach(listener => listener(exitCode));
         // Remove session
@@ -391,6 +392,13 @@ export class ShellSessionManager {
       // Dispose of data listener if it exists
       if (session.dataDisposable) {
         session.dataDisposable.dispose();
+        session.dataDisposable = undefined;
+      }
+
+      // Dispose of exit listener if it exists - CRITICAL for preventing FD leaks
+      if (session.exitDisposable) {
+        session.exitDisposable.dispose();
+        session.exitDisposable = undefined;
       }
 
       // Clear listeners
