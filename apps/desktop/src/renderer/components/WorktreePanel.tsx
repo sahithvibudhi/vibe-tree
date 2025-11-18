@@ -52,6 +52,11 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
       const trees = await window.electronAPI.git.listWorktrees(projectPath);
       setWorktrees(trees);
       onWorktreesChange?.(trees);
+
+      // Auto-select the first worktree (main worktree) if none is currently selected
+      if (!selectedWorktree && trees.length > 0) {
+        onSelectWorktree(trees[0].path);
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -60,7 +65,7 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
       });
     }
     setRefreshing(false);
-  }, [projectPath, toast, onWorktreesChange]);
+  }, [projectPath, toast, onWorktreesChange, selectedWorktree, onSelectWorktree]);
 
 
   const handleCreateStressTest = async () => {
