@@ -544,9 +544,15 @@ export function ClaudeTerminal({
         const rows = terminal.rows;
         
         const result = await window.electronAPI.shell.start(worktreePath, cols, rows, false, terminalId);
-        
+
         if (!result.success) {
-          terminal.writeln(`\r\nError: ${result.error || 'Failed to start shell'}\r\n`);
+          const errorMsg = result.error || 'Failed to start shell';
+          terminal.writeln(`\r\n\x1b[31mError starting shell:\x1b[0m\r\n`);
+          // Split multi-line error messages and display them properly
+          errorMsg.split('\n').forEach(line => {
+            terminal.writeln(`\x1b[31m${line}\x1b[0m\r`);
+          });
+          terminal.writeln('');
           return;
         }
 

@@ -33,14 +33,17 @@ type WorkerEvent =
 class WorktreeFork {
   private worker: ChildProcess;
   private worktreePath: string;
+  private workerScriptPath: string;
   private pendingRequests = new Map<string, { resolve: (value: any) => void; reject: (error: any) => void }>();
   private outputListeners = new Map<string, Set<(data: string) => void>>();
   private exitListeners = new Map<string, Set<(code: number) => void>>();
   private sessionsChangedListeners = new Set<() => void>();
   private isTerminating = false;
+  private workerStderr: string[] = [];
 
   constructor(worktreePath: string, workerScriptPath: string) {
     this.worktreePath = worktreePath;
+    this.workerScriptPath = workerScriptPath;
 
     // Fork the worker process
     this.worker = fork(workerScriptPath, [], {
@@ -72,16 +75,39 @@ class WorktreeFork {
         console.error(`[WorktreeFork] Worker process exited unexpectedly for ${worktreePath} with code ${code}`);
       }
 
-      // Reject all pending requests
+      // Build detailed error message
+      let errorMsg = `Worker process exited with code ${code}`;
+      if (this.workerStderr.length > 0) {
+        const stderrSummary = this.workerStderr.join('\n').slice(0, 500); // First 500 chars
+        errorMsg += `\n\nWorker stderr:\n${stderrSummary}`;
+      }
+      if (code === 1 && this.workerStderr.some(line => line.includes('MODULE_NOT_FOUND'))) {
+        errorMsg += `\n\nWorker script path: ${this.workerScriptPath}`;
+        errorMsg += `\nThis usually means the worker script was not built. Run: pnpm build`;
+      }
+
+      // Reject all pending requests with detailed error
+      const error = new Error(errorMsg);
       for (const [id, { reject }] of this.pendingRequests) {
-        reject(new Error(`Worker process exited with code ${code}`));
+        reject(error);
       }
       this.pendingRequests.clear();
     });
 
-    // Log worker stderr for debugging
+    // Capture worker stderr for debugging
     this.worker.stderr?.on('data', (data) => {
-      console.error(`[WorktreeFork stderr] ${worktreePath}:`, data.toString());
+      const stderr = data.toString();
+      this.workerStderr.push(stderr);
+      // Keep only last 10 lines
+      if (this.workerStderr.length > 10) {
+        this.workerStderr.shift();
+      }
+      console.error(`[WorktreeFork stderr] ${worktreePath}:`, stderr);
+    });
+
+    // Also capture stdout for debugging
+    this.worker.stdout?.on('data', (data) => {
+      console.log(`[WorktreeFork stdout] ${worktreePath}:`, data.toString());
     });
   }
 
