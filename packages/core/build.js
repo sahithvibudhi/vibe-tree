@@ -43,4 +43,17 @@ await build({
   sourcemap: true,
 });
 
+// Build PTY Worker (standalone CJS for forking)
+console.log('Building PTY Worker...');
+await build({
+  entryPoints: ['src/workers/pty-worker.ts'],
+  bundle: true,
+  outfile: 'dist/workers/pty-worker.cjs',
+  format: 'cjs',
+  platform: 'node',
+  target: 'node18',
+  external: ['node-pty'],
+  sourcemap: true,
+});
+
 console.log('Build complete!');

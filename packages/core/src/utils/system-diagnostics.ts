@@ -1081,22 +1081,26 @@ export function formatExtendedDiagnostics(diagnostics: ExtendedDiagnostics): str
   lines.push(`  PTY Child Processes: ${diagnostics.appPtyInfo.ptyChildProcesses}`);
 
   // App PTY File Descriptors
-  if (diagnostics.appPtyInfo.ptyMasterFds !== null) {
-    lines.push(`  PTY Master FDs (/dev/ptmx): ${diagnostics.appPtyInfo.ptyMasterFds}`);
-  }
-  if (diagnostics.appPtyInfo.ptySlaveFds !== null) {
-    lines.push(`  PTY Slave FDs (ttys/ttyp): ${diagnostics.appPtyInfo.ptySlaveFds}`);
-  }
-  if (diagnostics.appPtyInfo.totalPtyFds !== null) {
-    lines.push(`  Total PTY FDs: ${diagnostics.appPtyInfo.totalPtyFds}`);
+  const ptyMasterFds = diagnostics.appPtyInfo.ptyMasterFds !== null ? diagnostics.appPtyInfo.ptyMasterFds : 0;
+  const ptySlaveFds = diagnostics.appPtyInfo.ptySlaveFds !== null ? diagnostics.appPtyInfo.ptySlaveFds : 0;
+  const totalPtyFds = diagnostics.appPtyInfo.totalPtyFds !== null ? diagnostics.appPtyInfo.totalPtyFds : 0;
+
+  lines.push(`  PTY Master FDs (/dev/ptmx): ${ptyMasterFds}`);
+  lines.push(`  PTY Slave FDs (ttys/ttyp): ${ptySlaveFds}`);
+  lines.push(`  Total PTY FDs: ${totalPtyFds}`);
+
+  // Note about expected FD ratios in fork architecture
+  const activeSessions = diagnostics.appPtyInfo.currentActiveSessions;
+  if (ptyMasterFds > 0 && activeSessions > 0) {
+    const ratio = (ptyMasterFds / activeSessions).toFixed(1);
+    lines.push(`  Note: ${ratio}x master FDs per session (2x is normal in fork architecture)`);
   }
 
-  // Calculate potential leak indicator
-  const leaked = diagnostics.appPtyInfo.totalPtyInstancesCreated -
-                 diagnostics.appPtyInfo.currentActiveSessions -
-                 diagnostics.appPtyInfo.ptyChildProcesses;
-  if (leaked > 0) {
-    lines.push(`  ⚠️  Potential Leaked PTYs: ${leaked} (created - active - children)`);
+  // Calculate potential leak indicator - only warn if significantly high
+  const expectedMaxFds = activeSessions * 3;
+  if (ptyMasterFds > expectedMaxFds) {
+    const leaked = ptyMasterFds - activeSessions;
+    lines.push(`  ⚠️  Potential PTY Leak: ${leaked} excess master FDs (${ptyMasterFds} FDs - ${activeSessions} sessions)`);
   }
   lines.push('');
 

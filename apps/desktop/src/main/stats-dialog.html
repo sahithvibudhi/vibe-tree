@@ -1014,11 +1014,14 @@
             { appWarning: leaked > 0 }
           );
 
-          // Show potential leak warning if master FDs > active sessions
-          const potentialLeaks = ptyMasterFds - activeSessions;
+          // Note: PTY Master FDs can be ~2x active sessions due to fork architecture
+          // Each session has a PTY in the fork process, which results in multiple FDs
+          // Only show leak warning if ratio is significantly high (>3x)
+          const expectedMaxFds = activeSessions * 3;
+          const potentialLeaks = ptyMasterFds > expectedMaxFds ? ptyMasterFds - activeSessions : 0;
           if (potentialLeaks > 0) {
             addMetric(
-              'Leaked PTY Masters',
+              'Potential PTY Leak',
               `${potentialLeaks} (${ptyMasterFds} FDs - ${activeSessions} sessions)`,
               '--',
               { appWarning: true }
