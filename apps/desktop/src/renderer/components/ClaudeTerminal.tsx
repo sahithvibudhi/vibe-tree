@@ -533,7 +533,7 @@ export function ClaudeTerminal({
   useEffect(() => {
     if (!terminal || !worktreePath) return;
 
-    // Clean up old listeners first
+    // Clean up old listeners FIRST (synchronously) to prevent duplicates
     removeListenersRef.current.forEach(remove => remove());
     removeListenersRef.current = [];
 

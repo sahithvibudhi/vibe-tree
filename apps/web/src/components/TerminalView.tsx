@@ -436,14 +436,7 @@ export function TerminalView({ worktreePath }: TerminalViewProps) {
 
   const closeSplitTerminal = async () => {
     if (splitSessionId) {
-      // Terminate the shell session first
-      try {
-        await window.shellManager.terminate(splitSessionId);
-      } catch (error) {
-        console.error('Failed to terminate split session:', error);
-      }
-
-      // Clean up event listeners
+      // Clean up event listeners (this will also terminate the session via cleanup)
       splitCleanupRef.current.forEach(cleanup => cleanup());
       splitCleanupRef.current = [];
 
