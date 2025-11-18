@@ -3,11 +3,12 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
-import { GitBranch, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { GitBranch, Plus, RefreshCw, Trash2, Clock } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 import { isProtectedBranch } from '../utils/worktree';
 import { DeletionReportingDialog } from './DeletionReportingDialog';
 import type { TerminalSettings } from '../types/terminal-settings';
+import { activeSchedulersByWorktree, SCHEDULER_STATE_CHANGED_EVENT } from './ClaudeTerminal';
 
 interface Worktree {
   path: string;
@@ -44,6 +45,7 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
   const [panelWidth, setPanelWidth] = useState<number>(320); // Default 320px (w-80)
   const [isResizing, setIsResizing] = useState(false);
   const [worktreeSessionCounts, setWorktreeSessionCounts] = useState<Record<string, number>>({});
+  const [worktreesWithSchedulers, setWorktreesWithSchedulers] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   const loadWorktrees = useCallback(async () => {
@@ -187,6 +189,29 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
 
     return () => {
       unsubscribe();
+    };
+  }, []);
+
+  // Listen for scheduler state changes
+  useEffect(() => {
+    const updateSchedulerStatus = () => {
+      // Use the activeSchedulersByWorktree map directly
+      const worktreesWithActiveSchedulers = new Set<string>(activeSchedulersByWorktree.keys());
+      setWorktreesWithSchedulers(worktreesWithActiveSchedulers);
+    };
+
+    // Initial check
+    updateSchedulerStatus();
+
+    // Listen for scheduler state changes
+    const handleSchedulerChange = () => {
+      updateSchedulerStatus();
+    };
+
+    window.addEventListener(SCHEDULER_STATE_CHANGED_EVENT, handleSchedulerChange);
+
+    return () => {
+      window.removeEventListener(SCHEDULER_STATE_CHANGED_EVENT, handleSchedulerChange);
     };
   }, []);
 
@@ -399,6 +424,7 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
               size="icon"
               variant="ghost"
               onClick={() => setShowNewBranchDialog(true)}
+              data-testid="add-worktree-button"
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -449,6 +475,9 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
                 className="w-full text-left p-3 flex items-center gap-1.5 pl-10"
                 data-worktree-branch={worktree.branch ? worktree.branch.replace('refs/heads/', '') : worktree.head.substring(0, 8)}
               >
+                {worktreesWithSchedulers.has(worktree.path) && (
+                  <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                )}
                 <GitBranch className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div

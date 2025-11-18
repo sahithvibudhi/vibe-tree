@@ -1,40 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { ElectronApplication, Page, _electron as electron } from 'playwright';
+import { createTestGitRepo, cleanupTestGitRepo } from './helpers/test-git-repo';
 import path from 'path';
-import fs from 'fs';
 import { execSync } from 'child_process';
-import os from 'os';
-
-/**
- * Helper function to create a dummy git repository for testing
- */
-function createDummyRepo(): string {
-  const timestamp = Date.now();
-  const dummyRepoPath = path.join(os.tmpdir(), `dummy-repo-split-close-${timestamp}`);
-
-  // Create the directory and initialize git repo
-  fs.mkdirSync(dummyRepoPath, { recursive: true });
-  execSync('git init -q', { cwd: dummyRepoPath });
-  execSync('git config user.email "test@example.com"', { cwd: dummyRepoPath });
-  execSync('git config user.name "Test User"', { cwd: dummyRepoPath });
-  // Disable all hooks for this test repo
-  execSync('git config core.hooksPath /dev/null', { cwd: dummyRepoPath });
-
-  // Create a dummy file and make initial commit (required for branches/worktrees)
-  fs.writeFileSync(path.join(dummyRepoPath, 'README.md'), '# Test Repository\n');
-  execSync('git add .', { cwd: dummyRepoPath });
-  execSync('git commit -q -m "Initial commit" --no-verify', { cwd: dummyRepoPath });
-
-  // Create main branch (some git versions don't create it by default)
-  try {
-    execSync('git branch -M main', { cwd: dummyRepoPath });
-  } catch (e) {
-    // Ignore if branch already exists
-  }
-
-  console.log('Created dummy repo at:', dummyRepoPath);
-  return dummyRepoPath;
-}
 
 /**
  * Helper function to navigate to terminal view for a worktree
@@ -79,7 +47,11 @@ test.describe('Terminal Split Close Retry', () => {
 
   test.beforeEach(async () => {
     // Create a dummy git repository for testing
-    dummyRepoPath = createDummyRepo();
+    const { repoPath } = createTestGitRepo({ nameSuffix: 'repo-split-close' });
+    dummyRepoPath = repoPath;
+
+    // Disable all hooks for this test repo
+    execSync('git config core.hooksPath /dev/null', { cwd: dummyRepoPath });
 
     const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
     console.log('Using test main file:', testMainPath);
@@ -108,14 +80,7 @@ test.describe('Terminal Split Close Retry', () => {
     }
 
     // Clean up the dummy repository
-    if (dummyRepoPath && fs.existsSync(dummyRepoPath)) {
-      try {
-        fs.rmSync(dummyRepoPath, { recursive: true, force: true });
-        console.log('Cleaned up dummy repo');
-      } catch (e) {
-        console.error('Failed to clean up dummy repo:', e);
-      }
-    }
+    cleanupTestGitRepo(dummyRepoPath);
   });
 
   test('should allow closing terminal split', async () => {

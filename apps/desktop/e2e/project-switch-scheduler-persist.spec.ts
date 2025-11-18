@@ -2,9 +2,7 @@ import { test, expect } from '@playwright/test';
 import { ElectronApplication, Page, _electron as electron } from 'playwright';
 import { closeElectronApp } from './helpers/test-launcher';
 import path from 'path';
-import fs from 'fs';
-import { execSync } from 'child_process';
-import os from 'os';
+import { createTestGitRepo, cleanupTestGitRepo } from './helpers/test-git-repo';
 
 test.describe('Project Switch Scheduler Persistence Test', () => {
   let electronApp: ElectronApplication;
@@ -13,31 +11,10 @@ test.describe('Project Switch Scheduler Persistence Test', () => {
   let dummyRepoPath2: string;
 
   test.beforeEach(async () => {
-    // Create two dummy git repositories for testing
-    const timestamp = Date.now();
-    dummyRepoPath1 = path.join(os.tmpdir(), `dummy-repo-1-${timestamp}`);
-    dummyRepoPath2 = path.join(os.tmpdir(), `dummy-repo-2-${timestamp}`);
-
-    // Helper function to create a git repo
-    const createRepo = (repoPath: string) => {
-      fs.mkdirSync(repoPath, { recursive: true });
-      execSync('git init -q', { cwd: repoPath });
-      execSync('git config user.email "test@example.com"', { cwd: repoPath });
-      execSync('git config user.name "Test User"', { cwd: repoPath });
-      fs.writeFileSync(path.join(repoPath, 'README.md'), `# Test Repository ${repoPath}\n`);
-      execSync('git add .', { cwd: repoPath });
-      execSync('git commit -q -m "Initial commit"', { cwd: repoPath });
-      try {
-        execSync('git branch -M main', { cwd: repoPath });
-      } catch (e) {
-        // Ignore if branch already exists
-      }
-    };
-
-    createRepo(dummyRepoPath1);
-    createRepo(dummyRepoPath2);
-
-    console.log('Created dummy repos at:', dummyRepoPath1, dummyRepoPath2);
+    const { repoPath: repo1 } = createTestGitRepo({ nameSuffix: 'repo-persist-1' });
+    const { repoPath: repo2 } = createTestGitRepo({ nameSuffix: 'repo-persist-2' });
+    dummyRepoPath1 = repo1;
+    dummyRepoPath2 = repo2;
 
     const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
     const appDir = path.join(__dirname, '..');
@@ -62,17 +39,8 @@ test.describe('Project Switch Scheduler Persistence Test', () => {
       await closeElectronApp(electronApp);
     }
 
-    // Clean up the dummy repositories
-    for (const repoPath of [dummyRepoPath1, dummyRepoPath2]) {
-      if (repoPath && fs.existsSync(repoPath)) {
-        try {
-          fs.rmSync(repoPath, { recursive: true, force: true });
-          console.log('Cleaned up dummy repo:', repoPath);
-        } catch (e) {
-          console.error('Failed to clean up dummy repo:', e);
-        }
-      }
-    }
+    cleanupTestGitRepo(dummyRepoPath1);
+    cleanupTestGitRepo(dummyRepoPath2);
   });
 
   test('should persist scheduler when switching between projects', async () => {

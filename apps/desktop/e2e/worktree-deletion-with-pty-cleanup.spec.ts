@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { ElectronApplication, Page, _electron as electron } from 'playwright';
 import { closeElectronApp } from './helpers/test-launcher';
+import { createTestGitRepo, cleanupTestGitRepo } from './helpers/test-git-repo';
 import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
-import os from 'os';
 
 test.describe('Worktree Deletion with PTY Cleanup', () => {
   let electronApp: ElectronApplication;
@@ -13,34 +13,14 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
   let testWorktreePath: string;
 
   test.beforeEach(async () => {
-    // Create a dummy git repository with multiple worktrees
-    const timestamp = Date.now();
-    dummyRepoPath = path.join(os.tmpdir(), `dummy-repo-deletion-${timestamp}`);
-
-    // Create the directory and initialize git repo
-    fs.mkdirSync(dummyRepoPath, { recursive: true });
-    execSync('git init -q', { cwd: dummyRepoPath });
-    execSync('git config user.email "test@example.com"', { cwd: dummyRepoPath });
-    execSync('git config user.name "Test User"', { cwd: dummyRepoPath });
-
-    // Create a dummy file and make initial commit (required for worktrees)
-    fs.writeFileSync(path.join(dummyRepoPath, 'README.md'), '# Test Repository\n');
-    execSync('git add .', { cwd: dummyRepoPath });
-    execSync('git commit -q -m "Initial commit"', { cwd: dummyRepoPath });
-
-    // Create main branch (some git versions don't create it by default)
-    try {
-      execSync('git branch -M main', { cwd: dummyRepoPath });
-    } catch (e) {
-      // Ignore if branch already exists
-    }
-
-    // Create a test worktree
-    testWorktreePath = path.join(os.tmpdir(), `dummy-repo-test-branch-${timestamp}`);
-    execSync(`git worktree add -b test-branch "${testWorktreePath}"`, { cwd: dummyRepoPath });
-
-    console.log('Created dummy repo with test-branch at:', dummyRepoPath);
-    console.log('Test worktree path:', testWorktreePath);
+    // Create a dummy git repository with a worktree
+    const { repoPath, worktreePath } = createTestGitRepo({
+      nameSuffix: 'repo-deletion',
+      createWorktree: true,
+      worktreeBranch: 'test-branch'
+    });
+    dummyRepoPath = repoPath;
+    testWorktreePath = worktreePath!;
 
     const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
     console.log('Using test main file:', testMainPath);
@@ -67,25 +47,8 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
       await closeElectronApp(electronApp);
     }
 
-    // Clean up the test worktree directory if it still exists
-    if (testWorktreePath && fs.existsSync(testWorktreePath)) {
-      try {
-        fs.rmSync(testWorktreePath, { recursive: true, force: true });
-        console.log('Cleaned up test worktree');
-      } catch (e) {
-        console.error('Failed to clean up test worktree:', e);
-      }
-    }
-
-    // Clean up the dummy repository
-    if (dummyRepoPath && fs.existsSync(dummyRepoPath)) {
-      try {
-        fs.rmSync(dummyRepoPath, { recursive: true, force: true });
-        console.log('Cleaned up dummy repo');
-      } catch (e) {
-        console.error('Failed to clean up dummy repo:', e);
-      }
-    }
+    // Clean up the test repository and worktree
+    cleanupTestGitRepo(dummyRepoPath, testWorktreePath);
   });
 
   test('should show deletion reporting dialog and kill PTY processes when deleting worktree', async () => {

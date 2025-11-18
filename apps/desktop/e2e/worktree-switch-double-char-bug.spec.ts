@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { ElectronApplication, Page, _electron as electron } from 'playwright';
 import { closeElectronApp } from './helpers/test-launcher';
+import { createTestGitRepo, cleanupTestGitRepo } from './helpers/test-git-repo';
 import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
@@ -16,30 +17,17 @@ test.describe('Worktree Switch Double Character Bug', () => {
   test.beforeEach(async () => {
     // Create a dummy git repository with two worktrees
     const timestamp = Date.now();
-    dummyRepoPath = path.join(os.tmpdir(), `dummy-repo-${timestamp}`);
-    
-    // Create the directory and initialize git repo
-    fs.mkdirSync(dummyRepoPath, { recursive: true });
-    execSync('git init -q', { cwd: dummyRepoPath });
-    execSync('git config user.email "test@example.com"', { cwd: dummyRepoPath });
-    execSync('git config user.name "Test User"', { cwd: dummyRepoPath });
-    
-    // Create a dummy file and make initial commit (required for worktrees)
-    fs.writeFileSync(path.join(dummyRepoPath, 'README.md'), '# Test Repository\n');
-    execSync('git add .', { cwd: dummyRepoPath });
-    execSync('git commit -q -m "Initial commit"', { cwd: dummyRepoPath });
-    
-    // Create worktree directories
-    wt1Path = path.join(os.tmpdir(), `dummy-repo-wt1-${timestamp}`);
-    wt2Path = path.join(os.tmpdir(), `dummy-repo-wt2-${timestamp}`);
-    
-    // Create wt1 worktree with a new branch
-    execSync(`git worktree add -b wt1 "${wt1Path}"`, { cwd: dummyRepoPath });
-    
+    const { repoPath, worktreePath } = createTestGitRepo({
+      nameSuffix: 'repo',
+      createWorktree: true,
+      worktreeBranch: 'wt1'
+    });
+    dummyRepoPath = repoPath;
+    wt1Path = worktreePath!;
+
     // Create wt2 worktree with a new branch
+    wt2Path = path.join(os.tmpdir(), `dummy-repo-wt2-${timestamp}`);
     execSync(`git worktree add -b wt2 "${wt2Path}"`, { cwd: dummyRepoPath });
-    
-    console.log('Created dummy repo with wt1 and wt2 branches at:', dummyRepoPath);
 
     const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
     console.log('Using test main file:', testMainPath);
@@ -66,33 +54,17 @@ test.describe('Worktree Switch Double Character Bug', () => {
     if (electronApp) {
       await closeElectronApp(electronApp);
     }
-    
-    // Clean up the worktree directories first
-    if (wt1Path && fs.existsSync(wt1Path)) {
-      try {
-        fs.rmSync(wt1Path, { recursive: true, force: true });
-        console.log('Cleaned up wt1 worktree');
-      } catch (e) {
-        console.error('Failed to clean up wt1 worktree:', e);
-      }
-    }
-    
+
+    // Clean up the test repository and both worktrees
+    cleanupTestGitRepo(dummyRepoPath, wt1Path);
+
+    // Clean up wt2 worktree separately
     if (wt2Path && fs.existsSync(wt2Path)) {
       try {
         fs.rmSync(wt2Path, { recursive: true, force: true });
         console.log('Cleaned up wt2 worktree');
       } catch (e) {
         console.error('Failed to clean up wt2 worktree:', e);
-      }
-    }
-    
-    // Clean up the dummy repository
-    if (dummyRepoPath && fs.existsSync(dummyRepoPath)) {
-      try {
-        fs.rmSync(dummyRepoPath, { recursive: true, force: true });
-        console.log('Cleaned up dummy repo');
-      } catch (e) {
-        console.error('Failed to clean up dummy repo:', e);
       }
     }
   });

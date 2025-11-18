@@ -26,6 +26,19 @@ interface WorktreeTerminals {
 // Global cache for terminal portals - persists across component re-renders
 const worktreeTerminalsCache = new Map<string, WorktreeTerminals>();
 
+// Export the cache for external access (e.g., WorktreePanel)
+export { worktreeTerminalsCache };
+
+// Helper to get all process IDs for a given worktree path
+export function getProcessIdsForWorktree(worktreePath: string): string[] {
+  const worktreeData = worktreeTerminalsCache.get(worktreePath);
+  if (!worktreeData) return [];
+
+  return worktreeData.terminals
+    .map(t => t.processId)
+    .filter((id): id is string => !!id);
+}
+
 export function TerminalManager({ worktreePath, projectId, theme }: TerminalManagerProps) {
   const [worktreeTerminals, setWorktreeTerminals] = useState<Map<string, WorktreeTerminals>>(worktreeTerminalsCache);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -126,6 +139,14 @@ export function TerminalManager({ worktreePath, projectId, theme }: TerminalMana
   const handleTerminalProcessId = useCallback((terminalId: string, processId: string) => {
     if (processId) {
       terminalProcessIds.current.set(terminalId, processId);
+
+      // Also update the TerminalInstance in the cache so processId is accessible externally
+      worktreeTerminalsCache.forEach(worktreeData => {
+        const terminal = worktreeData.terminals.find(t => t.id === terminalId);
+        if (terminal) {
+          terminal.processId = processId;
+        }
+      });
     }
   }, []);
 
