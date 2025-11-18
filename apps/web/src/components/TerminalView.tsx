@@ -49,6 +49,10 @@ export function TerminalView({ worktreePath }: TerminalViewProps) {
     // Check if we already have a session for this worktree
     const existingSessionId = terminalSessions.get(selectedWorktree);
     if (existingSessionId) {
+      // Clean up any previous listeners first to prevent duplicates
+      cleanupRef.current.forEach(cleanup => cleanup());
+      cleanupRef.current = [];
+
       // Set up event listeners for existing session
       const unsubscribeOutput = adapter.onShellOutput(existingSessionId, (data) => {
         if (terminalRef.current) {
@@ -68,7 +72,7 @@ export function TerminalView({ worktreePath }: TerminalViewProps) {
 
       cleanupRef.current = [unsubscribeOutput, unsubscribeExit];
       setSessionId(existingSessionId);
-      
+
       // Restore terminal state for existing session (like desktop app)
       console.log('🔄 Reconnecting to existing session - restoring state');
       console.log('📊 Session cache status:', {
@@ -77,7 +81,7 @@ export function TerminalView({ worktreePath }: TerminalViewProps) {
         cacheSize: terminalStateCache.size,
         allCachedSessions: Array.from(terminalStateCache.keys())
       });
-      
+
       const cachedState = terminalStateCache.get(existingSessionId);
       if (cachedState && terminalRef.current) {
         setTimeout(() => {
@@ -90,92 +94,96 @@ export function TerminalView({ worktreePath }: TerminalViewProps) {
       } else {
         console.log('⚠️ No cached state for existing session:', existingSessionId);
       }
-      
-      return;
-    }
 
-    // Start new shell session - follow desktop app pattern
-    const startSession = async () => {
-      try {
-        // Call server directly and wait for actual session ID (like desktop app)
-        const result = await adapter.startShell(selectedWorktree);
-        
-        if (result.success && result.processId) {
-          // Use the actual session ID returned by server
-          const actualSessionId = result.processId;
-          
-          // Set up event listeners using the server-provided session ID
-          const unsubscribeOutput = adapter.onShellOutput(actualSessionId, (data) => {
-            if (terminalRef.current) {
-              terminalRef.current.write(data);
-            }
-          });
+      // IMPORTANT: Don't early return - we need the cleanup function below to be registered
+    } else {
+      // Start new shell session - follow desktop app pattern
+      const startSession = async () => {
+        try {
+          // Call server directly and wait for actual session ID (like desktop app)
+          const result = await adapter.startShell(selectedWorktree);
 
-          const unsubscribeExit = adapter.onShellExit(actualSessionId, (code) => {
-            if (terminalRef.current) {
-              terminalRef.current.write(`\r\n[Process exited with code ${code}]\r\n`);
-            }
-            // Clear cached state when session exits
-            terminalStateCache.delete(actualSessionId);
-            removeTerminalSession(selectedWorktree);
-            setSessionId(null);
-          });
+          if (result.success && result.processId) {
+            // Use the actual session ID returned by server
+            const actualSessionId = result.processId;
 
-          cleanupRef.current = [unsubscribeOutput, unsubscribeExit];
-          // Check if this is a different session ID than what we had cached
-          const cachedSessionId = terminalSessions.get(selectedWorktree);
-          if (cachedSessionId && cachedSessionId !== actualSessionId) {
-            console.warn(`🔄 Session ID changed for ${selectedWorktree}:`, {
-              oldSessionId: cachedSessionId,
-              newSessionId: actualSessionId,
-              reason: 'Likely session timeout and cleanup'
+            // Clean up any previous listeners first to prevent duplicates
+            cleanupRef.current.forEach(cleanup => cleanup());
+            cleanupRef.current = [];
+
+            // Set up event listeners using the server-provided session ID
+            const unsubscribeOutput = adapter.onShellOutput(actualSessionId, (data) => {
+              if (terminalRef.current) {
+                terminalRef.current.write(data);
+              }
             });
-            // Clear old cached state since session changed
-            terminalStateCache.delete(cachedSessionId);
-          }
-          
-          setSessionId(actualSessionId);
-          addTerminalSession(selectedWorktree, actualSessionId);
-          
-          console.log(`Shell started: ${actualSessionId}, isNew: ${result.isNew}, worktree: ${selectedWorktree}`);
-          console.log('📊 Terminal cache status:', {
-            sessionId: actualSessionId,
-            hasCachedState: terminalStateCache.has(actualSessionId),
-            cacheSize: terminalStateCache.size,
-            allCachedSessions: Array.from(terminalStateCache.keys())
-          });
-          
-          // Handle terminal state restoration like desktop app
-          if (!result.isNew) {
-            // Existing shell - restore cached state to fresh terminal
-            console.log('🔄 Existing shell session - restoring state');
-            const cachedState = terminalStateCache.get(actualSessionId);
-            if (cachedState && terminalRef.current) {
-              // Clear the fresh terminal first
-              terminalRef.current.clear();
-              // Restore the cached content after a delay to ensure terminal is ready
-              setTimeout(() => {
-                if (terminalRef.current && cachedState) {
-                  terminalRef.current.write(cachedState);
-                  console.log('✅ State restored for session:', actualSessionId);
-                }
-              }, 100);
+
+            const unsubscribeExit = adapter.onShellExit(actualSessionId, (code) => {
+              if (terminalRef.current) {
+                terminalRef.current.write(`\r\n[Process exited with code ${code}]\r\n`);
+              }
+              // Clear cached state when session exits
+              terminalStateCache.delete(actualSessionId);
+              removeTerminalSession(selectedWorktree);
+              setSessionId(null);
+            });
+
+            cleanupRef.current = [unsubscribeOutput, unsubscribeExit];
+            // Check if this is a different session ID than what we had cached
+            const cachedSessionId = terminalSessions.get(selectedWorktree);
+            if (cachedSessionId && cachedSessionId !== actualSessionId) {
+              console.warn(`🔄 Session ID changed for ${selectedWorktree}:`, {
+                oldSessionId: cachedSessionId,
+                newSessionId: actualSessionId,
+                reason: 'Likely session timeout and cleanup'
+              });
+              // Clear old cached state since session changed
+              terminalStateCache.delete(cachedSessionId);
+            }
+
+            setSessionId(actualSessionId);
+            addTerminalSession(selectedWorktree, actualSessionId);
+
+            console.log(`Shell started: ${actualSessionId}, isNew: ${result.isNew}, worktree: ${selectedWorktree}`);
+            console.log('📊 Terminal cache status:', {
+              sessionId: actualSessionId,
+              hasCachedState: terminalStateCache.has(actualSessionId),
+              cacheSize: terminalStateCache.size,
+              allCachedSessions: Array.from(terminalStateCache.keys())
+            });
+
+            // Handle terminal state restoration like desktop app
+            if (!result.isNew) {
+              // Existing shell - restore cached state to fresh terminal
+              console.log('🔄 Existing shell session - restoring state');
+              const cachedState = terminalStateCache.get(actualSessionId);
+              if (cachedState && terminalRef.current) {
+                // Clear the fresh terminal first
+                terminalRef.current.clear();
+                // Restore the cached content after a delay to ensure terminal is ready
+                setTimeout(() => {
+                  if (terminalRef.current && cachedState) {
+                    terminalRef.current.write(cachedState);
+                    console.log('✅ State restored for session:', actualSessionId);
+                  }
+                }, 100);
+              } else {
+                console.log('⚠️ No cached state found for session:', actualSessionId);
+              }
             } else {
-              console.log('⚠️ No cached state found for session:', actualSessionId);
+              // New shell - terminal is already clean
+              console.log('🧹 New shell session - terminal ready');
             }
           } else {
-            // New shell - terminal is already clean
-            console.log('🧹 New shell session - terminal ready');
+            console.error('Failed to start shell session:', result.error);
           }
-        } else {
-          console.error('Failed to start shell session:', result.error);
+        } catch (error) {
+          console.error('Failed to start shell session:', error);
         }
-      } catch (error) {
-        console.error('Failed to start shell session:', error);
-      }
-    };
+      };
 
-    startSession();
+      startSession();
+    }
 
     return () => {
       // Cleanup listeners
