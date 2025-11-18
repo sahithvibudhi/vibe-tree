@@ -15,6 +15,10 @@ function createWindow() {
   const autoOpenAppName = process.env.AUTO_OPEN_PROJECT_NAME;
   const windowTitle = autoOpenAppName ? `VibeTree - ${autoOpenAppName}` : 'VibeTree';
 
+  // In development, load from Vite dev server (unless NODE_ENV=production)
+  const isProduction = process.env.NODE_ENV === 'production';
+  const loadFromFile = app.isPackaged || isProduction;
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -28,13 +32,12 @@ function createWindow() {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      backgroundThrottling: false // Prevent timer throttling when app is in background (needed for scheduler)
+      backgroundThrottling: false, // Prevent timer throttling when app is in background (needed for scheduler)
+      webSecurity: !loadFromFile // Disable webSecurity when loading from file:// to allow ES modules
     }
   });
 
-  // In development, load from Vite dev server (unless NODE_ENV=production)
-  const isProduction = process.env.NODE_ENV === 'production';
-  if (!app.isPackaged && !isProduction) {
+  if (!loadFromFile) {
     let port = '3000';
     try {
       const portFile = path.join(__dirname, '../../.dev-port');

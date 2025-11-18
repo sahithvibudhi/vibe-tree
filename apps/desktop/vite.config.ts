@@ -1,4 +1,4 @@
-import { defineConfig, ViteDevServer } from 'vite';
+import { defineConfig, ViteDevServer, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
@@ -27,13 +27,33 @@ function portCapturePlugin() {
   };
 }
 
+// Plugin to remove type="module" and add defer for file:// protocol compatibility
+function removeModuleTypePlugin(): Plugin {
+  return {
+    name: 'remove-module-type',
+    apply: 'build',
+    transformIndexHtml(html) {
+      // Remove type="module" and crossorigin, add defer attribute
+      return html
+        .replace(/type="module"\s*/g, '')
+        .replace(/\s*crossorigin/g, '')
+        .replace(/<script\s+src=/g, '<script defer src=');
+    }
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), portCapturePlugin()],
+  plugins: [react(), portCapturePlugin(), removeModuleTypePlugin()],
   root: 'src/renderer',
   base: './',
   build: {
     outDir: '../../dist/renderer',
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        format: 'iife', // Use IIFE instead of ES modules for file:// protocol compatibility
+      },
+    },
   },
   resolve: {
     alias: {
