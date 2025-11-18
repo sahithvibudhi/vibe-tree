@@ -11,6 +11,8 @@ import * as os from 'os';
  */
 class DesktopShellManager {
   private forkManager: WorktreeForkManager;
+  // Track which webContents are listening to which processIds to prevent duplicate listeners
+  private webContentsListeners = new Map<number, Set<string>>();
 
   constructor() {
     // Initialize WorktreeForkManager with path to worker script
@@ -106,26 +108,49 @@ class DesktopShellManager {
 
       if (result.success && result.processId) {
         const processId = result.processId;
+        const webContentsId = event.sender.id;
 
-        // Add output listener
-        const outputListener = (data: string) => {
-          if (!this.safeSend(event.sender, `shell:output:${processId}`, data)) {
-            // Frame was disposed - remove this listener
-            this.forkManager.removeOutputListener(processId, outputListener);
-          }
-        };
-        this.forkManager.addOutputListener(processId, outputListener);
+        // Only add listeners if this webContents isn't already listening to this processId
+        // This prevents duplicate listeners when reconnecting to an existing session
+        if (!this.webContentsListeners.has(webContentsId)) {
+          this.webContentsListeners.set(webContentsId, new Set());
+        }
 
-        // Add exit listener
-        const exitListener = (exitCode: number) => {
-          if (!this.safeSend(event.sender, `shell:exit:${processId}`, exitCode)) {
-            // Frame was disposed - remove this listener
-            this.forkManager.removeExitListener(processId, exitListener);
-          }
-          // Broadcast session change when terminal exits
-          this.broadcastSessionChange();
-        };
-        this.forkManager.addExitListener(processId, exitListener);
+        const listenersForThisWebContents = this.webContentsListeners.get(webContentsId)!;
+
+        if (!listenersForThisWebContents.has(processId)) {
+          // Mark that this webContents is now listening to this processId
+          listenersForThisWebContents.add(processId);
+
+          // Add output listener
+          const outputListener = (data: string) => {
+            if (!this.safeSend(event.sender, `shell:output:${processId}`, data)) {
+              // Frame was disposed - remove this listener and tracking
+              this.forkManager.removeOutputListener(processId, outputListener);
+              listenersForThisWebContents.delete(processId);
+              if (listenersForThisWebContents.size === 0) {
+                this.webContentsListeners.delete(webContentsId);
+              }
+            }
+          };
+          this.forkManager.addOutputListener(processId, outputListener);
+
+          // Add exit listener
+          const exitListener = (exitCode: number) => {
+            if (!this.safeSend(event.sender, `shell:exit:${processId}`, exitCode)) {
+              // Frame was disposed - remove this listener and tracking
+              this.forkManager.removeExitListener(processId, exitListener);
+            }
+            // Clean up tracking when process exits
+            listenersForThisWebContents.delete(processId);
+            if (listenersForThisWebContents.size === 0) {
+              this.webContentsListeners.delete(webContentsId);
+            }
+            // Broadcast session change when terminal exits
+            this.broadcastSessionChange();
+          };
+          this.forkManager.addExitListener(processId, exitListener);
+        }
 
         // Broadcast session change for new terminal
         if (result.isNew) {

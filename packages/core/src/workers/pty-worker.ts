@@ -121,14 +121,17 @@ class PTYWorker {
 
       if (result.success && result.processId) {
         const processId = result.processId;
-        // Add listeners for this session
-        this.sessionManager.addOutputListener(processId, 'worker-output', (data: string) => {
-          this.sendEvent({ type: 'output', processId, data });
-        });
+        // Only add listeners for NEW sessions to prevent duplicate event handlers
+        // For existing sessions, the listeners are already registered
+        if (result.isNew) {
+          this.sessionManager.addOutputListener(processId, 'worker-output', (data: string) => {
+            this.sendEvent({ type: 'output', processId, data });
+          });
 
-        this.sessionManager.addExitListener(processId, 'worker-exit', (code: number) => {
-          this.sendEvent({ type: 'exit', processId, code });
-        });
+          this.sessionManager.addExitListener(processId, 'worker-exit', (code: number) => {
+            this.sendEvent({ type: 'exit', processId, code });
+          });
+        }
       }
 
       this.sendResponse(message.id, result.success, {
