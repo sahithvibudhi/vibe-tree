@@ -117,7 +117,17 @@ class WorktreeFork {
       this.pendingRequests.delete(message.id);
       console.log(`[WorktreeFork] Response received:`, JSON.stringify(message));
       if (message.success) {
-        pending.resolve(message.result);
+        // Handle different result types:
+        // - undefined: Return { success: true } (e.g., terminate operations)
+        // - object (not array): Spread into { success: true, ...result }
+        // - array/primitive: Return as-is (e.g., getSessions returns string[])
+        if (message.result === undefined) {
+          pending.resolve({ success: true });
+        } else if (typeof message.result === 'object' && message.result !== null && !Array.isArray(message.result)) {
+          pending.resolve({ success: true, ...message.result });
+        } else {
+          pending.resolve(message.result);
+        }
       } else {
         const errorMsg = message.error || 'Unknown error from worker';
         console.error(`[WorktreeFork] Worker returned error:`, errorMsg);

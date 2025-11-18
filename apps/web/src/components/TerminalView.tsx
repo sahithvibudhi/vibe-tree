@@ -426,12 +426,19 @@ export function TerminalView({ worktreePath }: TerminalViewProps) {
     }
   };
 
-  const closeSplitTerminal = () => {
+  const closeSplitTerminal = async () => {
     if (splitSessionId) {
+      // Terminate the shell session first
+      try {
+        await window.shellManager.terminate(splitSessionId);
+      } catch (error) {
+        console.error('Failed to terminate split session:', error);
+      }
+
       // Clean up event listeners
       splitCleanupRef.current.forEach(cleanup => cleanup());
       splitCleanupRef.current = [];
-      
+
       terminalStateCache.delete(splitSessionId);
       removeTerminalSession(`${selectedWorktree}_split`);
       setSplitSessionId(null);

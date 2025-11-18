@@ -869,10 +869,10 @@ async function getPtyDeviceInfo(): Promise<ExtendedDiagnostics['ptyDeviceInfo']>
 }
 
 /**
- * Get PTY file descriptors held by the current process
+ * Get PTY file descriptors held by the current process and its child processes
  * Returns counts for PTY master (/dev/ptmx), slave (ttys/ttyp), and total
  */
-async function getAppPtyFileDescriptors(): Promise<{
+async function getAppPtyFileDescriptors(childProcesses: ChildProcessInfo[] = []): Promise<{
   ptyMasterFds: number | null;
   ptySlaveFds: number | null;
   totalPtyFds: number | null;
@@ -884,11 +884,13 @@ async function getAppPtyFileDescriptors(): Promise<{
   };
 
   if (process.platform === 'darwin' || process.platform === 'linux') {
-    const pid = process.pid;
+    // Collect PIDs: main process + all child processes
+    const pids = [process.pid, ...childProcesses.map(child => child.pid)];
+    const pidList = pids.join(',');
 
     try {
       // Count PTY master devices (/dev/ptmx)
-      const { stdout: masterStdout } = await execAsync(`lsof -p ${pid} 2>/dev/null | grep "/dev/ptmx" | wc -l`);
+      const { stdout: masterStdout } = await execAsync(`lsof -p ${pidList} 2>/dev/null | grep "/dev/ptmx" | wc -l`);
       const masterCount = parseInt(masterStdout.trim(), 10);
       if (!isNaN(masterCount)) {
         result.ptyMasterFds = masterCount;
@@ -899,7 +901,7 @@ async function getAppPtyFileDescriptors(): Promise<{
 
     try {
       // Count PTY slave devices (ttys/ttyp)
-      const { stdout: slaveStdout } = await execAsync(`lsof -p ${pid} 2>/dev/null | grep -E "ttys|ttyp" | wc -l`);
+      const { stdout: slaveStdout } = await execAsync(`lsof -p ${pidList} 2>/dev/null | grep -E "ttys|ttyp" | wc -l`);
       const slaveCount = parseInt(slaveStdout.trim(), 10);
       if (!isNaN(slaveCount)) {
         result.ptySlaveFds = slaveCount;
@@ -910,7 +912,7 @@ async function getAppPtyFileDescriptors(): Promise<{
 
     try {
       // Count total PTY-related file descriptors
-      const { stdout: totalStdout } = await execAsync(`lsof -p ${pid} 2>/dev/null | grep -E "/dev/tty|/dev/ptmx" | wc -l`);
+      const { stdout: totalStdout } = await execAsync(`lsof -p ${pidList} 2>/dev/null | grep -E "/dev/tty|/dev/ptmx" | wc -l`);
       const totalCount = parseInt(totalStdout.trim(), 10);
       if (!isNaN(totalCount)) {
         result.totalPtyFds = totalCount;
@@ -943,7 +945,7 @@ export async function getExtendedDiagnostics(sessionManagerStats?: {
     getPtyProcesses(),
     getKernelLimits(),
     getPtyDeviceInfo(),
-    getAppPtyFileDescriptors(),
+    getAppPtyFileDescriptors(baseDiagnostics.childProcesses),
     getSystemFileDescriptors()
   ]);
 
