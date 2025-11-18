@@ -3,9 +3,7 @@ import { ElectronApplication, Page, _electron as electron } from 'playwright';
 import { closeElectronApp } from './helpers/test-launcher';
 import { waitUntil } from './test-utils';
 import path from 'path';
-import fs from 'fs';
-import { execSync } from 'child_process';
-import os from 'os';
+import { createTestGitRepo, cleanupTestGitRepo } from './helpers/test-git-repo';
 
 test.describe('Stats Menu', () => {
   let electronApp: ElectronApplication;
@@ -13,27 +11,8 @@ test.describe('Stats Menu', () => {
   let dummyRepoPath: string;
 
   test.beforeEach(async () => {
-    // Create a dummy git repository
-    const timestamp = Date.now();
-    dummyRepoPath = path.join(os.tmpdir(), `dummy-repo-stats-${timestamp}`);
-
-    // Create the directory and initialize git repo
-    fs.mkdirSync(dummyRepoPath, { recursive: true });
-    execSync('git init -q', { cwd: dummyRepoPath });
-    execSync('git config user.email "test@example.com"', { cwd: dummyRepoPath });
-    execSync('git config user.name "Test User"', { cwd: dummyRepoPath });
-
-    // Create a dummy file and make initial commit
-    fs.writeFileSync(path.join(dummyRepoPath, 'README.md'), '# Test Repository\n');
-    execSync('git add .', { cwd: dummyRepoPath });
-    execSync('git commit -q -m "Initial commit"', { cwd: dummyRepoPath });
-
-    // Create main branch (some git versions don't create it by default)
-    try {
-      execSync('git branch -M main', { cwd: dummyRepoPath });
-    } catch (e) {
-      // Ignore if branch already exists
-    }
+    const { repoPath } = createTestGitRepo({ nameSuffix: 'repo-stats' });
+    dummyRepoPath = repoPath;
 
     const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
     const appDir = path.join(__dirname, '..');
@@ -58,14 +37,7 @@ test.describe('Stats Menu', () => {
       await closeElectronApp(electronApp);
     }
 
-    // Clean up the dummy repository
-    if (dummyRepoPath && fs.existsSync(dummyRepoPath)) {
-      try {
-        fs.rmSync(dummyRepoPath, { recursive: true, force: true });
-      } catch (e) {
-        console.error('Failed to clean up dummy repo:', e);
-      }
-    }
+    cleanupTestGitRepo(dummyRepoPath);
   });
 
   test('should show stats with zero processes initially', async () => {

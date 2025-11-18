@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { ElectronApplication, Page, _electron as electron } from 'playwright';
 import { closeElectronApp } from './helpers/test-launcher';
+import { createTestGitRepo, cleanupTestGitRepo } from './helpers/test-git-repo';
 import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
-import os from 'os';
 
 test.describe('Open Current Working Directory', () => {
   let electronApp: ElectronApplication;
@@ -13,22 +13,13 @@ test.describe('Open Current Working Directory', () => {
 
   test.beforeEach(async () => {
     // Create a test git repository
-    const timestamp = Date.now();
-    testRepoPath = path.join(os.tmpdir(), `test-cwd-repo-${timestamp}`);
-    
-    // Create the directory and initialize git repo
-    fs.mkdirSync(testRepoPath, { recursive: true });
-    execSync('git init -q', { cwd: testRepoPath });
-    execSync('git config user.email "test@example.com"', { cwd: testRepoPath });
-    execSync('git config user.name "Test User"', { cwd: testRepoPath });
-    
-    // Create a dummy file and make initial commit
-    fs.writeFileSync(path.join(testRepoPath, 'README.md'), '# Test CWD Repository\n');
+    const { repoPath } = createTestGitRepo({ nameSuffix: 'cwd-repo' });
+    testRepoPath = repoPath;
+
+    // Add an additional test marker file
     fs.writeFileSync(path.join(testRepoPath, 'test-marker.txt'), 'This is the CWD test repo\n');
     execSync('git add .', { cwd: testRepoPath });
-    execSync('git commit -q -m "Initial commit"', { cwd: testRepoPath });
-    
-    console.log('Created test repo at:', testRepoPath);
+    execSync('git commit -q -m "Add test marker"', { cwd: testRepoPath });
 
     // Launch the app from the test repository directory
     const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
@@ -60,16 +51,9 @@ test.describe('Open Current Working Directory', () => {
     if (electronApp) {
       await closeElectronApp(electronApp);
     }
-    
+
     // Clean up the test repository
-    if (testRepoPath && fs.existsSync(testRepoPath)) {
-      try {
-        fs.rmSync(testRepoPath, { recursive: true, force: true });
-        console.log('Cleaned up test repo');
-      } catch (e) {
-        console.error('Failed to clean up test repo:', e);
-      }
-    }
+    cleanupTestGitRepo(testRepoPath);
   });
 
   test('should open current working directory using openCwd API', async () => {
