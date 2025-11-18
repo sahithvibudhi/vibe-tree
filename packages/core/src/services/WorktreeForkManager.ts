@@ -115,10 +115,13 @@ class WorktreeFork {
     const pending = this.pendingRequests.get(message.id);
     if (pending) {
       this.pendingRequests.delete(message.id);
+      console.log(`[WorktreeFork] Response received:`, JSON.stringify(message));
       if (message.success) {
         pending.resolve(message.result);
       } else {
-        pending.reject(new Error(message.error || 'Unknown error'));
+        const errorMsg = message.error || 'Unknown error from worker';
+        console.error(`[WorktreeFork] Worker returned error:`, errorMsg);
+        pending.reject(new Error(errorMsg));
       }
     }
   }
@@ -180,10 +183,18 @@ class WorktreeFork {
   }
 
   async startSession(worktreePath: string, cols: number, rows: number, forceNew?: boolean, terminalId?: string, setLocaleVariables?: boolean): Promise<{ success: boolean; processId?: string; isNew?: boolean; error?: string }> {
-    return this.sendRequest<{ success: boolean; processId?: string; isNew?: boolean; error?: string }>({
-      type: 'start' as const,
-      payload: { worktreePath, cols, rows, forceNew, terminalId, setLocaleVariables },
-    } as Omit<WorkerRequest, 'id'>);
+    try {
+      return await this.sendRequest<{ success: boolean; processId?: string; isNew?: boolean; error?: string }>({
+        type: 'start' as const,
+        payload: { worktreePath, cols, rows, forceNew, terminalId, setLocaleVariables },
+      } as Omit<WorkerRequest, 'id'>);
+    } catch (error) {
+      // Convert rejected promise to error result object
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
   }
 
   async writeToSession(sessionId: string, data: string): Promise<{ success: boolean }> {
