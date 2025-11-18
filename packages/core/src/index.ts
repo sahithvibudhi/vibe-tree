@@ -6,6 +6,7 @@ export { CommunicationAdapter, BaseAdapter } from './adapters/CommunicationAdapt
 
 // Export services
 export { ShellSessionManager } from './services/ShellSessionManager';
+export { WorktreeForkManager } from './services/WorktreeForkManager';
 
 // Export utilities
 export * from './utils/git-parser';

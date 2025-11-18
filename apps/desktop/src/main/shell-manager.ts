@@ -1,27 +1,47 @@
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, app } from 'electron';
 import * as pty from 'node-pty';
-import { ShellSessionManager, getSystemDiagnostics, getExtendedDiagnostics, formatExtendedDiagnostics } from '@vibetree/core';
+import { WorktreeForkManager, getSystemDiagnostics, getExtendedDiagnostics, formatExtendedDiagnostics } from '@vibetree/core';
 import { terminalSettingsManager } from './terminal-settings';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
 /**
- * Desktop shell manager - thin wrapper around shared ShellSessionManager
+ * Desktop shell manager - thin wrapper around WorktreeForkManager
  * Handles IPC communication with renderer process
  */
 class DesktopShellManager {
-  private sessionManager = ShellSessionManager.getInstance();
+  private forkManager: WorktreeForkManager;
 
   constructor() {
+    // Initialize WorktreeForkManager with path to worker script
+    const workerScriptPath = this.getWorkerScriptPath();
+    this.forkManager = WorktreeForkManager.initialize(workerScriptPath);
+
     this.setupIpcHandlers();
+  }
+
+  /**
+   * Get the path to the PTY worker script
+   * Handles both development and production builds
+   */
+  private getWorkerScriptPath(): string {
+    const isDev = !app.isPackaged;
+
+    if (isDev) {
+      // Development: worker is in packages/core/dist/workers/pty-worker.cjs
+      return path.join(__dirname, '../../../../../../packages/core/dist/workers/pty-worker.cjs');
+    } else {
+      // Production: worker is bundled in app.asar
+      return path.join(app.getAppPath(), 'node_modules/@vibetree/core/dist/workers/pty-worker.cjs');
+    }
   }
 
   /**
    * Broadcast terminal session changes to all renderer processes
    */
-  private broadcastSessionChange() {
-    const sessions = this.sessionManager.getAllSessions();
+  private async broadcastSessionChange() {
+    const sessions = await this.forkManager.getAllSessions();
     const worktreeSessionCounts = new Map<string, number>();
 
     sessions.forEach(session => {
@@ -64,13 +84,12 @@ class DesktopShellManager {
     ipcMain.handle('shell:start', async (event, worktreePath: string, cols?: number, rows?: number, forceNew?: boolean, terminalId?: string) => {
       // Get current terminal settings
       const settings = terminalSettingsManager.getSettings();
-      
-      // Start session with node-pty spawn function and locale settings
-      const result = await this.sessionManager.startSession(
+
+      // Start session via fork manager
+      const result = await this.forkManager.startSession(
         worktreePath,
         cols,
         rows,
-        pty.spawn,
         forceNew,
         terminalId,
         settings.setLocaleVariables
@@ -78,51 +97,30 @@ class DesktopShellManager {
 
       if (result.success && result.processId) {
         const processId = result.processId;
-        const listenerId = `electron-${event.sender.id}`;
-        
-        // Only add listeners for new sessions or if they don't exist
-        // For existing sessions, listeners should already be set up
-        if (result.isNew) {
-          // Add output listener
-          this.sessionManager.addOutputListener(processId, listenerId, (data) => {
-            if (!this.safeSend(event.sender, `shell:output:${processId}`, data)) {
-              // Frame was disposed - remove this listener
-              this.sessionManager.removeOutputListener(processId, listenerId);
-            }
-          });
 
-          // Add exit listener
-          this.sessionManager.addExitListener(processId, listenerId, (exitCode) => {
-            if (!this.safeSend(event.sender, `shell:exit:${processId}`, exitCode)) {
-              // Frame was disposed - remove this listener
-              this.sessionManager.removeExitListener(processId, listenerId);
-            }
-            // Broadcast session change when terminal exits
-            this.broadcastSessionChange();
-          });
+        // Add output listener
+        const outputListener = (data: string) => {
+          if (!this.safeSend(event.sender, `shell:output:${processId}`, data)) {
+            // Frame was disposed - remove this listener
+            this.forkManager.removeOutputListener(processId, outputListener);
+          }
+        };
+        this.forkManager.addOutputListener(processId, outputListener);
 
-          // Broadcast session change for new terminal
+        // Add exit listener
+        const exitListener = (exitCode: number) => {
+          if (!this.safeSend(event.sender, `shell:exit:${processId}`, exitCode)) {
+            // Frame was disposed - remove this listener
+            this.forkManager.removeExitListener(processId, exitListener);
+          }
+          // Broadcast session change when terminal exits
           this.broadcastSessionChange();
-        } else {
-          // For existing sessions, we need to update the listener to use the current event.sender
-          // because the renderer might have changed
-          this.sessionManager.removeOutputListener(processId, listenerId);
-          this.sessionManager.removeExitListener(processId, listenerId);
-          
-          // Re-add with current sender, but skip buffer replay for existing sessions
-          this.sessionManager.addOutputListener(processId, listenerId, (data) => {
-            if (!this.safeSend(event.sender, `shell:output:${processId}`, data)) {
-              // Frame was disposed - remove this listener
-              this.sessionManager.removeOutputListener(processId, listenerId);
-            }
-          }, true); // Skip replay for existing sessions
+        };
+        this.forkManager.addExitListener(processId, exitListener);
 
-          this.sessionManager.addExitListener(processId, listenerId, (exitCode) => {
-            if (!this.safeSend(event.sender, `shell:exit:${processId}`, exitCode)) {
-              // Frame was disposed - remove this listener
-              this.sessionManager.removeExitListener(processId, listenerId);
-            }
-          });
+        // Broadcast session change for new terminal
+        if (result.isNew) {
+          this.broadcastSessionChange();
         }
       }
 
@@ -130,15 +128,15 @@ class DesktopShellManager {
     });
 
     ipcMain.handle('shell:write', async (_, processId: string, data: string) => {
-      return this.sessionManager.writeToSession(processId, data);
+      return this.forkManager.writeToSession(processId, data);
     });
 
     ipcMain.handle('shell:resize', async (_, processId: string, cols: number, rows: number) => {
-      return this.sessionManager.resizeSession(processId, cols, rows);
+      return this.forkManager.resizeSession(processId, cols, rows);
     });
 
     ipcMain.handle('shell:status', async (_, processId: string) => {
-      return { running: this.sessionManager.hasSession(processId) };
+      return { running: this.forkManager.hasSession(processId) };
     });
 
     ipcMain.handle('shell:get-buffer', async () => {
@@ -147,28 +145,26 @@ class DesktopShellManager {
     });
 
     ipcMain.handle('shell:terminate', async (_, processId: string) => {
-      const result = await this.sessionManager.terminateSession(processId);
-      this.broadcastSessionChange();
+      const result = await this.forkManager.terminateSession(processId);
+      await this.broadcastSessionChange();
       return result;
     });
 
     ipcMain.handle('shell:terminate-for-worktree', async (_, worktreePath: string) => {
-      const count = await this.sessionManager.terminateSessionsForWorktree(worktreePath);
-      this.broadcastSessionChange();
-      return { success: true, count };
+      await this.forkManager.terminateWorktree(worktreePath);
+      await this.broadcastSessionChange();
+      return { success: true, count: 0 };
     });
 
     ipcMain.handle('shell:get-stats', async () => {
-      const sessions = this.sessionManager.getAllSessions();
-      const spawnErrors = this.sessionManager.getSpawnErrors();
+      const sessions = await this.forkManager.getAllSessions();
 
-      // Get session manager stats for app-specific PTY tracking
+      // Get extended diagnostics
       const sessionManagerStats = {
-        totalPtyInstancesCreated: this.sessionManager.getTotalPtyInstancesCreated(),
+        totalPtyInstancesCreated: 0, // TODO: aggregate from all workers
         currentActiveSessions: sessions.length
       };
 
-      // Get extended diagnostics with app-specific metrics
       const extendedDiagnostics = await getExtendedDiagnostics(sessionManagerStats);
 
       return {
@@ -176,15 +172,10 @@ class DesktopShellManager {
         sessions: sessions.map(s => ({
           id: s.id,
           worktreePath: s.worktreePath,
-          createdAt: s.createdAt.toISOString(),
-          lastActivity: s.lastActivity.toISOString()
+          createdAt: new Date().toISOString(), // TODO: get from worker
+          lastActivity: new Date().toISOString() // TODO: get from worker
         })),
-        spawnErrors: spawnErrors.map(e => ({
-          timestamp: e.timestamp.toISOString(),
-          worktreePath: e.worktreePath,
-          error: e.error,
-          errorCode: e.errorCode
-        })),
+        spawnErrors: [], // TODO: aggregate from all workers
         systemDiagnostics: extendedDiagnostics,
         // For backward compatibility
         extendedDiagnostics
@@ -192,7 +183,7 @@ class DesktopShellManager {
     });
 
     ipcMain.handle('shell:get-worktree-sessions', async () => {
-      const sessions = this.sessionManager.getAllSessions();
+      const sessions = await this.forkManager.getAllSessions();
       const worktreeSessionCounts = new Map<string, number>();
 
       sessions.forEach(session => {
@@ -207,15 +198,28 @@ class DesktopShellManager {
       try {
         console.log('Running comprehensive diagnostics for posix_spawn failure analysis...');
 
-        // Get session manager stats for app-specific PTY tracking
-        const sessions = this.sessionManager.getAllSessions();
+        // Get session stats from fork manager
+        const sessions = await this.forkManager.getAllSessions();
+        const forkStats = this.forkManager.getStats();
+
         const sessionManagerStats = {
-          totalPtyInstancesCreated: this.sessionManager.getTotalPtyInstancesCreated(),
+          totalPtyInstancesCreated: 0, // TODO: aggregate from all workers
           currentActiveSessions: sessions.length
         };
 
         // Collect extended diagnostics
         const diagnostics = await getExtendedDiagnostics(sessionManagerStats);
+
+        // Add fork-specific diagnostics
+        (diagnostics as any).forkInfo = {
+          totalForks: forkStats.totalForks,
+          activeWorktrees: forkStats.worktrees,
+          forksPerWorktree: forkStats.worktrees.reduce((acc, wt) => {
+            const count = sessions.filter(s => s.worktreePath === wt).length;
+            acc[wt] = count;
+            return acc;
+          }, {} as Record<string, number>)
+        };
 
         // Format for text output
         const formattedText = formatExtendedDiagnostics(diagnostics);
@@ -272,8 +276,7 @@ class DesktopShellManager {
 
   // Get process statistics
   public async getStats() {
-    const sessions = this.sessionManager.getAllSessions();
-    const spawnErrors = this.sessionManager.getSpawnErrors();
+    const sessions = await this.forkManager.getAllSessions();
     const systemDiagnostics = await getSystemDiagnostics();
 
     return {
@@ -281,22 +284,17 @@ class DesktopShellManager {
       sessions: sessions.map(s => ({
         id: s.id,
         worktreePath: s.worktreePath,
-        createdAt: s.createdAt.toISOString(),
-        lastActivity: s.lastActivity.toISOString()
+        createdAt: new Date().toISOString(),
+        lastActivity: new Date().toISOString()
       })),
-      spawnErrors: spawnErrors.map(e => ({
-        timestamp: e.timestamp.toISOString(),
-        worktreePath: e.worktreePath,
-        error: e.error,
-        errorCode: e.errorCode
-      })),
+      spawnErrors: [],
       systemDiagnostics
     };
   }
 
   // Clean up on app quit
   public async cleanup() {
-    await this.sessionManager.cleanup();
+    await this.forkManager.terminateAll();
   }
 }
 
