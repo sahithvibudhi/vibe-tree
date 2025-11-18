@@ -1,5 +1,4 @@
 import { ipcMain, BrowserWindow, app } from 'electron';
-import * as pty from 'node-pty';
 import { WorktreeForkManager, getSystemDiagnostics, getExtendedDiagnostics, formatExtendedDiagnostics } from '@vibetree/core';
 import { terminalSettingsManager } from './terminal-settings';
 import * as fs from 'fs';
@@ -30,7 +29,12 @@ class DesktopShellManager {
 
     if (isDev) {
       // Development: worker is in packages/core/dist/workers/pty-worker.cjs
-      return path.join(__dirname, '../../../../../../packages/core/dist/workers/pty-worker.cjs');
+      // __dirname is at: apps/desktop/dist/main
+      // Need to go up to project root, then to packages/core/dist/workers
+      const workerPath = path.join(__dirname, '../../../../packages/core/dist/workers/pty-worker.cjs');
+      console.log('[DesktopShellManager] Worker script path:', workerPath);
+      console.log('[DesktopShellManager] Worker script exists:', fs.existsSync(workerPath));
+      return workerPath;
     } else {
       // Production: worker is bundled in app.asar
       return path.join(app.getAppPath(), 'node_modules/@vibetree/core/dist/workers/pty-worker.cjs');
@@ -88,8 +92,8 @@ class DesktopShellManager {
       // Start session via fork manager
       const result = await this.forkManager.startSession(
         worktreePath,
-        cols,
-        rows,
+        cols ?? 80,
+        rows ?? 30,
         forceNew,
         terminalId,
         settings.setLocaleVariables
