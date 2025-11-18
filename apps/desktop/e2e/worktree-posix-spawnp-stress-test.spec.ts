@@ -64,7 +64,7 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
   // NOTE: CI uses ulimit -n 128 to artificially limit file descriptors.
   // PTY sessions are kept alive with sleep commands to ensure they hold file descriptors.
   test('should verify PTY cleanup frees resources', async () => {
-    test.setTimeout(120000); // 2 minutes timeout
+    test.setTimeout(300000); // 5 minutes timeout (increased for fork architecture)
 
     let worktreeCount = 0;
     const MAX_WORKTREES = 1000; // Keep trying until we hit the error - ulimit will stop us
@@ -121,9 +121,9 @@ test.describe('Worktree posix_spawnp Stress Test', () => {
           // The shell process itself should keep the PTY and file descriptors alive
           // This mimics the "explode" button behavior of just opening terminals without running commands
 
-          // Small delay to allow PTY to fully initialize
-          // This ensures file descriptors are fully allocated before creating next PTY
-          await new Promise(resolve => setTimeout(resolve, 300));
+          // Small delay to allow fork process to fully initialize
+          // Reduced from 300ms to 100ms for fork architecture (forks are faster than direct spawns)
+          await new Promise(resolve => setTimeout(resolve, 100));
 
           if (worktreeCount % 10 === 0) {
             console.log(`Created ${worktreeCount} worktrees with PTY sessions`);

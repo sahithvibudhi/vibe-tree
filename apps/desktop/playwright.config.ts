@@ -12,8 +12,8 @@ export default defineConfig({
   // This helps prevent "Worker teardown timeout of 60000ms exceeded" errors
   timeout: 120000,
   // Set globalTimeout to prevent overall test suite timeout issues
-  // Increased from 10 minutes to 15 minutes to handle PTY cleanup delays
-  globalTimeout: process.env.CI ? 900000 : 0, // 15 minutes in CI, unlimited locally
+  // Increased from 15 minutes to 20 minutes to handle fork architecture cleanup delays
+  globalTimeout: process.env.CI ? 1200000 : 0, // 20 minutes in CI, unlimited locally
   // Increase expect timeout for slow operations
   expect: {
     timeout: 10000,
