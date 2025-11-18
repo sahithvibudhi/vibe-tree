@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { ElectronApplication, Page, _electron as electron } from 'playwright';
 import { closeElectronApp } from './helpers/test-launcher';
 import { createTestGitRepo, cleanupTestGitRepo } from './helpers/test-git-repo';
+import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
 
