@@ -195,11 +195,31 @@ export class ShellSessionManager {
         isNew: true
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to start shell';
-      console.error(`Failed to start PTY session: ${errorMessage}`);
+      let errorMessage: string;
+
+      if (error instanceof Error) {
+        // Include error name, message, and key details from stack
+        errorMessage = `${error.name}: ${error.message}`;
+
+        // Add stack trace info if available
+        if (error.stack) {
+          // Get the first few relevant lines of stack trace
+          const stackLines = error.stack.split('\n').slice(0, 5);
+          errorMessage += '\n' + stackLines.join('\n');
+        }
+
+        // Add any error code if available
+        if ((error as any).code) {
+          errorMessage = `[${(error as any).code}] ${errorMessage}`;
+        }
+      } else {
+        errorMessage = `Unknown error: ${String(error)}`;
+      }
+
+      console.error(`Failed to start PTY session:`, error);
 
       // Track spawn error for diagnostics
-      this.trackSpawnError(worktreePath, errorMessage, error);
+      this.trackSpawnError(worktreePath, error instanceof Error ? error.message : errorMessage, error);
 
       return {
         success: false,

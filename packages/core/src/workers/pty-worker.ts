@@ -35,15 +35,26 @@ class PTYWorker {
   private worktreePath: string;
 
   constructor() {
-    this.worktreePath = process.env.WORKTREE_PATH || '';
-    if (!this.worktreePath) {
-      throw new Error('WORKTREE_PATH environment variable not set');
+    try {
+      this.worktreePath = process.env.WORKTREE_PATH || '';
+      if (!this.worktreePath) {
+        const errorMsg = 'WORKTREE_PATH environment variable not set';
+        console.error('[PTYWorker] FATAL:', errorMsg);
+        console.error('[PTYWorker] Environment:', process.env);
+        throw new Error(errorMsg);
+      }
+
+      console.log(`[PTYWorker] Started for worktree: ${this.worktreePath}`);
+      console.log(`[PTYWorker] Node version: ${process.version}`);
+      console.log(`[PTYWorker] PID: ${process.pid}`);
+
+      // Get singleton instance of ShellSessionManager
+      this.sessionManager = ShellSessionManager.getInstance();
+      console.log(`[PTYWorker] ShellSessionManager initialized successfully`);
+    } catch (error) {
+      console.error('[PTYWorker] Failed to initialize:', error);
+      process.exit(1);
     }
-
-    console.log(`[PTYWorker] Started for worktree: ${this.worktreePath}`);
-
-    // Get singleton instance of ShellSessionManager
-    this.sessionManager = ShellSessionManager.getInstance();
 
     // Listen for messages from parent process
     process.on('message', (message: WorkerRequest) => {
@@ -128,7 +139,18 @@ class PTYWorker {
       // Notify about session changes
       this.sendEvent({ type: 'sessions-changed' });
     } catch (error: any) {
-      this.sendResponse(message.id, false, undefined, error.message);
+      // Preserve full error details
+      let errorMsg = 'Failed to start shell session';
+      if (error instanceof Error) {
+        errorMsg = error.message;
+        if (error.stack) {
+          errorMsg += '\n' + error.stack.split('\n').slice(0, 5).join('\n');
+        }
+      } else {
+        errorMsg = String(error);
+      }
+      console.error('[PTYWorker] Error in handleStart:', error);
+      this.sendResponse(message.id, false, undefined, errorMsg);
     }
   }
 

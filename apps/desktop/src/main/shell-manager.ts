@@ -99,6 +99,11 @@ class DesktopShellManager {
         settings.setLocaleVariables
       );
 
+      // Log the result for debugging
+      if (!result.success) {
+        console.error('[DesktopShellManager] Failed to start session:', result.error);
+      }
+
       if (result.success && result.processId) {
         const processId = result.processId;
 
