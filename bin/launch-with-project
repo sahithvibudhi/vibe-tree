@@ -3,11 +3,12 @@ set -e
 
 # Script to launch the Electron app with a project automatically opened
 #
-# Usage: bin/launch-with-project [PATH] [--name NAME]
+# Usage: bin/launch-with-project [PATH] [--name NAME] [--open-main-worktree]
 #
 # Arguments:
-#   PATH        Path to the project directory (required)
-#   --name NAME Optional app name shown in window title for easy identification
+#   PATH                    Path to the project directory (required)
+#   --name NAME             Optional app name shown in window title for easy identification
+#   --open-main-worktree    Open the main worktree instead of the current worktree
 #
 # Prerequisites:
 #   - Dependencies must be installed: pnpm install
@@ -17,6 +18,7 @@ set -e
 # Parse arguments
 PROJECT_ARG=""
 PROJECT_NAME=""
+OPEN_MAIN_WORKTREE=false
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -24,12 +26,16 @@ while [[ $# -gt 0 ]]; do
       PROJECT_NAME="$2"
       shift 2
       ;;
+    --open-main-worktree)
+      OPEN_MAIN_WORKTREE=true
+      shift
+      ;;
     *)
       if [ -z "$PROJECT_ARG" ]; then
         PROJECT_ARG="$1"
       else
         echo "Error: Unexpected argument: $1"
-        echo "Usage: bin/launch-with-project [PATH] [--name NAME]"
+        echo "Usage: bin/launch-with-project [PATH] [--name NAME] [--open-main-worktree]"
         exit 1
       fi
       shift
@@ -39,7 +45,7 @@ done
 
 if [ -z "$PROJECT_ARG" ]; then
   echo "Error: No project path provided"
-  echo "Usage: bin/launch-with-project [PATH] [--name NAME]"
+  echo "Usage: bin/launch-with-project [PATH] [--name NAME] [--open-main-worktree]"
   exit 1
 fi
 
@@ -55,6 +61,24 @@ fi
 
 # Convert the provided path to an absolute path
 PROJECT_PATH="$(cd "$PROJECT_ARG" && pwd)"
+
+# If --open-main-worktree is set, find the main worktree
+if [ "$OPEN_MAIN_WORKTREE" = true ]; then
+  cd "$PROJECT_PATH"
+  if [ -d ".git" ] || [ -f ".git" ]; then
+    # Get the main worktree path
+    MAIN_WORKTREE=$(git worktree list --porcelain | grep -E '^worktree ' | head -1 | cut -d' ' -f2)
+    if [ -n "$MAIN_WORKTREE" ] && [ -d "$MAIN_WORKTREE" ]; then
+      PROJECT_PATH="$MAIN_WORKTREE"
+      echo "Using main worktree: $PROJECT_PATH"
+    else
+      echo "Warning: Could not find main worktree, using provided path"
+    fi
+  else
+    echo "Warning: Not a git repository, ignoring --open-main-worktree flag"
+  fi
+  cd "$PROJECT_ROOT"
+fi
 
 if [ -n "$PROJECT_NAME" ]; then
   echo "Launching VibeTree with project: $PROJECT_PATH (name: $PROJECT_NAME)"
