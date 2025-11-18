@@ -115,6 +115,7 @@ function AppContent() {
               key={project.id}
               value={project.id}
               className="flex-1 m-0 h-0 overflow-hidden"
+              forceMount
             >
               <ProjectWorkspace projectId={project.id} theme={theme} />
             </TabsContent>

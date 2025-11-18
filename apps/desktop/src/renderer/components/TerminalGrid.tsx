@@ -330,14 +330,14 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
     return terminals;
   }, [currentGrid]);
 
-  // Get all terminals from all worktrees for rendering InPortals
+  // Get all terminals from current worktree only for rendering InPortals
+  // This prevents multiple TerminalGrid instances (from different project tabs)
+  // from rendering duplicate ClaudeTerminal components for the same terminal,
+  // which would cause multiple IPC listener registrations and output duplication
   const allTerminals = useMemo(() => {
-    const terminals: TerminalInstance[] = [];
-    worktreeGrids.forEach(grid => {
-      terminals.push(...collectTerminals(grid.root));
-    });
-    return terminals;
-  }, [worktreeGrids]);
+    if (!currentGrid) return [];
+    return collectTerminals(currentGrid.root);
+  }, [currentGrid]);
 
   // Render a grid node recursively
   const renderGridNode = useCallback((node: GridNode): JSX.Element => {
