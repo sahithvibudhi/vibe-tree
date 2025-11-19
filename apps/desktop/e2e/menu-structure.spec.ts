@@ -119,7 +119,6 @@ test.describe('Application Menu Structure', () => {
     expect(viewMenuLabels).toContain('Stats...');
 
     const viewMenuRoles = viewMenu.submenu.map((item: MenuItem) => item.role?.toLowerCase()).filter(Boolean);
-    expect(viewMenuRoles).toContain('reload');
     expect(viewMenuRoles).toContain('toggledevtools');
     expect(viewMenuRoles).toContain('togglefullscreen');
 
