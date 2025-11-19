@@ -10,14 +10,20 @@ import * as os from 'os';
  * Each terminal gets its own isolated fork process with a single PTY
  */
 class DesktopShellManager {
-  private forkManager: TerminalForkManager;
+  private forkManager: TerminalForkManager | null = null;
+  private _initialized = false;
 
   constructor() {
-    // Initialize TerminalForkManager with path to worker script
-    const workerScriptPath = this.getWorkerScriptPath();
-    this.forkManager = TerminalForkManager.initialize(workerScriptPath);
+    // Defer initialization until first use
+  }
 
-    this.setupIpcHandlers();
+  private ensureInitialized() {
+    if (!this._initialized) {
+      this._initialized = true;
+      const workerScriptPath = this.getWorkerScriptPath();
+      this.forkManager = TerminalForkManager.initialize(workerScriptPath);
+      this.setupIpcHandlers();
+    }
   }
 
   /**
@@ -42,7 +48,8 @@ class DesktopShellManager {
    * Broadcast terminal session changes to all renderer processes
    */
   private async broadcastSessionChange() {
-    const sessions = await this.forkManager.getAllSessions();
+    this.ensureInitialized();
+    const sessions = await this.forkManager!.getAllSessions();
     const worktreeSessionCounts = new Map<string, number>();
 
     sessions.forEach(session => {
@@ -87,7 +94,7 @@ class DesktopShellManager {
       const settings = terminalSettingsManager.getSettings();
 
       // Start session via fork manager - reuses existing session if terminalId matches
-      const result = await this.forkManager.startSession(
+      const result = await this.forkManager!.startSession(
         worktreePath,
         cols ?? 80,
         rows ?? 30,
@@ -105,21 +112,21 @@ class DesktopShellManager {
           const outputListener = (data: string) => {
             if (!this.safeSend(event.sender, `shell:output:${processId}`, data)) {
               // Frame was disposed - remove this listener
-              this.forkManager.removeOutputListener(processId, outputListener);
+              this.forkManager!.removeOutputListener(processId, outputListener);
             }
           };
-          this.forkManager.addOutputListener(processId, outputListener);
+          this.forkManager!.addOutputListener(processId, outputListener);
 
           // Add exit listener
           const exitListener = (exitCode: number) => {
             if (!this.safeSend(event.sender, `shell:exit:${processId}`, exitCode)) {
               // Frame was disposed - remove this listener
-              this.forkManager.removeExitListener(processId, exitListener);
+              this.forkManager!.removeExitListener(processId, exitListener);
             }
             // Broadcast session change when terminal exits
             this.broadcastSessionChange();
           };
-          this.forkManager.addExitListener(processId, exitListener);
+          this.forkManager!.addExitListener(processId, exitListener);
 
           // Broadcast session change for new terminal
           await this.broadcastSessionChange();
@@ -132,15 +139,15 @@ class DesktopShellManager {
     });
 
     ipcMain.handle('shell:write', async (_, processId: string, data: string) => {
-      return this.forkManager.writeToSession(processId, data);
+      return this.forkManager!.writeToSession(processId, data);
     });
 
     ipcMain.handle('shell:resize', async (_, processId: string, cols: number, rows: number) => {
-      return this.forkManager.resizeSession(processId, cols, rows);
+      return this.forkManager!.resizeSession(processId, cols, rows);
     });
 
     ipcMain.handle('shell:status', async (_, processId: string) => {
-      return { running: this.forkManager.hasSession(processId) };
+      return { running: this.forkManager!.hasSession(processId) };
     });
 
     ipcMain.handle('shell:get-buffer', async () => {
@@ -149,21 +156,21 @@ class DesktopShellManager {
     });
 
     ipcMain.handle('shell:terminate', async (_, processId: string) => {
-      const result = await this.forkManager.terminateSession(processId);
+      const result = await this.forkManager!.terminateSession(processId);
       await this.broadcastSessionChange();
       return result;
     });
 
     ipcMain.handle('shell:terminate-for-worktree', async (_, worktreePath: string) => {
-      const count = await this.forkManager.terminateSessionsForWorktree(worktreePath);
+      const count = await this.forkManager!.terminateSessionsForWorktree(worktreePath);
       await this.broadcastSessionChange();
       return { success: true, count };
     });
 
     ipcMain.handle('shell:get-stats', async () => {
-      const sessions = await this.forkManager.getAllSessions();
-      const forkStats = this.forkManager.getStats();
-      const forkDiagnostics = await this.forkManager.getDiagnostics();
+      const sessions = await this.forkManager!.getAllSessions();
+      const forkStats = this.forkManager!.getStats();
+      const forkDiagnostics = await this.forkManager!.getDiagnostics();
 
       // Get session stats for diagnostics
       const sessionManagerStats = {
@@ -196,7 +203,7 @@ class DesktopShellManager {
     });
 
     ipcMain.handle('shell:get-worktree-sessions', async () => {
-      const sessions = await this.forkManager.getAllSessions();
+      const sessions = await this.forkManager!.getAllSessions();
       const worktreeSessionCounts = new Map<string, number>();
 
       sessions.forEach(session => {
@@ -212,9 +219,9 @@ class DesktopShellManager {
         console.log('Running comprehensive diagnostics for posix_spawn failure analysis...');
 
         // Get session stats from fork manager
-        const sessions = await this.forkManager.getAllSessions();
-        const forkStats = this.forkManager.getStats();
-        const forkDiagnostics = await this.forkManager.getDiagnostics();
+        const sessions = await this.forkManager!.getAllSessions();
+        const forkStats = this.forkManager!.getStats();
+        const forkDiagnostics = await this.forkManager!.getDiagnostics();
 
         const sessionManagerStats = {
           totalPtyInstancesCreated: forkStats.totalForks,
@@ -288,8 +295,9 @@ class DesktopShellManager {
 
   // Get process statistics
   public async getStats() {
-    const sessions = await this.forkManager.getAllSessions();
-    const forkStats = this.forkManager.getStats();
+    this.ensureInitialized();
+    const sessions = await this.forkManager!.getAllSessions();
+    const forkStats = this.forkManager!.getStats();
     const systemDiagnostics = await getSystemDiagnostics();
 
     return {
@@ -308,7 +316,8 @@ class DesktopShellManager {
 
   // Clean up on app quit
   public async cleanup() {
-    await this.forkManager.terminateAll();
+    this.ensureInitialized();
+    await this.forkManager!.terminateAll();
   }
 }
 

@@ -12,11 +12,25 @@ export interface SchedulerHistoryEntry {
 class SchedulerHistoryManager {
   private historyEntries: SchedulerHistoryEntry[] = [];
   private readonly maxHistoryEntries = 20;
-  private readonly storageFile: string;
+  private _storageFile: string | null = null;
+  private _initialized = false;
 
   constructor() {
-    this.storageFile = path.join(app.getPath('userData'), 'scheduler-history.json');
-    this.loadHistory();
+    // Defer initialization until first access
+  }
+
+  private get storageFile(): string {
+    if (!this._storageFile) {
+      this._storageFile = path.join(app.getPath('userData'), 'scheduler-history.json');
+    }
+    return this._storageFile;
+  }
+
+  private ensureInitialized() {
+    if (!this._initialized) {
+      this._initialized = true;
+      this.loadHistory();
+    }
   }
 
   private loadHistory() {
@@ -58,6 +72,7 @@ class SchedulerHistoryManager {
   }
 
   addHistoryEntry(command: string, delayMs: number, repeat: boolean) {
+    this.ensureInitialized();
     // Check if an identical entry already exists (ignoring timestamp)
     const existingIndex = this.historyEntries.findIndex(
       entry => entry.command === command && entry.delayMs === delayMs && entry.repeat === repeat
@@ -86,11 +101,13 @@ class SchedulerHistoryManager {
   }
 
   getHistory(): SchedulerHistoryEntry[] {
+    this.ensureInitialized();
     // Return a copy sorted by timestamp (most recent first)
     return [...this.historyEntries].sort((a, b) => b.timestamp - a.timestamp);
   }
 
   clearHistory() {
+    this.ensureInitialized();
     this.historyEntries = [];
     this.saveHistory();
   }

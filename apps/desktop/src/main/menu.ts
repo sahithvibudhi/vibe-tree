@@ -3,6 +3,19 @@ import { recentProjectsManager } from './recent-projects';
 import path from 'path';
 
 let statsWindow: BrowserWindow | null = null;
+let ipcHandlersInitialized = false;
+
+function initializeMenuIpcHandlers() {
+  if (ipcHandlersInitialized) return;
+  ipcHandlersInitialized = true;
+
+  // Handle stats dialog close request
+  ipcMain.on('stats-dialog:close', () => {
+    if (statsWindow && !statsWindow.isDestroyed()) {
+      statsWindow.close();
+    }
+  });
+}
 
 function createStatsWindow(parentWindow: BrowserWindow) {
   // Close existing stats window if it exists
@@ -43,14 +56,8 @@ function createStatsWindow(parentWindow: BrowserWindow) {
   });
 }
 
-// Handle stats dialog close request
-ipcMain.on('stats-dialog:close', () => {
-  if (statsWindow && !statsWindow.isDestroyed()) {
-    statsWindow.close();
-  }
-});
-
 export function createMenu(mainWindow: BrowserWindow | null) {
+  initializeMenuIpcHandlers();
   const recentProjects = recentProjectsManager.getRecentProjects();
 
   const recentProjectsMenu = recentProjects.map(project => ({

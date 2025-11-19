@@ -11,11 +11,25 @@ export interface RecentProject {
 class RecentProjectsManager {
   private recentProjects: RecentProject[] = [];
   private readonly maxRecentProjects = 10;
-  private readonly storageFile: string;
+  private _storageFile: string | null = null;
+  private _initialized = false;
 
   constructor() {
-    this.storageFile = path.join(app.getPath('userData'), 'recent-projects.json');
-    this.loadRecentProjects();
+    // Defer initialization until first access
+  }
+
+  private get storageFile(): string {
+    if (!this._storageFile) {
+      this._storageFile = path.join(app.getPath('userData'), 'recent-projects.json');
+    }
+    return this._storageFile;
+  }
+
+  private ensureInitialized() {
+    if (!this._initialized) {
+      this._initialized = true;
+      this.loadRecentProjects();
+    }
   }
 
   private loadRecentProjects() {
@@ -56,6 +70,7 @@ class RecentProjectsManager {
   }
 
   addRecentProject(projectPath: string) {
+    this.ensureInitialized();
     const name = path.basename(projectPath);
     const existingIndex = this.recentProjects.findIndex(p => p.path === projectPath);
     
@@ -81,16 +96,19 @@ class RecentProjectsManager {
   }
 
   getRecentProjects(): RecentProject[] {
+    this.ensureInitialized();
     // Return a copy sorted by lastOpened (most recent first)
     return [...this.recentProjects].sort((a, b) => b.lastOpened - a.lastOpened);
   }
 
   removeRecentProject(projectPath: string) {
+    this.ensureInitialized();
     this.recentProjects = this.recentProjects.filter(p => p.path !== projectPath);
     this.saveRecentProjects();
   }
 
   clearRecentProjects() {
+    this.ensureInitialized();
     this.recentProjects = [];
     this.saveRecentProjects();
   }

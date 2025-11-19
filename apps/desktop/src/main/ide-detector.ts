@@ -13,14 +13,23 @@ interface IDE {
 
 class IDEDetector {
   private detectedIDEs: IDE[] = [];
+  private _initialized = false;
 
   constructor() {
-    this.setupIpcHandlers();
-    this.detectIDEs();
+    // Defer initialization until first use
+  }
+
+  private ensureInitialized() {
+    if (!this._initialized) {
+      this._initialized = true;
+      this.setupIpcHandlers();
+      this.detectIDEs();
+    }
   }
 
   private setupIpcHandlers() {
     ipcMain.handle('ide:detect', async () => {
+      this.ensureInitialized();
       if (this.detectedIDEs.length === 0) {
         await this.detectIDEs();
       }
@@ -28,6 +37,7 @@ class IDEDetector {
     });
 
     ipcMain.handle('ide:open', async (_, ideName: string, worktreePath: string) => {
+      this.ensureInitialized();
       const ide = this.detectedIDEs.find(i => i.name === ideName);
       if (!ide) {
         return { success: false, error: 'IDE not found' };
