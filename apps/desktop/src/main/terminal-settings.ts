@@ -24,11 +24,25 @@ const DEFAULT_SETTINGS: TerminalSettings = {
 
 class TerminalSettingsManager {
   private settings: TerminalSettings = { ...DEFAULT_SETTINGS };
-  private readonly storageFile: string;
+  private _storageFile: string | null = null;
+  private _initialized = false;
 
   constructor() {
-    this.storageFile = path.join(app.getPath('userData'), 'terminal-settings.json');
-    this.loadSettings();
+    // Defer initialization until app is ready
+  }
+
+  private get storageFile(): string {
+    if (!this._storageFile) {
+      this._storageFile = path.join(app.getPath('userData'), 'terminal-settings.json');
+    }
+    return this._storageFile;
+  }
+
+  private ensureInitialized() {
+    if (!this._initialized) {
+      this._initialized = true;
+      this.loadSettings();
+    }
   }
 
   private loadSettings() {
@@ -62,10 +76,12 @@ class TerminalSettingsManager {
   }
 
   getSettings(): TerminalSettings {
+    this.ensureInitialized();
     return { ...this.settings };
   }
 
   updateSettings(updates: TerminalSettingsUpdate) {
+    this.ensureInitialized();
     this.settings = {
       ...this.settings,
       ...updates
@@ -74,6 +90,7 @@ class TerminalSettingsManager {
   }
 
   resetToDefaults() {
+    this.ensureInitialized();
     this.settings = { ...DEFAULT_SETTINGS };
     this.saveSettings();
   }
