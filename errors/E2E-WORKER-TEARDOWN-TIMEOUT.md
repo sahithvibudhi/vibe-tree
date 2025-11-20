@@ -44,8 +44,16 @@ Need to investigate:
 - Attempted fixes that didn't work:
   - `workerTeardownTimeout` config not supported in current Playwright version
   - Adding timeout protection to `closeElectronApp()` caused tests to hang during execution (reverted)
+  - Adding `globalTeardown` hook - hook executed but didn't prevent timeout (run 19526332675)
 
 **Current State:**
 - All tests pass (46/46)
 - Worker teardown timeout occurs AFTER test completion
 - This is acceptable as it doesn't affect test execution, only CI job status
+
+**Next Possible Approaches:**
+At this point, we've exhausted several standard approaches. The issue appears to be fundamental to how Playwright's worker terminates with Electron processes. Possible remaining options:
+1. Investigate if there are lingering event listeners or timers in the Electron main process
+2. Force-kill the worker process after globalTeardown completes
+3. Accept this as a known limitation and document it
+4. Use a different test runner or approach for Electron E2E tests

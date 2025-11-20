@@ -15,8 +15,22 @@ Added a `globalTeardown` script to Playwright configuration to help with cleanup
 The global teardown hook might provide a cleaner shutdown sequence that allows the worker to teardown properly, preventing the 120-second timeout.
 
 ## Testing
-This change will be pushed to CI to verify if it resolves the worker teardown timeout issue.
+This change was pushed to CI (run 19526332675, job 55899865441) to verify if it resolves the worker teardown timeout issue.
 
-## Expected Outcome
-If successful, all 46 tests should still pass and the worker should teardown cleanly without timeout.
-If unsuccessful, the same worker teardown timeout will occur, but we'll have ruled out another approach.
+## Result
+❌ **UNSUCCESSFUL** - The globalTeardown approach did not resolve the worker teardown timeout.
+
+**What Happened:**
+- All 46 tests passed successfully ✅
+- Global teardown hook executed successfully:
+  ```
+  [Global Teardown] Starting cleanup...
+  [Global Teardown] Cleanup complete
+  ```
+- Worker teardown timeout still occurred after 120 seconds ❌
+  ```
+  Worker teardown timeout of 120000ms exceeded.
+  ```
+
+**Analysis:**
+The globalTeardown hook runs successfully but doesn't prevent the worker teardown timeout. This suggests the issue is not with test-level cleanup but with something deeper in how Playwright's worker process terminates after all tests complete. The worker appears to be waiting for something that never completes or times out.
