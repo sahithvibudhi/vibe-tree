@@ -10,13 +10,25 @@ import * as os from 'os';
  * Each terminal gets its own isolated fork process with a single PTY
  */
 class DesktopShellManager {
-  private forkManager: TerminalForkManager;
+  private forkManager!: TerminalForkManager;
+  private _initialized = false;
 
   constructor() {
-    // Initialize TerminalForkManager with path to worker script
+    // Defer initialization until app is ready
+  }
+
+  /**
+   * Initialize the shell manager (must be called when app is ready)
+   * Registers IPC handlers and initializes the fork manager
+   */
+  public initialize() {
+    if (this._initialized) {
+      return; // Already initialized
+    }
+    this._initialized = true;
+
     const workerScriptPath = this.getWorkerScriptPath();
     this.forkManager = TerminalForkManager.initialize(workerScriptPath);
-
     this.setupIpcHandlers();
   }
 
@@ -308,7 +320,9 @@ class DesktopShellManager {
 
   // Clean up on app quit
   public async cleanup() {
-    await this.forkManager.terminateAll();
+    if (this._initialized) {
+      await this.forkManager.terminateAll();
+    }
   }
 }
 

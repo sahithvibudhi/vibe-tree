@@ -2,8 +2,8 @@ import { app, BrowserWindow, nativeTheme, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { shellProcessManager } from './shell-manager';
+import { terminalSettingsManager } from './terminal-settings';
 import './ide-detector';
-import './terminal-settings';
 import { registerIpcHandlers } from './ipc-handlers';
 import { createMenu } from './menu';
 
@@ -79,6 +79,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Initialize terminal settings and shell manager BEFORE creating window
+  terminalSettingsManager.initialize();
+  shellProcessManager.initialize();
+
   createWindow();
   createMenu(mainWindow);
   registerIpcHandlers(mainWindow);
