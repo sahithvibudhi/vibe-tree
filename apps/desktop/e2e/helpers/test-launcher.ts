@@ -47,15 +47,32 @@ export async function closeElectronApp(electronApp: ElectronApplication | null):
   }
 
   try {
-    // Cleanup fork processes before exiting
+    // Cleanup fork processes before exiting with a timeout to prevent hanging
     // This is critical because process.exit(0) bypasses the before-quit event
-    await electronApp.evaluate(async () => {
+    const cleanupPromise = electronApp.evaluate(async () => {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { shellProcessManager } = require('./shell-manager');
       await shellProcessManager.cleanup();
       process.exit(0);
     });
+
+    // Add a timeout to prevent cleanup from hanging the test suite
+    // If cleanup takes more than 5 seconds, we force exit anyway
+    await Promise.race([
+      cleanupPromise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Cleanup timeout')), 5000)
+      )
+    ]);
   } catch (error) {
     // Ignore errors - process.exit(0) will close the connection immediately
     // which causes Playwright to throw, but that's expected and OK
+    // Also, cleanup timeout errors are expected if processes don't exit cleanly
+    try {
+      // If cleanup timed out or failed, force close the app
+      await electronApp.close();
+    } catch {
+      // Ignore close errors - app may already be closed
+    }
   }
 }

@@ -14,6 +14,10 @@ export default defineConfig({
   // Set globalTimeout to prevent overall test suite timeout issues
   // Increased from 15 minutes to 20 minutes to handle fork architecture cleanup delays
   globalTimeout: process.env.CI ? 1200000 : 0, // 20 minutes in CI, unlimited locally
+  // Set a shorter worker teardown timeout to fail fast instead of hanging
+  // This prevents the 2-minute wait when workers don't teardown cleanly
+  // 30 seconds should be plenty for normal cleanup, and we have pkill as backup in CI
+  workerTeardownTimeout: 30000,
   // Increase expect timeout for slow operations
   expect: {
     timeout: 10000,
