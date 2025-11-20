@@ -37,6 +37,9 @@ export async function launchElectronApp(options: LaunchOptions = {}): Promise<El
  * We use process.exit(0) because electronApp.close() can be too slow (>5 seconds)
  * and cause worker teardown timeouts. The trade-off is acceptable since these are
  * ephemeral test instances.
+ *
+ * IMPORTANT: We must cleanup fork processes before calling process.exit(), because
+ * process.exit() bypasses Electron's before-quit event where cleanup normally happens.
  */
 export async function closeElectronApp(electronApp: ElectronApplication | null): Promise<void> {
   if (!electronApp) {
@@ -44,7 +47,13 @@ export async function closeElectronApp(electronApp: ElectronApplication | null):
   }
 
   try {
-    await electronApp.evaluate(() => process.exit(0));
+    // Cleanup fork processes before exiting
+    // This is critical because process.exit(0) bypasses the before-quit event
+    await electronApp.evaluate(async () => {
+      const { shellProcessManager } = require('./shell-manager');
+      await shellProcessManager.cleanup();
+      process.exit(0);
+    });
   } catch (error) {
     // Ignore errors - process.exit(0) will close the connection immediately
     // which causes Playwright to throw, but that's expected and OK
