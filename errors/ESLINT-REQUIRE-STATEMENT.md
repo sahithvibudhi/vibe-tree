@@ -27,3 +27,6 @@ Since this code runs in the Electron context and requires dynamic module loading
 2. Or restructure to avoid the dynamic require
 
 The proper fix is to use an ESLint disable comment since the require is necessary in the Electron evaluation context.
+
+## Status
+✅ **RESOLVED** - Added `// eslint-disable-next-line @typescript-eslint/no-var-requires` comment above the require statement in `apps/desktop/e2e/helpers/test-launcher.ts:53`

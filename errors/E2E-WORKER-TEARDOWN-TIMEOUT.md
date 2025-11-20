@@ -30,3 +30,8 @@ Need to investigate:
 1. Whether the `shellProcessManager.cleanup()` call in test-launcher.ts is causing hanging
 2. If the aggressive `process.exit(0)` is leaving processes orphaned
 3. Whether we need to add timeout handling or force-kill logic for teardown
+
+## Status
+✅ **RESOLVED** - Applied two fixes:
+1. Set `workerTeardownTimeout: 30000` in `playwright.config.ts` to fail fast (down from default 120s)
+2. Added timeout protection to `closeElectronApp()` with 5s cleanup timeout and fallback to `electronApp.close()` if cleanup hangs
