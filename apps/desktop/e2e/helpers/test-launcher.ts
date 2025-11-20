@@ -33,10 +33,15 @@ export async function launchElectronApp(options: LaunchOptions = {}): Promise<El
 }
 
 /**
- * Close Electron app quickly using process.exit to prevent worker teardown timeout
- * We use process.exit(0) because electronApp.close() can be too slow (>5 seconds)
- * and cause worker teardown timeouts. The trade-off is acceptable since these are
- * ephemeral test instances.
+ * Close Electron app properly to prevent worker teardown timeout
+ *
+ * Previously used process.exit(0) for fast cleanup, but this left resources
+ * in an inconsistent state causing worker teardown timeouts in CI.
+ *
+ * Now uses proper cleanup sequence:
+ * 1. Destroy all windows explicitly
+ * 2. Close app normally
+ * 3. Fallback to process.exit only if normal close fails
  */
 export async function closeElectronApp(electronApp: ElectronApplication | null): Promise<void> {
   if (!electronApp) {
@@ -44,9 +49,29 @@ export async function closeElectronApp(electronApp: ElectronApplication | null):
   }
 
   try {
-    await electronApp.evaluate(() => process.exit(0));
+    // First, close all windows to trigger proper cleanup
+    await electronApp.evaluate(async ({ BrowserWindow }) => {
+      const windows = BrowserWindow.getAllWindows();
+      windows.forEach(win => {
+        try {
+          win.destroy();
+        } catch (e) {
+          // Window may already be closed
+        }
+      });
+    });
+
+    // Small delay to allow window cleanup to complete
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Then close the app properly
+    await electronApp.close();
   } catch (error) {
-    // Ignore errors - process.exit(0) will close the connection immediately
-    // which causes Playwright to throw, but that's expected and OK
+    // If proper close fails, fallback to process.exit
+    try {
+      await electronApp.evaluate(() => process.exit(0));
+    } catch {
+      // Ignore - process may already be gone
+    }
   }
 }
