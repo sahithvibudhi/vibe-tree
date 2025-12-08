@@ -54,13 +54,18 @@ function getSystemLocale(): string {
 }
 
 export function getPtyOptions(
-  worktreePath: string, 
-  cols: number = 80, 
+  worktreePath: string,
+  cols: number = 80,
   rows: number = 30,
   setLocaleVariables: boolean = true
 ): any {
   // Create a copy of process.env to avoid modifying the original
   const env = { ...process.env } as Record<string, string>;
+
+  // Remove Electron-specific environment variables that shouldn't leak into shells
+  // ELECTRON_RUN_AS_NODE makes Electron behave as Node.js, causing issues with
+  // Electron-based tools (like VSCode) run from within the terminal
+  delete env.ELECTRON_RUN_AS_NODE;
   
   // Set LANG if not already set and setting is enabled
   // This matches iTerm2 and Terminal.app "Set locale environment variables automatically" behavior
