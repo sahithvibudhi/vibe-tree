@@ -13,8 +13,20 @@ interface IDE {
 
 class IDEDetector {
   private detectedIDEs: IDE[] = [];
+  private _initialized = false;
 
   constructor() {
+    // Defer initialization until app is ready
+  }
+
+  /**
+   * Initialize the IDE detector (must be called when app is ready)
+   */
+  public initialize() {
+    if (this._initialized) {
+      return;
+    }
+    this._initialized = true;
     this.setupIpcHandlers();
     this.detectIDEs();
   }
@@ -35,18 +47,18 @@ class IDEDetector {
 
       try {
         const command = `${ide.command} "${worktreePath}"`;
-        
+
         if (process.platform === 'win32') {
           await execAsync(command);
         } else {
           await execAsync(command);
         }
-        
+
         return { success: true };
       } catch (error) {
-        return { 
-          success: false, 
-          error: error instanceof Error ? error.message : 'Failed to open IDE' 
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to open IDE'
         };
       }
     });
@@ -66,18 +78,18 @@ class IDEDetector {
 
   private async detectMacIDEs() {
     const ides = [
-      { 
-        name: 'Cursor', 
+      {
+        name: 'Cursor',
         path: '/Applications/Cursor.app',
         command: 'open -a Cursor'
       },
-      { 
-        name: 'Visual Studio Code', 
+      {
+        name: 'Visual Studio Code',
         path: '/Applications/Visual Studio Code.app',
         command: 'open -a "Visual Studio Code"'
       },
-      { 
-        name: 'VSCode', 
+      {
+        name: 'VSCode',
         path: '/Applications/VSCode.app',
         command: 'open -a VSCode'
       }
@@ -199,5 +211,4 @@ class IDEDetector {
   }
 }
 
-// Initialize IDE detector
-new IDEDetector();
+export const ideDetector = new IDEDetector();

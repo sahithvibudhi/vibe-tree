@@ -43,14 +43,23 @@ function createStatsWindow(parentWindow: BrowserWindow) {
   });
 }
 
-// Handle stats dialog close request
-ipcMain.on('stats-dialog:close', () => {
-  if (statsWindow && !statsWindow.isDestroyed()) {
-    statsWindow.close();
-  }
-});
+let ipcHandlersRegistered = false;
+
+function registerIpcHandlers() {
+  if (ipcHandlersRegistered) return;
+  ipcHandlersRegistered = true;
+
+  // Handle stats dialog close request
+  ipcMain.on('stats-dialog:close', () => {
+    if (statsWindow && !statsWindow.isDestroyed()) {
+      statsWindow.close();
+    }
+  });
+}
 
 export function createMenu(mainWindow: BrowserWindow | null) {
+  // Register IPC handlers when menu is first created (app is ready at this point)
+  registerIpcHandlers();
   const recentProjects = recentProjectsManager.getRecentProjects();
 
   const recentProjectsMenu = recentProjects.map(project => ({

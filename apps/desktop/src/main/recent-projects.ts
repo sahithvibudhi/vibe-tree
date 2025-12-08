@@ -11,9 +11,21 @@ export interface RecentProject {
 class RecentProjectsManager {
   private recentProjects: RecentProject[] = [];
   private readonly maxRecentProjects = 10;
-  private readonly storageFile: string;
+  private storageFile: string = '';
+  private _initialized = false;
 
   constructor() {
+    // Defer initialization until app is ready
+  }
+
+  /**
+   * Initialize the recent projects manager (must be called when app is ready)
+   */
+  public initialize() {
+    if (this._initialized) {
+      return;
+    }
+    this._initialized = true;
     this.storageFile = path.join(app.getPath('userData'), 'recent-projects.json');
     this.loadRecentProjects();
   }
@@ -24,12 +36,12 @@ class RecentProjectsManager {
         const data = fs.readFileSync(this.storageFile, 'utf8');
         this.recentProjects = JSON.parse(data);
         // Validate and clean up invalid entries
-        this.recentProjects = this.recentProjects.filter(project => 
-          typeof project.path === 'string' && 
-          typeof project.name === 'string' && 
+        this.recentProjects = this.recentProjects.filter(project =>
+          typeof project.path === 'string' &&
+          typeof project.name === 'string' &&
           typeof project.lastOpened === 'number'
         );
-        
+
         // Ensure we don't exceed max recent projects even after loading
         if (this.recentProjects.length > this.maxRecentProjects) {
           this.recentProjects = this.recentProjects
@@ -58,7 +70,7 @@ class RecentProjectsManager {
   addRecentProject(projectPath: string) {
     const name = path.basename(projectPath);
     const existingIndex = this.recentProjects.findIndex(p => p.path === projectPath);
-    
+
     const project: RecentProject = {
       path: projectPath,
       name,

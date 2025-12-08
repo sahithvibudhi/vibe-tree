@@ -12,9 +12,21 @@ export interface SchedulerHistoryEntry {
 class SchedulerHistoryManager {
   private historyEntries: SchedulerHistoryEntry[] = [];
   private readonly maxHistoryEntries = 20;
-  private readonly storageFile: string;
+  private storageFile: string = '';
+  private _initialized = false;
 
   constructor() {
+    // Defer initialization until app is ready
+  }
+
+  /**
+   * Initialize the scheduler history manager (must be called when app is ready)
+   */
+  public initialize() {
+    if (this._initialized) {
+      return;
+    }
+    this._initialized = true;
     this.storageFile = path.join(app.getPath('userData'), 'scheduler-history.json');
     this.loadHistory();
   }

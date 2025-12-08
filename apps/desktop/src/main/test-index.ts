@@ -3,7 +3,9 @@ import path from 'path';
 import fs from 'fs';
 import { shellProcessManager } from './shell-manager';
 import { terminalSettingsManager } from './terminal-settings';
-import './ide-detector';
+import { ideDetector } from './ide-detector';
+import { recentProjectsManager } from './recent-projects';
+import { schedulerHistoryManager } from './scheduler-history';
 import { registerIpcHandlers } from './ipc-handlers';
 import { createMenu } from './menu';
 
@@ -82,6 +84,9 @@ app.whenReady().then(() => {
   // Initialize terminal settings and shell manager BEFORE creating window
   terminalSettingsManager.initialize();
   shellProcessManager.initialize();
+  ideDetector.initialize();
+  recentProjectsManager.initialize();
+  schedulerHistoryManager.initialize();
 
   createWindow();
   createMenu(mainWindow);
