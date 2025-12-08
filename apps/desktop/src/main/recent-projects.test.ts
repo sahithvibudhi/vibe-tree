@@ -33,10 +33,11 @@ describe('RecentProjectsManager', () => {
 
   it('should initialize with empty recent projects when no file exists', async () => {
     mockFs.existsSync.mockReturnValue(false);
-    
+
     const { recentProjectsManager } = await import('./recent-projects');
+    recentProjectsManager.initialize();
     const recentProjects = recentProjectsManager.getRecentProjects();
-    
+
     expect(recentProjects).toEqual([]);
   });
 
@@ -45,13 +46,14 @@ describe('RecentProjectsManager', () => {
       { path: '/path/to/project1', name: 'project1', lastOpened: 1000 },
       { path: '/path/to/project2', name: 'project2', lastOpened: 2000 }
     ];
-    
+
     mockFs.existsSync.mockReturnValue(true);
     mockFs.readFileSync.mockReturnValue(JSON.stringify(testProjects));
-    
+
     const { recentProjectsManager } = await import('./recent-projects');
+    recentProjectsManager.initialize();
     const recentProjects = recentProjectsManager.getRecentProjects();
-    
+
     expect(recentProjects).toHaveLength(2);
     expect(recentProjects[0]).toEqual(testProjects[1]); // Most recent first
     expect(recentProjects[1]).toEqual(testProjects[0]);
@@ -59,9 +61,10 @@ describe('RecentProjectsManager', () => {
 
   it('should add new project to recent projects', async () => {
     mockFs.existsSync.mockReturnValue(false);
-    
+
     const { recentProjectsManager } = await import('./recent-projects');
-    
+    recentProjectsManager.initialize();
+
     recentProjectsManager.addRecentProject('/path/to/new-project');
     
     const recentProjects = recentProjectsManager.getRecentProjects();
@@ -82,12 +85,13 @@ describe('RecentProjectsManager', () => {
       { path: '/path/to/project1', name: 'project1', lastOpened: 1000 },
       { path: '/path/to/project2', name: 'project2', lastOpened: 2000 }
     ];
-    
+
     mockFs.existsSync.mockReturnValue(true);
     mockFs.readFileSync.mockReturnValue(JSON.stringify(existingProjects));
-    
+
     const { recentProjectsManager } = await import('./recent-projects');
-    
+    recentProjectsManager.initialize();
+
     // Re-add project1 - should move it to front with updated timestamp
     recentProjectsManager.addRecentProject('/path/to/project1');
     
@@ -105,12 +109,13 @@ describe('RecentProjectsManager', () => {
       name: `project${i}`,
       lastOpened: 1000 + i
     }));
-    
+
     mockFs.existsSync.mockReturnValue(true);
     mockFs.readFileSync.mockReturnValue(JSON.stringify(projects));
-    
+
     const { recentProjectsManager } = await import('./recent-projects');
-    
+    recentProjectsManager.initialize();
+
     const recentProjects = recentProjectsManager.getRecentProjects();
     expect(recentProjects).toHaveLength(10); // Should be limited to 10
     
@@ -124,12 +129,13 @@ describe('RecentProjectsManager', () => {
       { path: '/path/to/project1', name: 'project1', lastOpened: 1000 },
       { path: '/path/to/project2', name: 'project2', lastOpened: 2000 }
     ];
-    
+
     mockFs.existsSync.mockReturnValue(true);
     mockFs.readFileSync.mockReturnValue(JSON.stringify(testProjects));
-    
+
     const { recentProjectsManager } = await import('./recent-projects');
-    
+    recentProjectsManager.initialize();
+
     recentProjectsManager.removeRecentProject('/path/to/project1');
     
     const recentProjects = recentProjectsManager.getRecentProjects();
@@ -147,12 +153,13 @@ describe('RecentProjectsManager', () => {
       { path: '/path/to/project1', name: 'project1', lastOpened: 1000 },
       { path: '/path/to/project2', name: 'project2', lastOpened: 2000 }
     ];
-    
+
     mockFs.existsSync.mockReturnValue(true);
     mockFs.readFileSync.mockReturnValue(JSON.stringify(testProjects));
-    
+
     const { recentProjectsManager } = await import('./recent-projects');
-    
+    recentProjectsManager.initialize();
+
     recentProjectsManager.clearRecentProjects();
     
     const recentProjects = recentProjectsManager.getRecentProjects();
@@ -167,9 +174,10 @@ describe('RecentProjectsManager', () => {
   it('should handle corrupted file gracefully', async () => {
     mockFs.existsSync.mockReturnValue(true);
     mockFs.readFileSync.mockReturnValue('invalid json');
-    
+
     const { recentProjectsManager } = await import('./recent-projects');
-    
+    recentProjectsManager.initialize();
+
     // Should not throw and return empty array
     const recentProjects = recentProjectsManager.getRecentProjects();
     expect(recentProjects).toEqual([]);
@@ -183,12 +191,13 @@ describe('RecentProjectsManager', () => {
       { path: '/valid/project3', name: 'project3', lastOpened: 'invalid' }, // Invalid timestamp type
       { path: '/valid/project4', name: 'project4', lastOpened: 4000 } // Valid
     ];
-    
+
     mockFs.existsSync.mockReturnValue(true);
     mockFs.readFileSync.mockReturnValue(JSON.stringify(mixedProjects));
-    
+
     const { recentProjectsManager } = await import('./recent-projects');
-    
+    recentProjectsManager.initialize();
+
     const recentProjects = recentProjectsManager.getRecentProjects();
     expect(recentProjects).toHaveLength(2);
     expect(recentProjects.every(p => 
@@ -200,11 +209,12 @@ describe('RecentProjectsManager', () => {
 
   it('should create directory if it does not exist when saving', async () => {
     mockFs.existsSync.mockReturnValue(false);
-    
+
     const { recentProjectsManager } = await import('./recent-projects');
-    
+    recentProjectsManager.initialize();
+
     recentProjectsManager.addRecentProject('/path/to/project');
-    
+
     expect(mockFs.mkdirSync).toHaveBeenCalledWith('/tmp/vibetree-test', { recursive: true });
     expect(mockFs.writeFileSync).toHaveBeenCalled();
   });
