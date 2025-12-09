@@ -41,6 +41,17 @@ interface WorktreeGrid {
 // Global cache for terminal grids - persists across component re-renders
 const worktreeGridCache = new Map<string, WorktreeGrid>();
 
+/**
+ * Clean up terminal grid cache for a worktree when it's deleted.
+ * This prevents stale terminal DOM nodes from persisting after worktree deletion.
+ */
+export function cleanupWorktreeTerminals(worktreePath: string): void {
+  if (worktreeGridCache.has(worktreePath)) {
+    console.log(`[TerminalGrid] Cleaning up terminal cache for worktree: ${worktreePath}`);
+    worktreeGridCache.delete(worktreePath);
+  }
+}
+
 // Helper to find a node in the grid by terminal ID
 function findNodeAndParent(
   node: GridNode,

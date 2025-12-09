@@ -9,6 +9,7 @@ import { isProtectedBranch } from '../utils/worktree';
 import { DeletionReportingDialog } from './DeletionReportingDialog';
 import type { TerminalSettings } from '../types/terminal-settings';
 import { activeSchedulersByWorktree, SCHEDULER_STATE_CHANGED_EVENT } from './ClaudeTerminal';
+import { cleanupWorktreeTerminals } from './TerminalGrid';
 
 interface Worktree {
   path: string;
@@ -338,6 +339,10 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
           error: error instanceof Error ? error.message : 'Failed to kill terminal processes'
         });
       }
+
+      // Clean up terminal DOM cache for this worktree
+      // This prevents stale terminals from appearing when worktree is recreated
+      cleanupWorktreeTerminals(worktreeToDelete.path);
 
       // Step 2: Remove worktree and delete branch
       updateDeletionStep(1, { status: 'in-progress' });
