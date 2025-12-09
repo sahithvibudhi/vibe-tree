@@ -30,7 +30,8 @@
     "docker:dev": "docker run -p 3000:3000 -p 3002:3002 --rm --name vibetree-dev vibetree-webapp",
     "docker:compose": "docker-compose up",
     "docker:compose:build": "docker-compose up --build",
-    "docker:compose:down": "docker-compose down"
+    "docker:compose:down": "docker-compose down",
+    "prepare": "husky"
   },
   "keywords": [
     "electron",
@@ -45,8 +46,9 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "turbo": "^1.11.2",
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "husky": "^9.1.7",
+    "turbo": "^1.11.2"
   },
   "packageManager": "pnpm@8.14.0",
   "engines": {

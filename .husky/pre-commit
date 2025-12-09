@@ -1,0 +1,23 @@
+#!/bin/sh
+
+# Check for waitForTimeout in staged test files
+# This is a "dumb sleep" - wait for clear cues that the app is ready instead
+
+staged_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(test|spec)\.(ts|tsx|js|jsx)$|e2e.*\.(ts|tsx|js|jsx)$' || true)
+
+if [ -n "$staged_files" ]; then
+  if echo "$staged_files" | xargs grep -l 'waitForTimeout' 2>/dev/null; then
+    echo ""
+    echo "❌ ERROR: Found 'waitForTimeout' in staged test files."
+    echo ""
+    echo "Wait for clear cue that the app is ready for next step instead of dumb sleep."
+    echo ""
+    echo "Use alternatives like:"
+    echo "  - waitForSelector() - wait for an element to appear"
+    echo "  - waitForFunction() - wait for a condition to be true"
+    echo "  - expect().toBeVisible() - assert element visibility"
+    echo "  - page.waitForLoadState() - wait for page load states"
+    echo ""
+    exit 1
+  fi
+fi
