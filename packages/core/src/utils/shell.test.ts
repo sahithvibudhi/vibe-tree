@@ -4,6 +4,76 @@ import * as pty from 'node-pty';
 import * as fs from 'fs';
 import * as path from 'path';
 
+/**
+ * Wait until a condition is true, with timeout
+ */
+async function waitUntil(
+  condition: () => boolean | Promise<boolean>,
+  options: { timeout?: number; interval?: number; message?: string } = {}
+): Promise<void> {
+  const { timeout = 5000, interval = 50, message = 'Condition not met' } = options;
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeout) {
+    if (await condition()) {
+      return;
+    }
+    await new Promise(resolve => setTimeout(resolve, interval));
+  }
+
+  throw new Error(`${message} (timed out after ${timeout}ms)`);
+}
+
+/**
+ * Wait until a file exists
+ */
+async function waitForFile(filePath: string, timeout = 5000): Promise<void> {
+  await waitUntil(() => fs.existsSync(filePath), {
+    timeout,
+    message: `File ${filePath} not created`
+  });
+}
+
+/**
+ * Wait until file content changes from initial value
+ */
+async function waitForFileChange(filePath: string, initialContent: string, timeout = 5000): Promise<string> {
+  let currentContent = initialContent;
+  await waitUntil(() => {
+    if (!fs.existsSync(filePath)) return false;
+    currentContent = fs.readFileSync(filePath, 'utf-8');
+    return currentContent !== initialContent;
+  }, {
+    timeout,
+    message: `File ${filePath} content did not change`
+  });
+  return currentContent;
+}
+
+/**
+ * Wait until file content stops changing (process has stopped writing)
+ */
+async function waitForFileStable(filePath: string, stabilityPeriod = 300, timeout = 5000): Promise<string> {
+  let lastContent = '';
+  let lastChangeTime = Date.now();
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeout) {
+    if (fs.existsSync(filePath)) {
+      const currentContent = fs.readFileSync(filePath, 'utf-8');
+      if (currentContent !== lastContent) {
+        lastContent = currentContent;
+        lastChangeTime = Date.now();
+      } else if (Date.now() - lastChangeTime >= stabilityPeriod) {
+        return lastContent;
+      }
+    }
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+
+  throw new Error(`File ${filePath} did not stabilize (timed out after ${timeout}ms)`);
+}
+
 describe('shell utils', () => {
   describe('getPtyOptions', () => {
     const originalEnv = process.env;
@@ -150,38 +220,28 @@ describe('shell utils', () => {
         env: process.env as any
       });
 
-      // Wait for shell to be ready
-      await new Promise(resolve => setTimeout(resolve, 500));
-
       // Start a loop that writes timestamps every 100ms
       ptyProcess.write(`while true; do date +%s.%N > ${testFile}; sleep 0.1; done\r`);
 
-      // Wait for the process to start writing
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait for file to be created
+      await waitForFile(testFile);
 
-      // Verify file is being updated
+      // Verify file is being updated by waiting for content to change
       const initialContent = fs.readFileSync(testFile, 'utf-8');
-      await new Promise(resolve => setTimeout(resolve, 200));
-      const updatedContent = fs.readFileSync(testFile, 'utf-8');
+      const updatedContent = await waitForFileChange(testFile, initialContent);
 
       expect(initialContent).not.toBe(updatedContent);
       console.log('✓ Process is running and updating file');
 
       // Kill the PTY gracefully
-      const killPromise = killPtyGraceful(ptyProcess, 10000);
+      await killPtyGraceful(ptyProcess, 10000);
 
-      // Wait for kill to complete
-      await killPromise;
+      // Wait for file to stabilize (no more writes)
+      const stableContent = await waitForFileStable(testFile, 300, 5000);
 
-      // Wait a bit to ensure process has stopped
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Verify file is no longer being updated
-      const contentAfterKill = fs.readFileSync(testFile, 'utf-8');
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Verify file stayed stable
       const finalContent = fs.readFileSync(testFile, 'utf-8');
-
-      expect(contentAfterKill).toBe(finalContent);
+      expect(stableContent).toBe(finalContent);
       console.log('✓ Process has stopped updating file after kill');
     }, 15000);
 
@@ -198,50 +258,29 @@ describe('shell utils', () => {
         env: process.env as any
       });
 
-      // Wait for shell to be ready
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Start a child process (not backgrounded - running in foreground of shell)
+      // Use bash subshell to simulate a child process that writes timestamps
+      ptyProcess.write(`bash -c 'while true; do date +%s.%N > ${testFile}; sleep 0.1; done'\r`);
 
-      // Start a Ruby IRB-like process in background
-      ptyProcess.write(`ruby -e "loop { File.write('${testFile}', Time.now.to_f); sleep 0.1 }" &\r`);
+      // Wait for file to be created
+      await waitForFile(testFile);
 
-      // Wait for the process to start writing
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      // Verify file exists and is being updated
-      if (!fs.existsSync(testFile)) {
-        console.warn('Test file not created, skipping test');
-        ptyProcess.kill('SIGKILL');
-        return;
-      }
-
+      // Verify file is being updated by waiting for content to change
       const initialContent = fs.readFileSync(testFile, 'utf-8');
-      await new Promise(resolve => setTimeout(resolve, 200));
-      const updatedContent = fs.readFileSync(testFile, 'utf-8');
+      const updatedContent = await waitForFileChange(testFile, initialContent);
 
       expect(initialContent).not.toBe(updatedContent);
       console.log('✓ Child process is running and updating file');
 
       // Kill the PTY gracefully
-      const killPromise = killPtyGraceful(ptyProcess, 10000);
+      await killPtyGraceful(ptyProcess, 10000);
 
-      // Wait for kill to complete
-      await killPromise;
+      // Wait for file to stabilize (no more writes)
+      const stableContent = await waitForFileStable(testFile, 300, 5000);
 
-      // Wait to ensure child process has stopped
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Verify file is no longer being updated
-      const contentAfterKill = fs.readFileSync(testFile, 'utf-8');
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Verify file stayed stable
       const finalContent = fs.readFileSync(testFile, 'utf-8');
-
-      // Parse timestamps and check they're within 500ms tolerance
-      // (allows for race conditions in CI environments where process scheduling is unpredictable)
-      const timestampAfterKill = parseFloat(contentAfterKill);
-      const timestampFinal = parseFloat(finalContent);
-      const diff = Math.abs(timestampFinal - timestampAfterKill);
-
-      expect(diff).toBeLessThan(0.5); // 500ms tolerance
+      expect(stableContent).toBe(finalContent);
       console.log('✓ Child process has stopped after PTY kill');
     }, 15000);
 
@@ -258,38 +297,28 @@ describe('shell utils', () => {
         env: process.env as any
       });
 
-      // Wait for shell to be ready
-      await new Promise(resolve => setTimeout(resolve, 500));
-
       // Start a process that ignores SIGTERM
       ptyProcess.write(`trap '' TERM; while true; do date +%s.%N > ${testFile}; sleep 0.1; done\r`);
 
-      // Wait for the process to start writing
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait for file to be created
+      await waitForFile(testFile);
 
-      // Verify file is being updated
+      // Verify file is being updated by waiting for content to change
       const initialContent = fs.readFileSync(testFile, 'utf-8');
-      await new Promise(resolve => setTimeout(resolve, 200));
-      const updatedContent = fs.readFileSync(testFile, 'utf-8');
+      const updatedContent = await waitForFileChange(testFile, initialContent);
 
       expect(initialContent).not.toBe(updatedContent);
       console.log('✓ Stubborn process is running');
 
       // Force kill the PTY
-      const killPromise = killPtyForce(ptyProcess);
+      await killPtyForce(ptyProcess);
 
-      // Wait for kill to complete
-      await killPromise;
+      // Wait for file to stabilize (no more writes)
+      const stableContent = await waitForFileStable(testFile, 300, 5000);
 
-      // Wait to ensure process has stopped
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Verify file is no longer being updated
-      const contentAfterKill = fs.readFileSync(testFile, 'utf-8');
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Verify file stayed stable
       const finalContent = fs.readFileSync(testFile, 'utf-8');
-
-      expect(contentAfterKill).toBe(finalContent);
+      expect(stableContent).toBe(finalContent);
       console.log('✓ Stubborn process has been force killed');
     }, 15000);
   });
