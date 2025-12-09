@@ -6,7 +6,10 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1, // Use only 1 worker for Electron tests
-  reporter: 'html',
+  reporter: [
+    ['html'],
+    ['./e2e/exit-status-reporter.ts'],
+  ],
   globalTeardown: './e2e/global-teardown.ts',
   // Increased timeout to 120s (2 minutes) to allow more time for worker teardown
   // The worker teardown timeout uses the same value as the test timeout

@@ -62,3 +62,6 @@ packages/server/.env
 **/playwright-report/**
 **/test-results/**
 
+# E2E test exit status file
+**/.exit-status
+
