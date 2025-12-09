@@ -1,5 +1,9 @@
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
+
+// Use the same path as the reporter
+const EXIT_STATUS_FILE = path.join(os.tmpdir(), 'playwright-exit-status');
 
 /**
  * Global teardown for Playwright tests
@@ -10,17 +14,17 @@ import * as path from 'path';
  */
 export default async function globalTeardown() {
   console.log('[Global Teardown] Starting cleanup...');
+  console.log(`[Global Teardown] Looking for exit status at: ${EXIT_STATUS_FILE}`);
 
   // Read the exit status written by ExitStatusReporter
-  const exitStatusFile = path.join(__dirname, '.exit-status');
   let exitCode = 0;
 
   try {
-    if (fs.existsSync(exitStatusFile)) {
-      const status = fs.readFileSync(exitStatusFile, 'utf-8').trim();
+    if (fs.existsSync(EXIT_STATUS_FILE)) {
+      const status = fs.readFileSync(EXIT_STATUS_FILE, 'utf-8').trim();
       exitCode = parseInt(status, 10) || 0;
       // Clean up the status file
-      fs.unlinkSync(exitStatusFile);
+      fs.unlinkSync(EXIT_STATUS_FILE);
       console.log(`[Global Teardown] Test exit code from reporter: ${exitCode}`);
     } else {
       console.log('[Global Teardown] No exit status file found, assuming success');
