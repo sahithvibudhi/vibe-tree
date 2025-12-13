@@ -33,13 +33,14 @@ export async function launchElectronApp(options: LaunchOptions = {}): Promise<El
 }
 
 /**
- * Close Electron app quickly using process.exit to prevent worker teardown timeout
- * We use process.exit(0) because electronApp.close() can be too slow (>5 seconds)
- * and cause worker teardown timeouts. The trade-off is acceptable since these are
- * ephemeral test instances.
+ * Close Electron app gracefully using electronApp.close()
  *
- * IMPORTANT: We must cleanup fork processes before calling process.exit(), because
- * process.exit() bypasses Electron's before-quit event where cleanup normally happens.
+ * Previously used process.exit(0) as a workaround for slow close(), but the
+ * 30s timeout on electronApp.close() was removed in Playwright v1.19
+ * (see https://github.com/microsoft/playwright/issues/11068).
+ *
+ * Using close() properly allows Playwright to report correct exit codes
+ * without needing to parse output in CI.
  */
 export async function closeElectronApp(electronApp: ElectronApplication | null): Promise<void> {
   if (!electronApp) {
@@ -47,16 +48,16 @@ export async function closeElectronApp(electronApp: ElectronApplication | null):
   }
 
   try {
-    // Cleanup fork processes before exiting
-    // This is critical because process.exit(0) bypasses the before-quit event
+    // Cleanup fork processes before closing to speed up shutdown
     await electronApp.evaluate(async () => {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { shellProcessManager } = require('./shell-manager');
       await shellProcessManager.cleanup();
-      process.exit(0);
     });
   } catch (error) {
-    // Ignore errors - process.exit(0) will close the connection immediately
-    // which causes Playwright to throw, but that's expected and OK
+    // Ignore cleanup errors - app may already be closing
   }
+
+  // Use proper close() - no longer has timeout issue since Playwright v1.19
+  await electronApp.close();
 }
