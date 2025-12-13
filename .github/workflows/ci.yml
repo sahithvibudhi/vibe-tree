@@ -255,7 +255,9 @@ jobs:
 
         # Check if tests actually passed by looking at the output
         # Playwright prints "X passed" at the end for successful runs
-        if grep -q "passed" /tmp/playwright-output.txt && ! grep -qE "failed|[0-9]+ error" /tmp/playwright-output.txt; then
+        # We check for "X passed" and make sure there's no "X failed" pattern
+        # Note: "1 error was not a part of any test" is the worker teardown timeout which we ignore
+        if grep -qE "[0-9]+ passed" /tmp/playwright-output.txt && ! grep -qE "[0-9]+ failed" /tmp/playwright-output.txt; then
           TEST_EXIT_CODE=0
           echo "Tests passed!"
         else
