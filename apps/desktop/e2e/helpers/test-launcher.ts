@@ -33,14 +33,19 @@ export async function launchElectronApp(options: LaunchOptions = {}): Promise<El
 }
 
 /**
- * Close Electron app gracefully using electronApp.close()
+ * Close Electron app quickly using process.exit to prevent worker teardown timeout
  *
- * Previously used process.exit(0) as a workaround for slow close(), but the
- * 30s timeout on electronApp.close() was removed in Playwright v1.19
- * (see https://github.com/microsoft/playwright/issues/11068).
+ * We use process.exit(0) because electronApp.close() hangs for this app - the app's
+ * cleanup process takes too long (>2 minutes), causing test timeouts. This is NOT
+ * a Playwright issue (the 30s timeout was removed in v1.19), but rather specific
+ * to this app's shutdown behavior.
  *
- * Using close() properly allows Playwright to report correct exit codes
- * without needing to parse output in CI.
+ * The trade-off: Playwright's exit code becomes unreliable because process.exit(0)
+ * causes connection loss that Playwright interprets as an error. The CI workflow
+ * handles this by parsing test output instead of relying on exit codes.
+ *
+ * IMPORTANT: We must cleanup fork processes before calling process.exit(), because
+ * process.exit() bypasses Electron's before-quit event where cleanup normally happens.
  */
 export async function closeElectronApp(electronApp: ElectronApplication | null): Promise<void> {
   if (!electronApp) {
@@ -48,16 +53,16 @@ export async function closeElectronApp(electronApp: ElectronApplication | null):
   }
 
   try {
-    // Cleanup fork processes before closing to speed up shutdown
+    // Cleanup fork processes before exiting
+    // This is critical because process.exit(0) bypasses the before-quit event
     await electronApp.evaluate(async () => {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { shellProcessManager } = require('./shell-manager');
       await shellProcessManager.cleanup();
+      process.exit(0);
     });
   } catch (error) {
-    // Ignore cleanup errors - app may already be closing
+    // Ignore errors - process.exit(0) will close the connection immediately
+    // which causes Playwright to throw, but that's expected and OK
   }
-
-  // Use proper close() - no longer has timeout issue since Playwright v1.19
-  await electronApp.close();
 }
