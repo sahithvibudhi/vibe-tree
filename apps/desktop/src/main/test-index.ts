@@ -67,7 +67,7 @@ function createWindow() {
   // Don't open DevTools in tests as it can interfere with content detection
 
   mainWindow.on('close', (event) => {
-    if (!isQuitting) {
+    if (!isQuitting && !DISABLE_QUIT_DIALOG) {
       event.preventDefault();
       showQuitConfirmation();
     }
@@ -90,18 +90,21 @@ app.whenReady().then(() => {
 
 // Handle before-quit event to show confirmation
 app.on('before-quit', async (event) => {
-  if (!isQuitting) {
+  if (!isQuitting && !DISABLE_QUIT_DIALOG) {
     event.preventDefault();
     showQuitConfirmation();
   } else {
+    // Cleanup shell processes before quitting
     await shellProcessManager.cleanup();
   }
 });
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    if (!isQuitting) {
+    if (!isQuitting && !DISABLE_QUIT_DIALOG) {
       showQuitConfirmation();
+    } else {
+      app.quit();
     }
   }
 });

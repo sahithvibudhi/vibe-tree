@@ -7,12 +7,6 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: 1, // Use only 1 worker for Electron tests
   reporter: 'html',
-  // Note: globalTeardown removed - the CI workflow handles process cleanup
-  // externally via pkill commands to avoid worker teardown timeout issues.
-  // Using process.exit() in globalTeardown would mask test failures.
-  // Increased timeout to 120s (2 minutes) to allow more time for worker teardown
-  // The worker teardown timeout uses the same value as the test timeout
-  // This helps prevent "Worker teardown timeout of 60000ms exceeded" errors
   timeout: 120000,
   // Set globalTimeout to prevent overall test suite timeout issues
   // Increased from 15 minutes to 20 minutes to handle fork architecture cleanup delays
