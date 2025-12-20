@@ -264,4 +264,188 @@ describe('NotificationManager', () => {
       expect(notificationManager.isEnabled(testProcessId)).toBe(false);
     });
   });
+
+  describe('ANSI stripping', () => {
+    it('should detect completion pattern with ANSI codes', () => {
+      notificationManager.enableNotifications(testProcessId);
+      notificationManager.markUserInput(testProcessId);
+
+      // Simulate ANSI-encoded output
+      const ansiOutput = '\u001b[32m↵\u001b[0m send\u001b[0m\n';
+      notificationManager.processOutput(testProcessId, ansiOutput);
+
+      // Should not throw
+      expect(notificationManager.isEnabled(testProcessId)).toBe(true);
+    });
+
+    it('should detect completion pattern with OSC sequences', () => {
+      notificationManager.enableNotifications(testProcessId);
+      notificationManager.markUserInput(testProcessId);
+
+      // OSC sequence (e.g., terminal title)
+      const oscOutput = '\u001b]0;Terminal Title\u0007↵ send\n';
+      notificationManager.processOutput(testProcessId, oscOutput);
+
+      expect(notificationManager.isEnabled(testProcessId)).toBe(true);
+    });
+
+    it('should handle empty output', () => {
+      notificationManager.enableNotifications(testProcessId);
+
+      // Empty string
+      notificationManager.processOutput(testProcessId, '');
+      notificationManager.processOutput(testProcessId, '\n');
+      notificationManager.processOutput(testProcessId, '   \n   ');
+
+      expect(notificationManager.isEnabled(testProcessId)).toBe(true);
+    });
+  });
+
+  describe('completion patterns', () => {
+    beforeEach(() => {
+      notificationManager.enableNotifications(testProcessId);
+      notificationManager.markUserInput(testProcessId);
+    });
+
+    it('should detect "send" at end of line', () => {
+      notificationManager.processOutput(testProcessId, 'some text send\n');
+      expect(notificationManager.isEnabled(testProcessId)).toBe(true);
+    });
+
+    it('should detect "↵ send" pattern', () => {
+      notificationManager.processOutput(testProcessId, '↵ send\n');
+      expect(notificationManager.isEnabled(testProcessId)).toBe(true);
+    });
+
+    it('should be case insensitive for send', () => {
+      notificationManager.processOutput(testProcessId, 'SEND\n');
+      expect(notificationManager.isEnabled(testProcessId)).toBe(true);
+    });
+  });
+
+  describe('question patterns', () => {
+    beforeEach(() => {
+      notificationManager.enableNotifications(testProcessId);
+      notificationManager.markUserInput(testProcessId);
+    });
+
+    it('should detect [Y/n] pattern', () => {
+      notificationManager.processOutput(testProcessId, 'Continue? [Y/n]\n');
+      expect(notificationManager.isEnabled(testProcessId)).toBe(true);
+    });
+
+    it('should detect [y/N] pattern', () => {
+      notificationManager.processOutput(testProcessId, 'Continue? [y/N]\n');
+      expect(notificationManager.isEnabled(testProcessId)).toBe(true);
+    });
+
+    it('should detect (yes/no) pattern', () => {
+      notificationManager.processOutput(testProcessId, 'Are you sure? (yes/no)\n');
+      expect(notificationManager.isEnabled(testProcessId)).toBe(true);
+    });
+
+    it('should detect Tab/Arrow keys navigation pattern', () => {
+      notificationManager.processOutput(testProcessId, 'Tab/Arrow keys to navigate\n');
+      expect(notificationManager.isEnabled(testProcessId)).toBe(true);
+    });
+
+    it('should detect "Do you want to proceed?" pattern', () => {
+      notificationManager.processOutput(testProcessId, 'Do you want to proceed?\n');
+      expect(notificationManager.isEnabled(testProcessId)).toBe(true);
+    });
+
+    it('should detect numbered Yes option pattern', () => {
+      notificationManager.processOutput(testProcessId, '> 1. Yes\n');
+      expect(notificationManager.isEnabled(testProcessId)).toBe(true);
+    });
+  });
+
+  describe('getPermissionStatus', () => {
+    it('should return supported: true when Notification is supported', () => {
+      const status = notificationManager.getPermissionStatus();
+      expect(status.supported).toBe(true);
+    });
+  });
+
+  describe('showTestNotification', () => {
+    it('should return true when notification is shown', () => {
+      const result = notificationManager.showTestNotification(
+        'completed',
+        testWorktreePath,
+        testBranchName
+      );
+      expect(result).toBe(true);
+    });
+
+    it('should return false when notifications are disabled globally', () => {
+      vi.mocked(notificationSettingsManager.isNotificationEnabled).mockReturnValue(false);
+
+      const result = notificationManager.showTestNotification(
+        'completed',
+        testWorktreePath,
+        testBranchName
+      );
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('multiple sessions', () => {
+    const session1 = 'session-1';
+    const session2 = 'session-2';
+
+    beforeEach(() => {
+      notificationManager.registerSession(session1, '/path/1', 'branch-1');
+      notificationManager.registerSession(session2, '/path/2', 'branch-2');
+    });
+
+    afterEach(() => {
+      notificationManager.unregisterSession(session1);
+      notificationManager.unregisterSession(session2);
+    });
+
+    it('should track sessions independently', () => {
+      notificationManager.enableNotifications(session1);
+
+      expect(notificationManager.isEnabled(session1)).toBe(true);
+      expect(notificationManager.isEnabled(session2)).toBe(false);
+    });
+
+    it('should not affect other sessions when disabling', () => {
+      notificationManager.enableNotifications(session1);
+      notificationManager.enableNotifications(session2);
+
+      notificationManager.disableNotifications(session1);
+
+      expect(notificationManager.isEnabled(session1)).toBe(false);
+      expect(notificationManager.isEnabled(session2)).toBe(true);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle processOutput for non-existent session', () => {
+      // Should not throw
+      notificationManager.processOutput('non-existent', 'some output');
+    });
+
+    it('should handle markUserInput for non-existent session', () => {
+      // Should not throw
+      notificationManager.markUserInput('non-existent');
+    });
+
+    it('should handle disableNotifications for non-existent session', () => {
+      // Should not throw
+      notificationManager.disableNotifications('non-existent');
+    });
+
+    it('should not re-register existing session', () => {
+      notificationManager.enableNotifications(testProcessId);
+      expect(notificationManager.isEnabled(testProcessId)).toBe(true);
+
+      // Re-register same session
+      notificationManager.registerSession(testProcessId, '/new/path', 'new-branch');
+
+      // Should still be enabled (not reset)
+      expect(notificationManager.isEnabled(testProcessId)).toBe(true);
+    });
+  });
 });
