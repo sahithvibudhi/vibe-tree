@@ -302,6 +302,33 @@ export class TerminalForkManager {
   }
 
   /**
+   * Get the foreground process running in a terminal session
+   */
+  async getForegroundProcess(sessionId: string): Promise<{ pid: number | null; command: string | null }> {
+    const fork = this.forks.get(sessionId);
+    if (!fork) {
+      return { pid: null, command: null };
+    }
+
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        resolve({ pid: null, command: null });
+      }, 1000);
+
+      const messageHandler = (message: { type: string; data?: { pid: number | null; command: string | null } }) => {
+        if (message.type === 'foregroundProcess') {
+          clearTimeout(timeout);
+          fork.process.off('message', messageHandler);
+          resolve(message.data || { pid: null, command: null });
+        }
+      };
+
+      fork.process.on('message', messageHandler);
+      fork.process.send({ type: 'getForegroundProcess' });
+    });
+  }
+
+  /**
    * Get all sessions
    */
   async getAllSessions(): Promise<Array<{ id: string; worktreePath: string }>> {

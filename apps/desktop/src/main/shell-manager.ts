@@ -1,6 +1,7 @@
 import { ipcMain, BrowserWindow, app } from 'electron';
 import { TerminalForkManager, getSystemDiagnostics, getExtendedDiagnostics, formatExtendedDiagnostics } from '@vibetree/core';
 import { terminalSettingsManager } from './terminal-settings';
+import { notificationManager } from './notification-manager';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -111,10 +112,19 @@ class DesktopShellManager {
       if (result.success && result.processId) {
         const processId = result.processId;
 
+        // Extract branch name from worktree path for notifications
+        const branchName = path.basename(worktreePath);
+
+        // Register session with notification manager (idempotent)
+        notificationManager.registerSession(processId, worktreePath, branchName);
+
         // Only add listeners for new sessions
         if (result.isNew) {
-          // Add output listener
+          // Add output listener - also passes output to notification manager
           const outputListener = (data: string) => {
+            // Pass to notification manager for state detection (main process handles all logic)
+            notificationManager.processOutput(processId, data);
+
             if (!this.safeSend(event.sender, `shell:output:${processId}`, data)) {
               // Frame was disposed - remove this listener
               this.forkManager.removeOutputListener(processId, outputListener);
@@ -124,6 +134,9 @@ class DesktopShellManager {
 
           // Add exit listener
           const exitListener = (exitCode: number) => {
+            // Unregister from notification manager
+            notificationManager.unregisterSession(processId);
+
             if (!this.safeSend(event.sender, `shell:exit:${processId}`, exitCode)) {
               // Frame was disposed - remove this listener
               this.forkManager.removeExitListener(processId, exitListener);
@@ -153,6 +166,10 @@ class DesktopShellManager {
 
     ipcMain.handle('shell:status', async (_, processId: string) => {
       return { running: this.forkManager.hasSession(processId) };
+    });
+
+    ipcMain.handle('shell:get-foreground-process', async (_, processId: string) => {
+      return this.forkManager.getForegroundProcess(processId);
     });
 
     ipcMain.handle('shell:get-buffer', async () => {

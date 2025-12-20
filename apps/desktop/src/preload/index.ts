@@ -24,6 +24,8 @@ const api = {
       ipcRenderer.invoke('shell:resize', processId, cols, rows),
     status: (processId: string) =>
       ipcRenderer.invoke('shell:status', processId),
+    getForegroundProcess: (processId: string) =>
+      ipcRenderer.invoke('shell:get-foreground-process', processId),
     getBuffer: (processId: string) =>
       ipcRenderer.invoke('shell:get-buffer', processId),
     openExternal: (url: string) =>
@@ -111,6 +113,11 @@ const api = {
       const listener = () => callback();
       ipcRenderer.on('menu:open-terminal-settings', listener);
       return () => ipcRenderer.removeListener('menu:open-terminal-settings', listener);
+    },
+    onOpenSettings: (callback: () => void) => {
+      const listener = () => callback();
+      ipcRenderer.on('menu:open-settings', listener);
+      return () => ipcRenderer.removeListener('menu:open-settings', listener);
     }
   },
   utils: {
@@ -121,6 +128,33 @@ const api = {
   debug: {
     createStressTestRepo: () => ipcRenderer.invoke('debug:create-stress-test-repo'),
     addStressTestWorktree: (repoPath: string, index: number) => ipcRenderer.invoke('debug:add-stress-test-worktree', repoPath, index)
+  },
+  // General notification APIs - can be used by any feature
+  notification: {
+    getSettings: () => ipcRenderer.invoke('notification:get-settings'),
+    updateSettings: (updates: Record<string, unknown>) => ipcRenderer.invoke('notification:update-settings', updates),
+    resetSettings: () => ipcRenderer.invoke('notification:reset-settings'),
+    getPermissionStatus: () => ipcRenderer.invoke('notification:get-permission-status'),
+    openSystemSettings: () => ipcRenderer.invoke('notification:open-system-settings'),
+    showTest: (type: string, worktreePath: string, branchName: string) =>
+      ipcRenderer.invoke('notification:show-test', type, worktreePath, branchName),
+    onSettingsChanged: (callback: (settings: Record<string, unknown>) => void) => {
+      const listener = (_: unknown, settings: Record<string, unknown>) => callback(settings);
+      ipcRenderer.on('notification:settings-changed', listener);
+      return () => ipcRenderer.removeListener('notification:settings-changed', listener);
+    }
+  },
+  // Claude-specific notification APIs - session tracking, state detection
+  claudeNotification: {
+    enable: (processId: string) => ipcRenderer.invoke('claude-notification:enable', processId),
+    disable: (processId: string) => ipcRenderer.invoke('claude-notification:disable', processId),
+    isEnabled: (processId: string) => ipcRenderer.invoke('claude-notification:is-enabled', processId),
+    markUserInput: (processId: string) => ipcRenderer.invoke('claude-notification:mark-user-input', processId),
+    onClicked: (callback: (processId: string, worktreePath: string) => void) => {
+      const listener = (_: unknown, processId: string, worktreePath: string) => callback(processId, worktreePath);
+      ipcRenderer.on('claude-notification:clicked', listener);
+      return () => ipcRenderer.removeListener('claude-notification:clicked', listener);
+    }
   }
 };
 

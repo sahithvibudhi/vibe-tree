@@ -7,7 +7,7 @@ import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { SearchAddon } from '@xterm/addon-search';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
-import { Code2, Columns2, Rows2, X, Search, Clock } from 'lucide-react';
+import { Code2, Columns2, Rows2, X, Search, Clock, Bell, BellOff } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 import { escapeShellPath } from '@vibetree/core';
 import '@xterm/xterm/css/xterm.css';
@@ -29,6 +29,7 @@ interface ClaudeTerminalProps {
 
 // Cache for terminal states per worktree
 const terminalStateCache = new Map<string, string>();
+
 
 // Cache for scheduler states per process ID
 interface SchedulerState {
@@ -105,6 +106,39 @@ export function ClaudeTerminal({
   const commandInProgressRef = useRef(false);
   // AbortController to cancel pending scheduler promises on unmount
   const schedulerAbortControllerRef = useRef<AbortController>(new AbortController());
+
+  // Track process ID in state for proper effect dependencies
+  const [currentProcessId, setCurrentProcessId] = useState<string>('');
+
+  // Notification toggle state - always starts disabled
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  // Handle notification toggle - all logic is in main process now
+  const handleNotificationToggle = useCallback(async () => {
+    if (!currentProcessId) return;
+
+    if (notificationsEnabled) {
+      // Disable notifications
+      await window.electronAPI.claudeNotification.disable(currentProcessId);
+      setNotificationsEnabled(false);
+    } else {
+      // Check if Claude is running before enabling
+      const result = await window.electronAPI.shell.getForegroundProcess(currentProcessId);
+      const isClaudeRunning = result?.command?.toLowerCase().includes('claude') ?? false;
+
+      if (isClaudeRunning) {
+        // Enable notifications in main process
+        await window.electronAPI.claudeNotification.enable(currentProcessId);
+        setNotificationsEnabled(true);
+      } else {
+        toast({
+          title: 'Claude not detected',
+          description: 'Please run Claude in this terminal to enable notifications.',
+          variant: 'destructive',
+        });
+      }
+    }
+  }, [currentProcessId, notificationsEnabled, toast]);
 
   // Helper functions to work with scheduler cache
   const getSchedulerState = useCallback(() => {
@@ -601,10 +635,6 @@ export function ClaudeTerminal({
     };
   }, [terminal, worktreePath]);
 
-
-  // Track process ID in state for proper effect dependencies
-  const [currentProcessId, setCurrentProcessId] = useState<string>('');
-  
   // Notify parent about process ID changes
   useEffect(() => {
     if (currentProcessId && onProcessIdChange) {
@@ -639,6 +669,11 @@ export function ClaudeTerminal({
         processIdRef.current = result.processId!;
         setCurrentProcessId(result.processId!);
         console.log(`Shell started: ${result.processId}, isNew: ${result.isNew}, worktree: ${worktreePath}`);
+
+        // IMPORTANT: Sync notification state with main process
+        // Renderer always starts with notifications disabled, so disable in main process too
+        // This prevents stale "enabled" state from previous window sessions
+        await window.electronAPI.claudeNotification.disable(result.processId!);
 
         // Scheduler state is already in cache and will be read when needed
         // No need to restore to component state - we read directly from cache
@@ -702,16 +737,24 @@ export function ClaudeTerminal({
           }, 100);
         }
 
-        // Handle terminal input - simply pass it to the PTY
+        // Handle terminal input - pass to PTY and mark user input for notifications
         const disposable = terminal.onData((data) => {
           if (processIdRef.current) {
             window.electronAPI.shell.write(processIdRef.current, data);
+            // Only mark user input when user presses ENTER (sends prompt to Claude)
+            // This prevents resetting notification flag on every keystroke
+            // which would cause duplicate notifications while typing
+            if (data === '\r' || data === '\n' || data.includes('\r') || data.includes('\n')) {
+              window.electronAPI.claudeNotification.markUserInput(processIdRef.current);
+            }
           }
         });
 
-        // Set up output listener - simply pass data to terminal
+        // Set up output listener
         const removeOutputListener = window.electronAPI.shell.onOutput(result.processId!, (data) => {
           terminal.write(data);
+          // Note: Notification logic is now handled in main process
+          // Main process receives output directly and detects Claude state
         });
 
         // Set up exit listener
@@ -965,6 +1008,15 @@ export function ClaudeTerminal({
           <p className="text-xs text-muted-foreground truncate">{worktreePath}</p>
         </div>
         <div className="flex items-center gap-1">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={handleNotificationToggle}
+            title={notificationsEnabled ? "Disable Notifications" : "Enable Notifications"}
+            className={notificationsEnabled ? 'text-green-500' : 'text-muted-foreground'}
+          >
+            {notificationsEnabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+          </Button>
           <Button
             size="icon"
             variant="ghost"

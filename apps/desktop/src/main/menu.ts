@@ -161,6 +161,16 @@ export function createMenu(mainWindow: BrowserWindow | null) {
       submenu: [
         { role: 'about' },
         { type: 'separator' },
+        {
+          label: 'Settings...',
+          accelerator: 'CmdOrCtrl+,',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('menu:open-settings');
+            }
+          }
+        },
+        { type: 'separator' },
         { role: 'services', submenu: [] },
         { type: 'separator' },
         { role: 'hide' },

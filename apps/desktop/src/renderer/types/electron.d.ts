@@ -27,6 +27,7 @@ export interface ElectronAPI {
     write: (processId: string, data: string) => Promise<{ success: boolean; error?: string }>;
     resize: (processId: string, cols: number, rows: number) => Promise<{ success: boolean; error?: string }>;
     status: (processId: string) => Promise<{ running: boolean }>;
+    getForegroundProcess: (processId: string) => Promise<{ pid: number | null; command: string | null }>;
     getBuffer: (processId: string) => Promise<{ success: boolean; buffer?: string | null; error?: string }>;
     openExternal: (url: string) => Promise<void>;
     terminate: (processId: string) => Promise<{ success: boolean; error?: string }>;
@@ -79,9 +80,28 @@ export interface ElectronAPI {
   };
   menu: {
     onOpenTerminalSettings: (callback: () => void) => () => void;
+    onOpenSettings: (callback: () => void) => () => void;
   };
   utils: {
     getPathForFile: (file: File) => string;
+  };
+  // General notification APIs - can be used by any feature
+  notification: {
+    getSettings: () => Promise<import('./notification-settings').NotificationSettings>;
+    updateSettings: (updates: import('./notification-settings').NotificationSettingsUpdate) => Promise<void>;
+    resetSettings: () => Promise<void>;
+    getPermissionStatus: () => Promise<import('./notification-settings').NotificationPermissionStatus>;
+    openSystemSettings: () => Promise<void>;
+    showTest: (type: string, worktreePath: string, branchName: string) => Promise<boolean>;
+    onSettingsChanged: (callback: (settings: import('./notification-settings').NotificationSettings) => void) => () => void;
+  };
+  // Claude-specific notification APIs - session tracking, state detection
+  claudeNotification: {
+    enable: (processId: string) => Promise<boolean>;
+    disable: (processId: string) => Promise<void>;
+    isEnabled: (processId: string) => Promise<boolean>;
+    markUserInput: (processId: string) => Promise<void>;
+    onClicked: (callback: (processId: string, worktreePath: string) => void) => () => void;
   };
 }
 

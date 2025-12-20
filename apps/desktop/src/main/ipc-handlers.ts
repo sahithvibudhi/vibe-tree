@@ -10,6 +10,8 @@ import {
 import { terminalSettingsManager } from './terminal-settings';
 import { recentProjectsManager } from './recent-projects';
 import { schedulerHistoryManager } from './scheduler-history';
+import { notificationSettingsManager } from './notification-settings';
+import { notificationManager } from './notification-manager';
 import { createMenu } from './menu';
 import fs from 'fs';
 import { execSync } from 'child_process';
@@ -212,5 +214,61 @@ export function registerIpcHandlers(mainWindow: BrowserWindow | null) {
         error: error instanceof Error ? error.message : String(error)
       };
     }
+  });
+
+  // ===========================================
+  // General Notification APIs (notification:*)
+  // These are generic notification functions that can be used by any feature
+  // ===========================================
+
+  ipcMain.handle('notification:get-settings', () => {
+    return notificationSettingsManager.getSettings();
+  });
+
+  ipcMain.handle('notification:update-settings', (_, updates) => {
+    notificationSettingsManager.updateSettings(updates);
+    if (mainWindow) {
+      mainWindow.webContents.send('notification:settings-changed', notificationSettingsManager.getSettings());
+    }
+  });
+
+  ipcMain.handle('notification:reset-settings', () => {
+    notificationSettingsManager.resetToDefaults();
+    if (mainWindow) {
+      mainWindow.webContents.send('notification:settings-changed', notificationSettingsManager.getSettings());
+    }
+  });
+
+  ipcMain.handle('notification:get-permission-status', () => {
+    return notificationManager.getPermissionStatus();
+  });
+
+  ipcMain.handle('notification:open-system-settings', () => {
+    notificationManager.openSystemSettings();
+  });
+
+  ipcMain.handle('notification:show-test', (_, type: string, worktreePath: string, branchName: string) => {
+    return notificationManager.showTestNotification(type as 'completed' | 'question', worktreePath, branchName);
+  });
+
+  // ===========================================
+  // Claude Notification APIs (claude-notification:*)
+  // These are Claude Code CLI specific - session tracking, state detection
+  // ===========================================
+
+  ipcMain.handle('claude-notification:enable', (_, processId: string) => {
+    return notificationManager.enableNotifications(processId);
+  });
+
+  ipcMain.handle('claude-notification:disable', (_, processId: string) => {
+    notificationManager.disableNotifications(processId);
+  });
+
+  ipcMain.handle('claude-notification:is-enabled', (_, processId: string) => {
+    return notificationManager.isEnabled(processId);
+  });
+
+  ipcMain.handle('claude-notification:mark-user-input', (_, processId: string) => {
+    notificationManager.markUserInput(processId);
   });
 }
