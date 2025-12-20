@@ -45,5 +45,16 @@ Object.defineProperty(window, 'electronAPI', {
       markUserInput: vi.fn(() => Promise.resolve()),
       onClicked: vi.fn(() => () => {}),
     },
+    recentProjects: {
+      get: vi.fn(() => Promise.resolve([])),
+      add: vi.fn(() => Promise.resolve()),
+      remove: vi.fn(() => Promise.resolve()),
+      clear: vi.fn(() => Promise.resolve()),
+      onOpenProject: vi.fn(() => () => {}),
+      onOpenRecentProject: vi.fn(() => () => {}),
+    },
+    shell: {
+      terminateForWorktree: vi.fn(() => Promise.resolve({ success: true, count: 0 })),
+    },
   },
 });

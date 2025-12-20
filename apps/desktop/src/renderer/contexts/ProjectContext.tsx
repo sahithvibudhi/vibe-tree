@@ -90,6 +90,27 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     };
   }, [addProject]);
 
+  // Handle notification click - switch to correct project and worktree
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.claudeNotification.onClicked((_processId: string, worktreePath: string) => {
+      // Find the project containing this worktree
+      const project = projects.find(p =>
+        p.worktrees.some(w => w.path === worktreePath) || p.path === worktreePath
+      );
+
+      if (project) {
+        // Switch to the project
+        setActiveProjectId(project.id);
+        // Switch to the worktree
+        setProjects(prev => prev.map(p =>
+          p.id === project.id ? { ...p, selectedWorktree: worktreePath } : p
+        ));
+      }
+    });
+
+    return unsubscribe;
+  }, [projects]);
+
   const removeProject = (id: string) => {
     // Find the project being removed
     const project = projects.find(p => p.id === id);
