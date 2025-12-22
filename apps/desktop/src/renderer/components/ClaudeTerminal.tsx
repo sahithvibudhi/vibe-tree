@@ -1055,7 +1055,7 @@ export function ClaudeTerminal({
             value={searchQuery}
             onChange={(e) => handleSearchInputChange(e.target.value)}
             placeholder="Search terminal..."
-            className="flex-1 px-2 py-1 text-sm border rounded"
+            className="flex-1 px-2 py-1 text-sm border rounded bg-input text-foreground border-border"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
