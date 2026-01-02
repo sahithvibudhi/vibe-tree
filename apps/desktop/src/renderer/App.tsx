@@ -9,9 +9,18 @@ import { ProjectProvider, useProjects } from './contexts/ProjectContext';
 import { Plus, X } from 'lucide-react';
 import { GlobalTerminalSettings } from './components/GlobalTerminalSettings';
 import { GlobalSettings } from './components/GlobalSettings';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './components/ui/dialog';
 
 function AppContent() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [projectToClose, setProjectToClose] = useState<{ id: string; name: string } | null>(null);
   const { projects, activeProjectId, addProject, removeProject, setActiveProject } = useProjects();
 
   useEffect(() => {
@@ -62,7 +71,21 @@ function AppContent() {
 
   const handleCloseProject = (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
-    removeProject(projectId);
+    const project = projects.find(p => p.id === projectId);
+    if (project) {
+      setProjectToClose({ id: project.id, name: project.name });
+    }
+  };
+
+  const confirmCloseProject = () => {
+    if (projectToClose) {
+      removeProject(projectToClose.id);
+      setProjectToClose(null);
+    }
+  };
+
+  const cancelCloseProject = () => {
+    setProjectToClose(null);
   };
 
   const toggleTheme = () => {
@@ -126,6 +149,25 @@ function AppContent() {
       <Toaster />
       <GlobalTerminalSettings />
       <GlobalSettings />
+
+      <Dialog open={projectToClose !== null} onOpenChange={(open) => !open && cancelCloseProject()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Close Project?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to close "{projectToClose?.name}"? All terminal sessions for this project will be terminated.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelCloseProject}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmCloseProject}>
+              Close Project
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
