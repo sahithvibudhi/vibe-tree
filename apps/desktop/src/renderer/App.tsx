@@ -155,7 +155,7 @@ function AppContent() {
           <DialogHeader>
             <DialogTitle>Close Project?</DialogTitle>
             <DialogDescription>
-              Are you sure you want to close "{projectToClose?.name}"? All terminal sessions for this project will be terminated.
+              Are you sure you want to close &quot;{projectToClose?.name}&quot;? All terminal sessions for this project will be terminated.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

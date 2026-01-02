@@ -61,13 +61,11 @@ test.describe('Project Close PTY Cleanup', () => {
     }, dummyRepoPath);
 
     await openButton.click();
-    await page.waitForTimeout(5000);
 
     // Click on the main worktree to ensure terminal loads
     const mainWorktreeButton = page.locator('button[data-worktree-branch="main"]');
     await expect(mainWorktreeButton).toBeVisible({ timeout: 10000 });
     await mainWorktreeButton.click();
-    await page.waitForTimeout(2000);
 
     // Wait for terminal to be ready
     const terminalScreen = page.locator('.xterm-screen').first();
@@ -77,13 +75,14 @@ test.describe('Project Close PTY Cleanup', () => {
     await terminalScreen.click();
     await page.keyboard.type('echo "Terminal 1 active"');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
 
     // Split the terminal to create multiple PTY processes
     const splitButton = page.locator('button[title="Split Terminal Vertically"]').first();
     await expect(splitButton).toBeVisible();
     await splitButton.click();
-    await page.waitForTimeout(2000);
+
+    // Wait for second terminal to appear
+    await expect(page.locator('.claude-terminal-root').nth(1)).toBeVisible({ timeout: 10000 });
 
     // Verify we have 2 terminals
     const terminalCount = await page.locator('.claude-terminal-root').count();
@@ -91,14 +90,16 @@ test.describe('Project Close PTY Cleanup', () => {
 
     // Type in the second terminal
     const secondTerminalScreen = page.locator('.xterm-screen').nth(1);
+    await expect(secondTerminalScreen).toBeVisible({ timeout: 5000 });
     await secondTerminalScreen.click();
     await page.keyboard.type('echo "Terminal 2 active"');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
 
     // Split again to create a third terminal
     await splitButton.click();
-    await page.waitForTimeout(2000);
+
+    // Wait for third terminal to appear
+    await expect(page.locator('.claude-terminal-root').nth(2)).toBeVisible({ timeout: 10000 });
 
     // Verify we have 3 terminals
     const terminalCountAfterSecondSplit = await page.locator('.claude-terminal-root').count();
@@ -111,10 +112,16 @@ test.describe('Project Close PTY Cleanup', () => {
     const closeButton = projectTab.locator('span', { has: page.locator('svg') }).last();
     await expect(closeButton).toBeVisible();
     await closeButton.click();
-    await page.waitForTimeout(2000);
 
-    // Verify the project selector is shown again
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 5000 });
+    // Handle the confirmation dialog
+    const confirmDialog = page.locator('[role="dialog"]');
+    await expect(confirmDialog).toBeVisible({ timeout: 5000 });
+    const confirmButton = confirmDialog.locator('button', { hasText: 'Close Project' });
+    await expect(confirmButton).toBeVisible();
+    await confirmButton.click();
+
+    // Verify the project selector is shown again (dialog should close and project removed)
+    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
 
     console.log('Project closed successfully, PTY sessions should have been terminated');
 
