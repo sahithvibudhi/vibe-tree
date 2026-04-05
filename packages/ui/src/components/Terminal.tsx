@@ -231,9 +231,45 @@ export const Terminal: React.FC<TerminalProps> = ({
 
     // Open terminal in DOM container
     term.open(terminalRef.current);
-    
+
     // Activate unicode support
     unicode11Addon.activate(term);
+
+    // Cross-platform copy/paste support:
+    // - macOS: Ctrl+C (with selection) to copy, Ctrl+V to paste
+    // - Linux: Ctrl+Shift+C / Ctrl+Shift+V and Alt+C / Alt+V
+    const isLinux = navigator.userAgent.includes('Linux');
+
+    term.attachCustomKeyEventHandler((event: KeyboardEvent) => {
+      if (event.type !== 'keydown') return true;
+
+      // Copy handlers
+      const isCopy =
+        (event.ctrlKey && event.key === 'c' && term.hasSelection()) ||
+        (isLinux && event.ctrlKey && event.shiftKey && event.key === 'C') ||
+        (isLinux && event.altKey && event.key === 'c');
+
+      if (isCopy && term.hasSelection()) {
+        navigator.clipboard.writeText(term.getSelection());
+        term.clearSelection();
+        return false;
+      }
+
+      // Paste handlers
+      const isPaste =
+        (event.ctrlKey && !event.shiftKey && event.key === 'v') ||
+        (isLinux && event.ctrlKey && event.shiftKey && event.key === 'V') ||
+        (isLinux && event.altKey && event.key === 'v');
+
+      if (isPaste) {
+        navigator.clipboard.readText().then((text) => {
+          if (onData) onData(text);
+        });
+        return false;
+      }
+
+      return true;
+    });
     
     // Fit terminal to container after render
     setTimeout(() => {
