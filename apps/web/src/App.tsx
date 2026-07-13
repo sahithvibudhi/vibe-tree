@@ -30,6 +30,13 @@ function App() {
   const [autoLoadAttempted, setAutoLoadAttempted] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [hasConnectedOnce, setHasConnectedOnce] = useState(false);
+
+  useEffect(() => {
+    if (connected) {
+      setHasConnectedOnce(true);
+    }
+  }, [connected]);
 
   // const activeProject = getActiveProject();
 
@@ -138,6 +145,28 @@ function App() {
   // Show login page if not authenticated and not loading
   if (!authLoading && !isAuthenticated) {
     return <LoginPage />;
+  }
+
+  // The PWA shell loads offline, but nothing works without the server:
+  // make that state obvious instead of showing a dead UI
+  if (!connected && hasConnectedOnce) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <div className="text-center max-w-sm px-6">
+          <h2 className="text-lg font-semibold mb-2">Server unreachable</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Lost connection to the VibeTree server. Your terminal sessions keep running on the
+            server and will be restored when the connection returns.
+          </p>
+          <button
+            onClick={() => connect()}
+            className="px-4 py-2 text-sm rounded-md border hover:bg-accent transition-colors"
+          >
+            Reconnect
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // Show project selector if no projects exist or explicitly requested

@@ -2,20 +2,18 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import fs from 'fs';
-import path from 'path';
 
-// Plugin to capture the actual port Vite uses
+// Capture the actual port Vite picks so the server CLI can print the right
+// URL and QR code even when 3000 was taken
 function portCapturePlugin() {
   return {
     name: 'port-capture',
     configureServer(server: any) {
-      // Hook into the server listening event
       server.httpServer?.on('listening', () => {
         const address = server.httpServer.address();
         if (address && typeof address === 'object') {
-          const actualPort = address.port;
-          fs.writeFileSync('.web-port', actualPort.toString());
-          console.log(`✓ Web server started on port ${actualPort}, saved to .web-port`);
+          fs.writeFileSync('.web-port', address.port.toString());
+          console.log(`Web server started on port ${address.port}, saved to .web-port`);
         }
       });
     }
@@ -28,12 +26,15 @@ export default defineConfig({
     portCapturePlugin(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
         name: 'VibeTree',
         short_name: 'VibeTree',
-        description: 'Vibe code with AI in parallel git worktrees',
+        description: 'Run AI coding agents in parallel git worktrees',
         theme_color: '#000000',
+        background_color: '#000000',
+        display: 'standalone',
+        start_url: '/',
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -44,6 +45,24 @@ export default defineConfig({
             src: 'pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png'
+          },
+          {
+            src: 'pwa-512x512-maskable.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
+          }
+        ]
+      },
+      workbox: {
+        // The app shell works offline; terminal data flows over WebSocket
+        // and must never be cached
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/api\//, /^\/health$/],
+        runtimeCaching: [
+          {
+            urlPattern: /^https?:\/\/[^/]+\/(api|health)\b/,
+            handler: 'NetworkOnly'
           }
         ]
       }
@@ -51,8 +70,8 @@ export default defineConfig({
   ],
   server: {
     port: 3000,
-    host: '0.0.0.0', // Bind to all network interfaces for network access
-    strictPort: false // Allow Vite to find alternative ports
-    // Note: Proxy configuration removed - apps will connect directly using environment variables
+    // Bind to all interfaces so phones on the LAN can reach the dev server
+    host: '0.0.0.0',
+    strictPort: false
   }
 });
