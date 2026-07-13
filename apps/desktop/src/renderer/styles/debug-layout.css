@@ -2,13 +2,13 @@
 /* This file is only loaded when running with DEBUG_LAYOUT=true */
 
 /* ProjectWorkspace - main container with tabs content */
-[role="tabpanel"] > div.flex-1.flex.h-full {
+[role='tabpanel'] > div.flex-1.flex.h-full {
   border: 3px solid pink !important;
   background-color: rgba(255, 192, 203, 0.1) !important;
   position: relative;
 }
 
-[role="tabpanel"] > div.flex-1.flex.h-full::before {
+[role='tabpanel'] > div.flex-1.flex.h-full::before {
   content: 'ProjectWorkspace';
   position: absolute;
   top: 40px;
@@ -22,13 +22,13 @@
 }
 
 /* WorktreePanel - left sidebar */
-[role="tabpanel"] > div > div.w-80.border-r {
+[role='tabpanel'] > div > div.w-80.border-r {
   border: 3px solid brown !important;
   background-color: rgba(165, 42, 42, 0.05) !important;
   position: relative;
 }
 
-[role="tabpanel"] > div > div.w-80.border-r::before {
+[role='tabpanel'] > div > div.w-80.border-r::before {
   content: 'WorktreePanel';
   position: absolute;
   top: 0;
@@ -42,13 +42,13 @@
 }
 
 /* RightPaneView - contains terminal/git tabs */
-[role="tabpanel"] > div > div:last-child.flex-1.flex.flex-col {
+[role='tabpanel'] > div > div:last-child.flex-1.flex.flex-col {
   border: 3px solid orange !important;
   background-color: rgba(255, 165, 0, 0.05) !important;
   position: relative;
 }
 
-[role="tabpanel"] > div > div:last-child.flex-1.flex.flex-col::before {
+[role='tabpanel'] > div > div:last-child.flex-1.flex.flex-col::before {
   content: 'RightPaneView';
   position: absolute;
   top: 0;
@@ -62,13 +62,13 @@
 }
 
 /* TerminalManager - container for terminal instances */
-[role="tabpanel"] div.relative.flex-1.h-full:has(> div.absolute.inset-0) {
+[role='tabpanel'] div.relative.flex-1.h-full:has(> div.absolute.inset-0) {
   border: 3px solid red !important;
   background-color: rgba(255, 0, 0, 0.05) !important;
   position: relative;
 }
 
-[role="tabpanel"] div.relative.flex-1.h-full:has(> div.absolute.inset-0)::before {
+[role='tabpanel'] div.relative.flex-1.h-full:has(> div.absolute.inset-0)::before {
   content: 'TerminalManager';
   position: absolute;
   top: 0;
@@ -149,7 +149,7 @@ div.flex-1.h-full:has(.xterm) {
 }
 
 /* Tab content areas */
-[role="tabpanel"][data-state="active"] {
+[role='tabpanel'][data-state='active'] {
   outline: 2px dashed yellow !important;
   outline-offset: -2px;
 }

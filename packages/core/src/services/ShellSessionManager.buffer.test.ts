@@ -18,11 +18,19 @@ function createMockPty(): MockIPty {
     handleFlowControl: false,
     onData: (callback: (data: string) => void) => {
       mockPty.onDataCallback = callback;
-      return { dispose: () => { mockPty.onDataCallback = undefined; } };
+      return {
+        dispose: () => {
+          mockPty.onDataCallback = undefined;
+        }
+      };
     },
     onExit: (callback: (code: { exitCode: number; signal?: number }) => void) => {
       mockPty.onExitCallback = (code: number) => callback({ exitCode: code });
-      return { dispose: () => { mockPty.onExitCallback = undefined; } };
+      return {
+        dispose: () => {
+          mockPty.onExitCallback = undefined;
+        }
+      };
     },
     write: () => {},
     resize: () => {},

@@ -26,11 +26,15 @@ test.describe('Worktree Terminal Cleanup on Recreate', () => {
     // so when we delete and recreate with the same branch name, the path is identical
     const { repoPath } = createTestGitRepo({
       nameSuffix: 'terminal-cleanup',
-      createWorktree: false  // Don't pre-create worktree - let UI do it
+      createWorktree: false // Don't pre-create worktree - let UI do it
     });
     dummyRepoPath = repoPath;
     // Compute expected worktree path: {projectDir}/../{repoName}-test-branch
-    testWorktreePath = path.join(dummyRepoPath, '..', `${path.basename(dummyRepoPath)}-test-branch`);
+    testWorktreePath = path.join(
+      dummyRepoPath,
+      '..',
+      `${path.basename(dummyRepoPath)}-test-branch`
+    );
 
     const testMainPath = path.join(__dirname, '../dist/main/test-index.js');
     console.log('Using test main file:', testMainPath);
@@ -45,7 +49,7 @@ test.describe('Worktree Terminal Cleanup on Recreate', () => {
         DISABLE_QUIT_DIALOG: 'true'
       },
       args: [testMainPath],
-      cwd: appDir,
+      cwd: appDir
     });
 
     page = await electronApp.firstWindow();
@@ -65,20 +69,31 @@ test.describe('Worktree Terminal Cleanup on Recreate', () => {
    * Helper function to wait for terminal to be ready by checking for shell prompt.
    * This ensures the terminal has fully initialized before we proceed with actions.
    */
-  async function waitForTerminalReady(page: Page, terminalIndex = 0, timeoutMs = 30000): Promise<void> {
+  async function waitForTerminalReady(
+    page: Page,
+    terminalIndex = 0,
+    timeoutMs = 30000
+  ): Promise<void> {
     const startTime = Date.now();
 
     while (Date.now() - startTime < timeoutMs) {
       try {
-        const terminalContent = await page.locator('.xterm-screen').nth(terminalIndex).textContent();
+        const terminalContent = await page
+          .locator('.xterm-screen')
+          .nth(terminalIndex)
+          .textContent();
 
         // Log what we found for debugging
-        console.log(`[waitForTerminalReady] Terminal ${terminalIndex} content (last 200 chars): ${terminalContent?.slice(-200)}`);
+        console.log(
+          `[waitForTerminalReady] Terminal ${terminalIndex} content (last 200 chars): ${terminalContent?.slice(-200)}`
+        );
 
         // Check for common shell prompt indicators - be more permissive
         // Shell prompts typically end with $, %, >, ], or #
         if (terminalContent && /[$%>\]#]\s*$/.test(terminalContent)) {
-          console.log(`[waitForTerminalReady] Terminal ${terminalIndex} is ready (found shell prompt)`);
+          console.log(
+            `[waitForTerminalReady] Terminal ${terminalIndex} is ready (found shell prompt)`
+          );
           return;
         }
       } catch {
@@ -88,7 +103,9 @@ test.describe('Worktree Terminal Cleanup on Recreate', () => {
       await page.waitForTimeout(500);
     }
 
-    console.log(`[waitForTerminalReady] WARNING: Terminal ${terminalIndex} may not be ready after ${timeoutMs}ms, proceeding anyway`);
+    console.log(
+      `[waitForTerminalReady] WARNING: Terminal ${terminalIndex} may not be ready after ${timeoutMs}ms, proceeding anyway`
+    );
   }
 
   test('should clean up terminal DOM when worktree is deleted and recreated', async () => {
@@ -183,7 +200,9 @@ test.describe('Worktree Terminal Cleanup on Recreate', () => {
     await deletePermanentlyButton.click();
 
     // Wait for deletion reporting dialog to complete
-    await expect(page.locator('h2').filter({ hasText: /Deletion Complete|Deletion Failed/ })).toBeVisible({ timeout: 30000 });
+    await expect(
+      page.locator('h2').filter({ hasText: /Deletion Complete|Deletion Failed/ })
+    ).toBeVisible({ timeout: 30000 });
 
     // Close the deletion dialog
     const closeButton = page.getByTestId('deletion-dialog-close-button');
@@ -191,7 +210,9 @@ test.describe('Worktree Terminal Cleanup on Recreate', () => {
     await closeButton.click();
 
     // Wait for the deletion dialog to close
-    await expect(page.locator('h2').filter({ hasText: /Deletion Complete|Deletion Failed/ })).not.toBeVisible();
+    await expect(
+      page.locator('h2').filter({ hasText: /Deletion Complete|Deletion Failed/ })
+    ).not.toBeVisible();
 
     // Verify test-branch is no longer in the worktree list
     await expect(testWorktreeButton).not.toBeVisible();

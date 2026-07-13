@@ -29,7 +29,9 @@ export function useClaudeStateDetector(
   const { processId } = options;
   const processIdRef = useRef(processId);
 
-  useEffect(() => { processIdRef.current = processId; }, [processId]);
+  useEffect(() => {
+    processIdRef.current = processId;
+  }, [processId]);
 
   // On-demand check if Claude is running
   const checkIsClaudeRunning = useCallback(async (): Promise<boolean> => {
@@ -47,6 +49,6 @@ export function useClaudeStateDetector(
   }, []);
 
   return {
-    checkIsClaudeRunning,
+    checkIsClaudeRunning
   };
 }

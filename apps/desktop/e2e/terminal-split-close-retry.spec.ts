@@ -64,10 +64,10 @@ test.describe('Terminal Split Close Retry', () => {
         ...process.env,
         NODE_ENV: 'test',
         TEST_MODE: 'true',
-        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
+        DISABLE_QUIT_DIALOG: 'true' // Prevent blocking on quit dialog
       },
       args: [testMainPath],
-      cwd: appDir,
+      cwd: appDir
     });
 
     page = await electronApp.firstWindow();
@@ -157,7 +157,7 @@ test.describe('Terminal Split Close Retry', () => {
     // Click all close buttons as fast as possible
     for (let i = 0; i < closeButtonCount; i++) {
       const button = closeButtons.nth(i);
-      if (await button.isVisible() && !await button.isDisabled()) {
+      if ((await button.isVisible()) && !(await button.isDisabled())) {
         await button.click();
         // Small delay to let the UI update
         await page.waitForTimeout(100);
@@ -263,9 +263,9 @@ test.describe('Terminal Split Close Retry', () => {
 
     // Should contain stack trace elements (at least one stack frame with "at")
     // The error.stack should include the stack trace with "at" prefix
-    const hasStackTrace = allMessages.includes('at ') &&
-                         (allMessages.includes('handleTerminalClose') ||
-                          allMessages.includes('TerminalController'));
+    const hasStackTrace =
+      allMessages.includes('at ') &&
+      (allMessages.includes('handleTerminalClose') || allMessages.includes('TerminalController'));
 
     // The key validation: error logs should contain detailed information
     expect(allMessages).toContain('TerminalController');

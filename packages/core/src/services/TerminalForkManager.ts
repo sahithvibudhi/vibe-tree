@@ -78,7 +78,9 @@ export class TerminalForkManager {
     if (terminalId && !forceNew) {
       const existingSessionId = this.terminalIdToSessionId.get(terminalId);
       if (existingSessionId && this.forks.has(existingSessionId)) {
-        console.log(`[TerminalForkManager] Reusing existing session ${existingSessionId} for terminal ${terminalId}`);
+        console.log(
+          `[TerminalForkManager] Reusing existing session ${existingSessionId} for terminal ${terminalId}`
+        );
         return {
           success: true,
           processId: existingSessionId,
@@ -147,7 +149,9 @@ export class TerminalForkManager {
         setLocaleVariables
       });
 
-      console.log(`[TerminalForkManager] Started fork for session ${sessionId} (PID: ${forkProcess.pid})`);
+      console.log(
+        `[TerminalForkManager] Started fork for session ${sessionId} (PID: ${forkProcess.pid})`
+      );
 
       return {
         success: true,
@@ -176,13 +180,15 @@ export class TerminalForkManager {
       switch (message.type) {
         case 'output':
           // Send output to all listeners
-          fork.outputListeners.forEach(listener => listener(message.data));
+          fork.outputListeners.forEach((listener) => listener(message.data));
           break;
 
         case 'exit':
           // PTY exited - notify listeners and cleanup
-          console.log(`[TerminalForkManager] PTY exited for session ${sessionId} with code ${message.code}`);
-          fork.exitListeners.forEach(listener => listener(message.code));
+          console.log(
+            `[TerminalForkManager] PTY exited for session ${sessionId} with code ${message.code}`
+          );
+          fork.exitListeners.forEach((listener) => listener(message.code));
           this.cleanupFork(sessionId);
           break;
 
@@ -194,7 +200,9 @@ export class TerminalForkManager {
 
     // Handle fork process exit
     forkProcess.on('exit', (code, signal) => {
-      console.log(`[TerminalForkManager] Fork process ${sessionId} exited (code: ${code}, signal: ${signal})`);
+      console.log(
+        `[TerminalForkManager] Fork process ${sessionId} exited (code: ${code}, signal: ${signal})`
+      );
       this.cleanupFork(sessionId);
     });
 
@@ -304,7 +312,9 @@ export class TerminalForkManager {
   /**
    * Get the foreground process running in a terminal session
    */
-  async getForegroundProcess(sessionId: string): Promise<{ pid: number | null; command: string | null }> {
+  async getForegroundProcess(
+    sessionId: string
+  ): Promise<{ pid: number | null; command: string | null }> {
     const fork = this.forks.get(sessionId);
     if (!fork) {
       return { pid: null, command: null };
@@ -315,7 +325,10 @@ export class TerminalForkManager {
         resolve({ pid: null, command: null });
       }, 1000);
 
-      const messageHandler = (message: { type: string; data?: { pid: number | null; command: string | null } }) => {
+      const messageHandler = (message: {
+        type: string;
+        data?: { pid: number | null; command: string | null };
+      }) => {
         if (message.type === 'foregroundProcess') {
           clearTimeout(timeout);
           fork.process.off('message', messageHandler);
@@ -332,7 +345,7 @@ export class TerminalForkManager {
    * Get all sessions
    */
   async getAllSessions(): Promise<Array<{ id: string; worktreePath: string }>> {
-    return Array.from(this.forks.values()).map(fork => ({
+    return Array.from(this.forks.values()).map((fork) => ({
       id: fork.id,
       worktreePath: fork.worktreePath
     }));
@@ -348,7 +361,9 @@ export class TerminalForkManager {
     }
 
     try {
-      console.log(`[TerminalForkManager] Terminating session ${sessionId} (PID: ${fork.process.pid})`);
+      console.log(
+        `[TerminalForkManager] Terminating session ${sessionId} (PID: ${fork.process.pid})`
+      );
 
       // Send terminate message to worker
       fork.process.send({ type: 'terminate' });
@@ -393,7 +408,9 @@ export class TerminalForkManager {
       }
     }
 
-    console.log(`[TerminalForkManager] Terminated ${count} session(s) for worktree: ${worktreePath}`);
+    console.log(
+      `[TerminalForkManager] Terminated ${count} session(s) for worktree: ${worktreePath}`
+    );
     return count;
   }
 
@@ -404,9 +421,7 @@ export class TerminalForkManager {
     const sessionIds = Array.from(this.forks.keys());
     console.log(`[TerminalForkManager] Terminating all ${sessionIds.length} sessions`);
 
-    await Promise.all(
-      sessionIds.map(sessionId => this.terminateSession(sessionId))
-    );
+    await Promise.all(sessionIds.map((sessionId) => this.terminateSession(sessionId)));
   }
 
   /**
@@ -435,7 +450,7 @@ export class TerminalForkManager {
   getStats() {
     return {
       totalForks: this.forks.size,
-      forks: Array.from(this.forks.values()).map(fork => ({
+      forks: Array.from(this.forks.values()).map((fork) => ({
         id: fork.id,
         pid: fork.process.pid,
         worktreePath: fork.worktreePath,
@@ -510,7 +525,7 @@ export class TerminalForkManager {
     const totalPtyMasterFds = forkDiagnostics.reduce((sum, d) => sum + d.ptyMasterFds, 0);
     const totalPtySlaveFds = forkDiagnostics.reduce((sum, d) => sum + d.ptySlaveFds, 0);
     const totalPtyFds = forkDiagnostics.reduce((sum, d) => sum + d.totalPtyFds, 0);
-    const forksWithPty = forkDiagnostics.filter(d => d.hasPty).length;
+    const forksWithPty = forkDiagnostics.filter((d) => d.hasPty).length;
 
     return {
       totalPtyMasterFds,

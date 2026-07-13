@@ -15,7 +15,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
+  DialogTitle
 } from './components/ui/dialog';
 
 function AppContent() {
@@ -71,7 +71,7 @@ function AppContent() {
 
   const handleCloseProject = (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
-    const project = projects.find(p => p.id === projectId);
+    const project = projects.find((p) => p.id === projectId);
     if (project) {
       setProjectToClose({ id: project.id, name: project.name });
     }
@@ -155,7 +155,8 @@ function AppContent() {
           <DialogHeader>
             <DialogTitle>Close Project?</DialogTitle>
             <DialogDescription>
-              Are you sure you want to close &quot;{projectToClose?.name}&quot;? All terminal sessions for this project will be terminated.
+              Are you sure you want to close &quot;{projectToClose?.name}&quot;? All terminal
+              sessions for this project will be terminated.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

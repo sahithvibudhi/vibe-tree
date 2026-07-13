@@ -1,6 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from './ui/dialog';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
 import { GitBranch, Plus, RefreshCw, Trash2, Clock } from 'lucide-react';
@@ -25,7 +32,13 @@ interface WorktreePanelProps {
   initialWorktrees?: Worktree[];
 }
 
-export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree, onWorktreesChange, initialWorktrees }: WorktreePanelProps) {
+export function WorktreePanel({
+  projectPath,
+  selectedWorktree,
+  onSelectWorktree,
+  onWorktreesChange,
+  initialWorktrees
+}: WorktreePanelProps) {
   const [worktrees, setWorktrees] = useState<Worktree[]>(initialWorktrees || []);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -36,11 +49,13 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
   const [showDeletionReporting, setShowDeletionReporting] = useState(false);
   const [deletionBranchName, setDeletionBranchName] = useState('');
   const [deletionWorktreePath, setDeletionWorktreePath] = useState('');
-  const [deletionSteps, setDeletionSteps] = useState<Array<{
-    message: string;
-    status: 'pending' | 'in-progress' | 'success' | 'error';
-    error?: string;
-  }>>([]);
+  const [deletionSteps, setDeletionSteps] = useState<
+    Array<{
+      message: string;
+      status: 'pending' | 'in-progress' | 'success' | 'error';
+      error?: string;
+    }>
+  >([]);
   const [isDeletionComplete, setIsDeletionComplete] = useState(false);
   const [terminalSettings, setTerminalSettings] = useState<TerminalSettings | null>(null);
   const [panelWidth, setPanelWidth] = useState<number>(320); // Default 320px (w-80)
@@ -57,21 +72,20 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
       onWorktreesChange?.(trees);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to load worktrees. Make sure this is a git repository.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to load worktrees. Make sure this is a git repository.',
+        variant: 'destructive'
       });
     }
     setRefreshing(false);
   }, [projectPath, toast, onWorktreesChange]);
 
-
   const handleCreateStressTest = async () => {
     setLoading(true);
     try {
       toast({
-        title: "Stress test started!",
-        description: "Creating worktrees and opening terminals until we hit errors...",
+        title: 'Stress test started!',
+        description: 'Creating worktrees and opening terminals until we hit errors...'
       });
 
       let index = 1;
@@ -95,9 +109,9 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
           if (!shellResult.success) {
             console.error(`Failed to open terminal for worktree ${index}:`, shellResult.error);
             toast({
-              title: "PTY spawn error detected!",
+              title: 'PTY spawn error detected!',
               description: `Hit spawn error after ${index} terminals. Test complete.`,
-              variant: "destructive",
+              variant: 'destructive'
             });
             setLoading(false);
             await loadWorktrees();
@@ -107,8 +121,8 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
           // Update toast and reload worktrees every 10 worktrees
           if (index % 10 === 0) {
             toast({
-              title: "Stress test in progress...",
-              description: `Created ${index} worktrees with terminals`,
+              title: 'Stress test in progress...',
+              description: `Created ${index} worktrees with terminals`
             });
             // Reload worktree list to show progress
             await loadWorktrees();
@@ -117,16 +131,15 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
           index++;
 
           // Small delay to let UI breathe
-          await new Promise(resolve => setTimeout(resolve, 100));
-
+          await new Promise((resolve) => setTimeout(resolve, 100));
         } catch (error) {
           console.error(`Error creating worktree ${index}:`, error);
           consecutiveFailures++;
           if (consecutiveFailures >= 3) {
             toast({
-              title: "Worktree creation stopped",
+              title: 'Worktree creation stopped',
               description: `Hit errors after creating ${index - 1} worktrees`,
-              variant: "destructive",
+              variant: 'destructive'
             });
             break;
           }
@@ -135,16 +148,16 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
       }
 
       toast({
-        title: "Stress test complete!",
-        description: `Created ${index - 1} worktrees with terminals`,
+        title: 'Stress test complete!',
+        description: `Created ${index - 1} worktrees with terminals`
       });
 
       await loadWorktrees();
     } catch (error) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to run stress test",
-        variant: "destructive",
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to run stress test',
+        variant: 'destructive'
       });
     }
     setLoading(false);
@@ -262,8 +275,8 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
     try {
       const result = await window.electronAPI.git.addWorktree(projectPath, newBranchName);
       toast({
-        title: "Success",
-        description: `Created worktree for branch ${result.branch}`,
+        title: 'Success',
+        description: `Created worktree for branch ${result.branch}`
       });
       setShowNewBranchDialog(false);
       setNewBranchName('');
@@ -271,21 +284,21 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
       onSelectWorktree(result.path);
     } catch (error) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create worktree",
-        variant: "destructive",
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to create worktree',
+        variant: 'destructive'
       });
     }
   };
 
   const handleDeleteWorktree = (worktree: Worktree, event: React.MouseEvent) => {
     event.stopPropagation();
-    
+
     if (worktrees.length <= 1) {
       toast({
-        title: "Error",
-        description: "Cannot delete the only remaining worktree",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Cannot delete the only remaining worktree',
+        variant: 'destructive'
       });
       return;
     }
@@ -294,8 +307,8 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
     setShowDeleteDialog(true);
   };
 
-  const updateDeletionStep = (index: number, updates: Partial<typeof deletionSteps[0]>) => {
-    setDeletionSteps(prev => {
+  const updateDeletionStep = (index: number, updates: Partial<(typeof deletionSteps)[0]>) => {
+    setDeletionSteps((prev) => {
       const newSteps = [...prev];
       newSteps[index] = { ...newSteps[index], ...updates };
       return newSteps;
@@ -318,7 +331,7 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
     const steps = [
       { message: 'Killing terminal processes...', status: 'pending' as const },
       { message: 'Removing worktree directory...', status: 'pending' as const },
-      { message: 'Deleting git branch...', status: 'pending' as const },
+      { message: 'Deleting git branch...', status: 'pending' as const }
     ];
     setDeletionSteps(steps);
     setIsDeletionComplete(false);
@@ -375,7 +388,7 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
 
       // Switch to another worktree if the deleted one was selected
       if (selectedWorktree === worktreeToDelete.path) {
-        const remainingWorktrees = worktrees.filter(w => w.path !== worktreeToDelete.path);
+        const remainingWorktrees = worktrees.filter((w) => w.path !== worktreeToDelete.path);
         if (remainingWorktrees.length > 0) {
           onSelectWorktree(remainingWorktrees[0].path);
         }
@@ -383,7 +396,6 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
 
       // Reload worktrees
       loadWorktrees();
-
     } catch (error) {
       console.error('Unexpected error during deletion:', error);
     } finally {
@@ -412,12 +424,7 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
                 [Explode]
               </Button>
             )}
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={loadWorktrees}
-              disabled={refreshing}
-            >
+            <Button size="icon" variant="ghost" onClick={loadWorktrees} disabled={refreshing}>
               <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             </Button>
             <Button
@@ -435,67 +442,71 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
 
       <ScrollArea className="flex-1 h-0">
         <div className="p-2">
-          {[...worktrees].sort((a, b) => {
-            // Extract branch names, handling refs/heads/ prefix and detached HEAD
-            const getBranchName = (wt: Worktree) => {
-              if (!wt.branch) return wt.head.substring(0, 8); // detached HEAD
-              return wt.branch.replace('refs/heads/', '');
-            };
+          {[...worktrees]
+            .sort((a, b) => {
+              // Extract branch names, handling refs/heads/ prefix and detached HEAD
+              const getBranchName = (wt: Worktree) => {
+                if (!wt.branch) return wt.head.substring(0, 8); // detached HEAD
+                return wt.branch.replace('refs/heads/', '');
+              };
 
-            const branchA = getBranchName(a);
-            const branchB = getBranchName(b);
+              const branchA = getBranchName(a);
+              const branchB = getBranchName(b);
 
-            // Keep main or master first
-            if (branchA === 'main' || branchA === 'master') return -1;
-            if (branchB === 'main' || branchB === 'master') return 1;
+              // Keep main or master first
+              if (branchA === 'main' || branchA === 'master') return -1;
+              if (branchB === 'main' || branchB === 'master') return 1;
 
-            // Sort alphabetically for the rest
-            return branchA.localeCompare(branchB);
-          }).map((worktree) => (
-            <div
-              key={worktree.path}
-              className={`relative group rounded-md transition-colors ${
-                selectedWorktree === worktree.path
-                  ? 'bg-accent'
-                  : 'hover:bg-accent/50'
-              }`}
-            >
-              {worktrees.length > 1 && worktree.branch && !isProtectedBranch(worktree.branch) && (
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="absolute left-2 top-1/2 -translate-y-1/2 h-6 w-6 opacity-60 hover:opacity-100 group-hover:opacity-100 transition-opacity bg-red-50 hover:bg-red-100 border border-red-200 hover:border-red-300"
-                  onClick={(e) => handleDeleteWorktree(worktree, e)}
-                >
-                  <Trash2 className="h-3 w-3 text-red-600" />
-                </Button>
-              )}
-              <button
-                onClick={() => onSelectWorktree(worktree.path)}
-                className="w-full text-left p-3 flex items-center gap-1.5 pl-10"
-                data-worktree-branch={worktree.branch ? worktree.branch.replace('refs/heads/', '') : worktree.head.substring(0, 8)}
+              // Sort alphabetically for the rest
+              return branchA.localeCompare(branchB);
+            })
+            .map((worktree) => (
+              <div
+                key={worktree.path}
+                className={`relative group rounded-md transition-colors ${
+                  selectedWorktree === worktree.path ? 'bg-accent' : 'hover:bg-accent/50'
+                }`}
               >
-                {worktreesWithSchedulers.has(worktree.path) && (
-                  <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                )}
-                <GitBranch className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div
-                    className="truncate"
-                    style={{
-                      fontSize: `${worktreeFontSize}px`,
-                      fontWeight: 'bold',
-                      color: worktreeSessionCounts[worktree.path] > 0 ? '#60a5fa' : undefined
-                    }}
+                {worktrees.length > 1 && worktree.branch && !isProtectedBranch(worktree.branch) && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 h-6 w-6 opacity-60 hover:opacity-100 group-hover:opacity-100 transition-opacity bg-red-50 hover:bg-red-100 border border-red-200 hover:border-red-300"
+                    onClick={(e) => handleDeleteWorktree(worktree, e)}
                   >
-                    {worktree.branch
+                    <Trash2 className="h-3 w-3 text-red-600" />
+                  </Button>
+                )}
+                <button
+                  onClick={() => onSelectWorktree(worktree.path)}
+                  className="w-full text-left p-3 flex items-center gap-1.5 pl-10"
+                  data-worktree-branch={
+                    worktree.branch
                       ? worktree.branch.replace('refs/heads/', '')
-                      : `Detached HEAD (${worktree.head.substring(0, 8)})`}
+                      : worktree.head.substring(0, 8)
+                  }
+                >
+                  {worktreesWithSchedulers.has(worktree.path) && (
+                    <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                  )}
+                  <GitBranch className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className="truncate"
+                      style={{
+                        fontSize: `${worktreeFontSize}px`,
+                        fontWeight: 'bold',
+                        color: worktreeSessionCounts[worktree.path] > 0 ? '#60a5fa' : undefined
+                      }}
+                    >
+                      {worktree.branch
+                        ? worktree.branch.replace('refs/heads/', '')
+                        : `Detached HEAD (${worktree.head.substring(0, 8)})`}
+                    </div>
                   </div>
-                </div>
-              </button>
-            </div>
-          ))}
+                </button>
+              </div>
+            ))}
         </div>
       </ScrollArea>
 
@@ -554,13 +565,20 @@ export function WorktreePanel({ projectPath, selectedWorktree, onSelectWorktree,
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setShowDeleteDialog(false);
-              setWorktreeToDelete(null);
-            }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteDialog(false);
+                setWorktreeToDelete(null);
+              }}
+            >
               Cancel
             </Button>
-            <Button variant="default" className="bg-red-600 hover:bg-red-700" onClick={confirmDeleteWorktree}>
+            <Button
+              variant="default"
+              className="bg-red-600 hover:bg-red-700"
+              onClick={confirmDeleteWorktree}
+            >
               Delete Permanently
             </Button>
           </DialogFooter>

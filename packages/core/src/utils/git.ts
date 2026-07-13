@@ -1,6 +1,12 @@
 import { spawn } from 'child_process';
 import * as path from 'path';
-import { Worktree, GitStatus, WorktreeAddResult, WorktreeRemoveResult, ProjectValidationResult } from '../types';
+import {
+  Worktree,
+  GitStatus,
+  WorktreeAddResult,
+  WorktreeRemoveResult,
+  ProjectValidationResult
+} from '../types';
 import { parseWorktrees, parseGitStatus } from './git-parser';
 
 /**
@@ -13,22 +19,22 @@ export function executeGitCommand(args: string[], cwd: string): Promise<string> 
   return new Promise((resolve, reject) => {
     // Try 'git' first, fallback to absolute path if not found
     const gitCommand = process.env.PATH?.includes('/usr/bin') ? 'git' : '/usr/bin/git';
-    const child = spawn(gitCommand, args, { 
+    const child = spawn(gitCommand, args, {
       cwd,
       env: { ...process.env, PATH: process.env.PATH || '/usr/bin:/bin:/usr/local/bin' }
     });
-    
+
     let stdout = '';
     let stderr = '';
-    
+
     child.stdout.on('data', (data) => {
       stdout += data.toString();
     });
-    
+
     child.stderr.on('data', (data) => {
       stderr += data.toString();
     });
-    
+
     child.on('close', (code) => {
       if (code === 0) {
         resolve(stdout);
@@ -93,11 +99,14 @@ export async function getGitDiffStaged(worktreePath: string, filePath?: string):
  * @param branchName - Name for the new branch
  * @returns Result with new worktree path and branch name
  */
-export async function addWorktree(projectPath: string, branchName: string): Promise<WorktreeAddResult> {
+export async function addWorktree(
+  projectPath: string,
+  branchName: string
+): Promise<WorktreeAddResult> {
   const worktreePath = path.join(projectPath, '..', `${path.basename(projectPath)}-${branchName}`);
-  
+
   await executeGitCommand(['worktree', 'add', '-b', branchName, worktreePath], projectPath);
-  
+
   return { path: worktreePath, branch: branchName };
 }
 
@@ -109,14 +118,14 @@ export async function addWorktree(projectPath: string, branchName: string): Prom
  * @returns Result indicating success and any warnings
  */
 export async function removeWorktree(
-  projectPath: string, 
-  worktreePath: string, 
+  projectPath: string,
+  worktreePath: string,
   branchName: string
 ): Promise<WorktreeRemoveResult> {
   try {
     // First remove the worktree
     await executeGitCommand(['worktree', 'remove', worktreePath, '--force'], projectPath);
-    
+
     try {
       // Then try to delete the branch
       await executeGitCommand(['branch', '-D', branchName], projectPath);
@@ -124,9 +133,9 @@ export async function removeWorktree(
     } catch (branchError) {
       // If branch deletion fails, still consider it success since worktree was removed
       console.warn('Failed to delete branch but worktree was removed:', branchError);
-      return { 
-        success: true, 
-        warning: `Worktree removed but failed to delete branch: ${branchError}` 
+      return {
+        success: true,
+        warning: `Worktree removed but failed to delete branch: ${branchError}`
       };
     }
   } catch (error) {
@@ -179,7 +188,7 @@ export async function validateProjects(projectPaths: string[]): Promise<ProjectV
 
         // Get repository name from path
         const name = path.basename(projectPath);
-        
+
         return {
           path: projectPath,
           name,

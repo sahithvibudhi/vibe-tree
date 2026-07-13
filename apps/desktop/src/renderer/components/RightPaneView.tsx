@@ -15,11 +15,7 @@ export function RightPaneView({ worktreePath, projectId, theme }: RightPaneViewP
 
   return (
     <div className="flex-1 flex flex-col h-full">
-      <Tabs 
-        value={activeTab} 
-        onValueChange={setActiveTab}
-        className="flex-1 flex flex-col"
-      >
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <div className="border-b flex items-center bg-muted/50 h-12">
           <TabsList className="h-full bg-transparent p-0 rounded-none ml-4">
             <TabsTrigger
@@ -39,21 +35,11 @@ export function RightPaneView({ worktreePath, projectId, theme }: RightPaneViewP
           </TabsList>
         </div>
 
-        <TabsContent 
-          value="terminal"
-          className="flex-1 m-0 h-full"
-        >
-          <TerminalGrid
-            worktreePath={worktreePath}
-            projectId={projectId}
-            theme={theme}
-          />
+        <TabsContent value="terminal" className="flex-1 m-0 h-full">
+          <TerminalGrid worktreePath={worktreePath} projectId={projectId} theme={theme} />
         </TabsContent>
 
-        <TabsContent 
-          value="git-diff"
-          className="flex-1 m-0 h-full"
-        >
+        <TabsContent value="git-diff" className="flex-1 m-0 h-full">
           <GitDiffView worktreePath={worktreePath} theme={theme} />
         </TabsContent>
       </Tabs>

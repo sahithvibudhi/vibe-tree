@@ -11,7 +11,13 @@ import type {
 } from '@vibetree/core';
 
 export class IPCAdapter extends BaseAdapter {
-  async startShell(worktreePath: string, cols?: number, rows?: number, forceNew?: boolean, terminalId?: string): Promise<ShellStartResult> {
+  async startShell(
+    worktreePath: string,
+    cols?: number,
+    rows?: number,
+    forceNew?: boolean,
+    terminalId?: string
+  ): Promise<ShellStartResult> {
     return window.electronAPI.shell.start(worktreePath, cols, rows, forceNew, terminalId);
   }
 
@@ -55,7 +61,11 @@ export class IPCAdapter extends BaseAdapter {
     return window.electronAPI.git.addWorktree(projectPath, branchName);
   }
 
-  async removeWorktree(projectPath: string, worktreePath: string, branchName: string): Promise<WorktreeRemoveResult> {
+  async removeWorktree(
+    projectPath: string,
+    worktreePath: string,
+    branchName: string
+  ): Promise<WorktreeRemoveResult> {
     return window.electronAPI.git.removeWorktree(projectPath, worktreePath, branchName);
   }
 
@@ -63,7 +73,10 @@ export class IPCAdapter extends BaseAdapter {
     return window.electronAPI.ide.detect();
   }
 
-  async openInIDE(ideName: string, projectPath: string): Promise<{ success: boolean; error?: string }> {
+  async openInIDE(
+    ideName: string,
+    projectPath: string
+  ): Promise<{ success: boolean; error?: string }> {
     return window.electronAPI.ide.open(ideName, projectPath);
   }
 

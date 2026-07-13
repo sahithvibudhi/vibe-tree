@@ -17,7 +17,7 @@ interface Services {
 
 export function setupRestRoutes(app: Express, services: Services) {
   const { shellManager, authService } = services;
-  
+
   // Get server configuration
   app.get('/api/config', (req, res) => {
     res.json({
@@ -27,7 +27,7 @@ export function setupRestRoutes(app: Express, services: Services) {
   });
 
   // Authentication endpoints
-  
+
   // Get authentication configuration
   app.get('/api/auth/config', (req, res) => {
     const config = authService.getAuthConfig();
@@ -37,13 +37,13 @@ export function setupRestRoutes(app: Express, services: Services) {
   // Login endpoint
   app.post('/api/auth/login', (req, res) => {
     const { username, password } = req.body;
-    
+
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
     }
-    
+
     const result = authService.login(username, password);
-    
+
     if (result.success) {
       res.json({ sessionToken: result.sessionToken });
     } else {
@@ -55,7 +55,7 @@ export function setupRestRoutes(app: Express, services: Services) {
   app.post('/api/auth/logout', (req, res) => {
     // Get session token from Authorization header or query parameter
     let sessionToken: string | undefined;
-    
+
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       sessionToken = authHeader.substring(7);
@@ -70,7 +70,7 @@ export function setupRestRoutes(app: Express, services: Services) {
     }
 
     const success = authService.logout(sessionToken);
-    
+
     if (success) {
       res.json({ success: true });
     } else {
@@ -108,12 +108,14 @@ export function setupRestRoutes(app: Express, services: Services) {
   // List active shell sessions (protected)
   app.get('/api/shells', authService.requireAuth, (req, res) => {
     const sessions = shellManager.getAllSessions();
-    res.json(sessions.map(s => ({
-      id: s.id,
-      worktreePath: s.worktreePath,
-      createdAt: s.createdAt,
-      lastActivity: s.lastActivity
-    })));
+    res.json(
+      sessions.map((s) => ({
+        id: s.id,
+        worktreePath: s.worktreePath,
+        createdAt: s.createdAt,
+        lastActivity: s.lastActivity
+      }))
+    );
   });
 
   // Terminate a shell session (protected)
@@ -180,19 +182,19 @@ export function setupRestRoutes(app: Express, services: Services) {
   app.post('/api/projects/validate', authService.requireAuth, async (req, res) => {
     try {
       const { projectPaths } = req.body;
-      
+
       if (!Array.isArray(projectPaths)) {
         return res.status(400).json({ error: 'projectPaths must be an array' });
       }
-      
+
       if (projectPaths.length === 0) {
         return res.json([]);
       }
-      
+
       if (projectPaths.length > 10) {
         return res.status(400).json({ error: 'Maximum 10 projects can be validated at once' });
       }
-      
+
       const results = await validateProjects(projectPaths);
       res.json(results);
     } catch (error) {
@@ -204,39 +206,41 @@ export function setupRestRoutes(app: Express, services: Services) {
   app.get('/api/projects/auto-load', async (req, res) => {
     try {
       const defaultProjectsEnv = process.env.DEFAULT_PROJECTS;
-      
+
       if (!defaultProjectsEnv || defaultProjectsEnv.trim() === '') {
-        return res.json({ 
-          projectPaths: [], 
-          validationResults: [], 
-          defaultProjectPath: null 
+        return res.json({
+          projectPaths: [],
+          validationResults: [],
+          defaultProjectPath: null
         });
       }
-      
+
       // Parse comma-separated project paths
       const projectPaths = defaultProjectsEnv
         .split(',')
-        .map(path => path.trim())
-        .filter(path => path.length > 0);
-      
+        .map((path) => path.trim())
+        .filter((path) => path.length > 0);
+
       if (projectPaths.length === 0) {
-        return res.json({ 
-          projectPaths: [], 
-          validationResults: [], 
-          defaultProjectPath: null 
+        return res.json({
+          projectPaths: [],
+          validationResults: [],
+          defaultProjectPath: null
         });
       }
-      
+
       if (projectPaths.length > 10) {
-        return res.status(400).json({ error: 'Maximum 10 projects can be configured in DEFAULT_PROJECTS' });
+        return res
+          .status(400)
+          .json({ error: 'Maximum 10 projects can be configured in DEFAULT_PROJECTS' });
       }
-      
+
       // Validate all projects
       const validationResults = await validateProjects(projectPaths);
-      
+
       // First valid project becomes the default
-      const defaultProjectPath = validationResults.find(result => result.valid)?.path || null;
-      
+      const defaultProjectPath = validationResults.find((result) => result.valid)?.path || null;
+
       res.json({
         projectPaths,
         validationResults,

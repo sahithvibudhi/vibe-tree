@@ -54,16 +54,16 @@ function stripAnsi(str: string): string {
 
 function stripAnsiAndSplitLines(str: string): string[] {
   const cleaned = stripAnsi(str);
-  return cleaned.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+  return cleaned
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
 }
 
 /**
  * Patterns for state detection
  */
-const COMPLETION_PATTERNS: RegExp[] = [
-  /send\s*$/i,
-  /↵\s*send/i,
-];
+const COMPLETION_PATTERNS: RegExp[] = [/send\s*$/i, /↵\s*send/i];
 
 const QUESTION_PATTERNS: RegExp[] = [
   /Enter to select.*Tab\/Arrow keys to navigate.*Esc to cancel/i,
@@ -72,7 +72,7 @@ const QUESTION_PATTERNS: RegExp[] = [
   /\[y\/N\]/,
   /\(yes\/no\)/i,
   /Do you want to proceed\?/i,
-  />\s*\d+\.\s*Yes/i,
+  />\s*\d+\.\s*Yes/i
 ];
 
 /**
@@ -90,7 +90,6 @@ class NotificationManager {
   private sessions: Map<string, SessionNotificationState> = new Map();
   private mainWindow: BrowserWindow | null = null;
   private _initialized = false;
-
 
   /**
    * Initialize the notification manager with the main window reference
@@ -120,7 +119,7 @@ class NotificationManager {
         worktreePath,
         branchName,
         currentState: 'idle',
-        hasNotifiedForCurrentCompletion: false,
+        hasNotifiedForCurrentCompletion: false
       });
     }
   }
@@ -215,7 +214,11 @@ class NotificationManager {
    * NOTE: "working" state is NOT detected from output - only from user input (markUserInput)
    * This prevents false triggers from terminal escape sequences
    */
-  private analyzeForStateChange(session: SessionNotificationState, processId: string, lines: string[]) {
+  private analyzeForStateChange(
+    session: SessionNotificationState,
+    processId: string,
+    lines: string[]
+  ) {
     const now = Date.now();
 
     for (const line of lines) {
@@ -243,7 +246,12 @@ class NotificationManager {
    * Handle state transition and potentially show notification
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private transitionTo(session: SessionNotificationState, processId: string, newState: ClaudeState, _now: number) {
+  private transitionTo(
+    session: SessionNotificationState,
+    processId: string,
+    newState: ClaudeState,
+    _now: number
+  ) {
     const prevState = session.currentState;
     session.currentState = newState;
 
@@ -311,16 +319,14 @@ class NotificationManager {
     // Create notification content
     const projectName = path.basename(worktreePath);
     const title = `${projectName} (${branchName})`;
-    const body = type === 'completed'
-      ? 'Prompt completed'
-      : 'Ask question';
+    const body = type === 'completed' ? 'Prompt completed' : 'Ask question';
 
     // Create and show the notification
     const notification = new Notification({
       title,
       body,
       silent: false,
-      icon: this.getNotificationIcon(),
+      icon: this.getNotificationIcon()
     });
 
     // Store info for click handling
@@ -328,7 +334,7 @@ class NotificationManager {
       type,
       worktreePath,
       branchName,
-      processId,
+      processId
     };
 
     // Handle notification click
@@ -353,7 +359,11 @@ class NotificationManager {
       this.mainWindow.focus();
 
       // Notify the renderer about the click so it can switch to the terminal
-      this.mainWindow.webContents.send('claude-notification:clicked', info.processId, info.worktreePath);
+      this.mainWindow.webContents.send(
+        'claude-notification:clicked',
+        info.processId,
+        info.worktreePath
+      );
     }
   }
 
@@ -364,7 +374,7 @@ class NotificationManager {
     // Try to find the app icon
     const iconPaths = [
       path.join(__dirname, '../../assets/icons/VibeTree.png'),
-      path.join(app.getAppPath(), 'assets/icons/VibeTree.png'),
+      path.join(app.getAppPath(), 'assets/icons/VibeTree.png')
     ];
 
     for (const iconPath of iconPaths) {
@@ -386,7 +396,7 @@ class NotificationManager {
       return {
         supported: false,
         authorized: false,
-        authorizationStatus: 'unknown',
+        authorizationStatus: 'unknown'
       };
     }
 
@@ -406,7 +416,7 @@ class NotificationManager {
     return {
       supported: true,
       authorized: true,
-      authorizationStatus: 'unknown',
+      authorizationStatus: 'unknown'
     };
   }
 
@@ -431,7 +441,7 @@ class NotificationManager {
           return {
             supported: true,
             authorized: isAllowed,
-            authorizationStatus: isAllowed ? 'authorized' : 'denied',
+            authorizationStatus: isAllowed ? 'authorized' : 'denied'
           };
         }
       } catch {
@@ -442,7 +452,7 @@ class NotificationManager {
     return {
       supported: true,
       authorized: false,
-      authorizationStatus: 'not-determined',
+      authorizationStatus: 'not-determined'
     };
   }
 

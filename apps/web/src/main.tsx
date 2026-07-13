@@ -7,8 +7,8 @@ import './styles/globals.css';
 ReactDOM.createRoot(document.getElementById('root')!).render(
   // Temporarily disable StrictMode to fix terminal character duplication
   // <React.StrictMode>
-    <AuthProvider serverUrl="http://localhost:3002">
-      <App />
-    </AuthProvider>
+  <AuthProvider serverUrl="http://localhost:3002">
+    <App />
+  </AuthProvider>
   // </React.StrictMode>
 );

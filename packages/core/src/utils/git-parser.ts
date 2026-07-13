@@ -43,14 +43,17 @@ export function parseWorktrees(output: string): Worktree[] {
  * @returns Array of parsed git status objects
  */
 export function parseGitStatus(output: string): GitStatus[] {
-  const lines = output.trim().split('\n').filter(line => line.length > 0);
-  
-  return lines.map(line => {
+  const lines = output
+    .trim()
+    .split('\n')
+    .filter((line) => line.length > 0);
+
+  return lines.map((line) => {
     // Git status format: XY filename
     // X = status in index, Y = status in working tree
     const statusCode = line.substring(0, 2);
     const filePath = line.substring(3);
-    
+
     return {
       path: filePath,
       status: statusCode,

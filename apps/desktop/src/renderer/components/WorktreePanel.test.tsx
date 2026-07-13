@@ -63,9 +63,7 @@ describe('WorktreePanel - Branch Protection Logic', () => {
       const worktreeCount = 2;
 
       const shouldShowDeleteButton =
-        worktreeCount > 1 &&
-        worktree.branch &&
-        !isProtectedBranch(worktree.branch);
+        worktreeCount > 1 && worktree.branch && !isProtectedBranch(worktree.branch);
 
       expect(shouldShowDeleteButton).toBe(true);
     });
@@ -79,9 +77,7 @@ describe('WorktreePanel - Branch Protection Logic', () => {
       const worktreeCount = 2;
 
       const shouldShowDeleteButton =
-        worktreeCount > 1 &&
-        worktree.branch &&
-        !isProtectedBranch(worktree.branch);
+        worktreeCount > 1 && worktree.branch && !isProtectedBranch(worktree.branch);
 
       expect(shouldShowDeleteButton).toBe(false);
     });
@@ -95,9 +91,7 @@ describe('WorktreePanel - Branch Protection Logic', () => {
       const worktreeCount = 1;
 
       const shouldShowDeleteButton =
-        worktreeCount > 1 &&
-        worktree.branch &&
-        !isProtectedBranch(worktree.branch);
+        worktreeCount > 1 && worktree.branch && !isProtectedBranch(worktree.branch);
 
       expect(shouldShowDeleteButton).toBe(false);
     });
@@ -107,11 +101,11 @@ describe('WorktreePanel - Branch Protection Logic', () => {
       const problematicBranches = [
         'refs/heads/fix-broken-main3',
         'refs/heads/maintain-feature',
-        'refs/heads/domain-logic',
+        'refs/heads/domain-logic'
       ];
       const worktreeCount = 2;
 
-      problematicBranches.forEach(branch => {
+      problematicBranches.forEach((branch) => {
         const worktree = {
           path: '/path/to/worktree',
           branch,
@@ -119,9 +113,7 @@ describe('WorktreePanel - Branch Protection Logic', () => {
         };
 
         const shouldShowDeleteButton =
-          worktreeCount > 1 &&
-          worktree.branch &&
-          !isProtectedBranch(worktree.branch);
+          worktreeCount > 1 && worktree.branch && !isProtectedBranch(worktree.branch);
 
         expect(shouldShowDeleteButton).toBe(true);
       });

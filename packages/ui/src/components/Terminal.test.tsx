@@ -21,42 +21,41 @@ vi.mock('@xterm/xterm', () => ({
     onBell: vi.fn(() => ({ dispose: vi.fn() })),
     cols: 80,
     rows: 24,
-    options: {},
-  })),
+    options: {}
+  }))
 }));
 
 vi.mock('@xterm/addon-fit', () => ({
   FitAddon: vi.fn().mockImplementation(() => ({
-    fit: vi.fn(),
-  })),
+    fit: vi.fn()
+  }))
 }));
 
 vi.mock('@xterm/addon-web-links', () => ({
-  WebLinksAddon: vi.fn().mockImplementation(() => ({})),
+  WebLinksAddon: vi.fn().mockImplementation(() => ({}))
 }));
 
 vi.mock('@xterm/addon-serialize', () => ({
   SerializeAddon: vi.fn().mockImplementation(() => ({
-    serialize: vi.fn(),
-  })),
+    serialize: vi.fn()
+  }))
 }));
 
 vi.mock('@xterm/addon-unicode11', () => ({
   Unicode11Addon: vi.fn().mockImplementation(() => ({
-    activate: vi.fn(),
-  })),
+    activate: vi.fn()
+  }))
 }));
 
 vi.mock('@xterm/addon-search', () => ({
   SearchAddon: vi.fn().mockImplementation(() => ({
     findNext: vi.fn(),
-    findPrevious: vi.fn(),
-  })),
+    findPrevious: vi.fn()
+  }))
 }));
 
 // Test the escapeShellPath function
 describe('escapeShellPath', () => {
-
   it('should not escape simple paths without special characters', () => {
     expect(escapeShellPath('/home/user/file.txt')).toBe('/home/user/file.txt');
     expect(escapeShellPath('/usr/local/bin/app')).toBe('/usr/local/bin/app');
@@ -105,8 +104,9 @@ describe('escapeShellPath', () => {
   });
 
   it('should handle complex paths with multiple special characters', () => {
-    expect(escapeShellPath("/home/user/My Documents/Project (2024)/it's & file's.txt"))
-      .toBe("'/home/user/My Documents/Project (2024)/it'\\''s & file'\\''s.txt'");
+    expect(escapeShellPath("/home/user/My Documents/Project (2024)/it's & file's.txt")).toBe(
+      "'/home/user/My Documents/Project (2024)/it'\\''s & file'\\''s.txt'"
+    );
   });
 });
 
@@ -119,34 +119,30 @@ describe('Terminal Component Drag and Drop', () => {
   });
 
   it('should render terminal container with drag and drop handlers', () => {
-    const { container } = render(
-      <Terminal id="test-terminal" onData={mockOnData} />
-    );
+    const { container } = render(<Terminal id="test-terminal" onData={mockOnData} />);
 
     const terminalContainer = container.querySelector('.terminal-container');
     expect(terminalContainer).toBeInTheDocument();
   });
 
   it('should prevent default and stop propagation on dragOver', () => {
-    const { container } = render(
-      <Terminal id="test-terminal" onData={mockOnData} />
-    );
+    const { container } = render(<Terminal id="test-terminal" onData={mockOnData} />);
 
     const terminalContainer = container.querySelector('.terminal-container');
     const dragOverEvent = new Event('dragover', { bubbles: true });
 
     Object.defineProperty(dragOverEvent, 'preventDefault', {
       value: vi.fn(),
-      writable: true,
+      writable: true
     });
     Object.defineProperty(dragOverEvent, 'stopPropagation', {
       value: vi.fn(),
-      writable: true,
+      writable: true
     });
     const dataTransfer = { dropEffect: null as string | null };
     Object.defineProperty(dragOverEvent, 'dataTransfer', {
       value: dataTransfer,
-      writable: true,
+      writable: true
     });
 
     fireEvent(terminalContainer!, dragOverEvent);
@@ -157,9 +153,7 @@ describe('Terminal Component Drag and Drop', () => {
   });
 
   it('should handle file drop with single file', () => {
-    const { container } = render(
-      <Terminal id="test-terminal" onData={mockOnData} />
-    );
+    const { container } = render(<Terminal id="test-terminal" onData={mockOnData} />);
 
     const terminalContainer = container.querySelector('.terminal-container');
 
@@ -170,17 +164,17 @@ describe('Terminal Component Drag and Drop', () => {
     const dropEvent = new Event('drop', { bubbles: true });
     Object.defineProperty(dropEvent, 'preventDefault', {
       value: vi.fn(),
-      writable: true,
+      writable: true
     });
     Object.defineProperty(dropEvent, 'stopPropagation', {
       value: vi.fn(),
-      writable: true,
+      writable: true
     });
     Object.defineProperty(dropEvent, 'dataTransfer', {
       value: {
-        files: [file],
+        files: [file]
       },
-      writable: true,
+      writable: true
     });
 
     fireEvent(terminalContainer!, dropEvent);
@@ -193,9 +187,7 @@ describe('Terminal Component Drag and Drop', () => {
   });
 
   it('should handle file drop with multiple files', () => {
-    const { container } = render(
-      <Terminal id="test-terminal" onData={mockOnData} />
-    );
+    const { container } = render(<Terminal id="test-terminal" onData={mockOnData} />);
 
     const terminalContainer = container.querySelector('.terminal-container');
 
@@ -209,17 +201,17 @@ describe('Terminal Component Drag and Drop', () => {
     const dropEvent = new Event('drop', { bubbles: true });
     Object.defineProperty(dropEvent, 'preventDefault', {
       value: vi.fn(),
-      writable: true,
+      writable: true
     });
     Object.defineProperty(dropEvent, 'stopPropagation', {
       value: vi.fn(),
-      writable: true,
+      writable: true
     });
     Object.defineProperty(dropEvent, 'dataTransfer', {
       value: {
-        files: [file1, file2],
+        files: [file1, file2]
       },
-      writable: true,
+      writable: true
     });
 
     fireEvent(terminalContainer!, dropEvent);
@@ -229,9 +221,7 @@ describe('Terminal Component Drag and Drop', () => {
   });
 
   it('should escape file paths with special characters on drop', () => {
-    const { container } = render(
-      <Terminal id="test-terminal" onData={mockOnData} />
-    );
+    const { container } = render(<Terminal id="test-terminal" onData={mockOnData} />);
 
     const terminalContainer = container.querySelector('.terminal-container');
 
@@ -242,17 +232,17 @@ describe('Terminal Component Drag and Drop', () => {
     const dropEvent = new Event('drop', { bubbles: true });
     Object.defineProperty(dropEvent, 'preventDefault', {
       value: vi.fn(),
-      writable: true,
+      writable: true
     });
     Object.defineProperty(dropEvent, 'stopPropagation', {
       value: vi.fn(),
-      writable: true,
+      writable: true
     });
     Object.defineProperty(dropEvent, 'dataTransfer', {
       value: {
-        files: [file],
+        files: [file]
       },
-      writable: true,
+      writable: true
     });
 
     fireEvent(terminalContainer!, dropEvent);
@@ -262,26 +252,24 @@ describe('Terminal Component Drag and Drop', () => {
   });
 
   it('should not call onData if no files are dropped', () => {
-    const { container } = render(
-      <Terminal id="test-terminal" onData={mockOnData} />
-    );
+    const { container } = render(<Terminal id="test-terminal" onData={mockOnData} />);
 
     const terminalContainer = container.querySelector('.terminal-container');
 
     const dropEvent = new Event('drop', { bubbles: true });
     Object.defineProperty(dropEvent, 'preventDefault', {
       value: vi.fn(),
-      writable: true,
+      writable: true
     });
     Object.defineProperty(dropEvent, 'stopPropagation', {
       value: vi.fn(),
-      writable: true,
+      writable: true
     });
     Object.defineProperty(dropEvent, 'dataTransfer', {
       value: {
-        files: [],
+        files: []
       },
-      writable: true,
+      writable: true
     });
 
     fireEvent(terminalContainer!, dropEvent);
@@ -292,25 +280,23 @@ describe('Terminal Component Drag and Drop', () => {
   });
 
   it('should apply drag over styles when dragging over terminal', () => {
-    const { container } = render(
-      <Terminal id="test-terminal" onData={mockOnData} />
-    );
+    const { container } = render(<Terminal id="test-terminal" onData={mockOnData} />);
 
     const terminalContainer = container.querySelector('.terminal-container') as HTMLElement;
 
     const dragOverEvent = new Event('dragover', { bubbles: true });
     Object.defineProperty(dragOverEvent, 'preventDefault', {
       value: vi.fn(),
-      writable: true,
+      writable: true
     });
     Object.defineProperty(dragOverEvent, 'stopPropagation', {
       value: vi.fn(),
-      writable: true,
+      writable: true
     });
     const dataTransfer = { dropEffect: null as string | null };
     Object.defineProperty(dragOverEvent, 'dataTransfer', {
       value: dataTransfer,
-      writable: true,
+      writable: true
     });
 
     fireEvent(terminalContainer!, dragOverEvent);

@@ -1,9 +1,5 @@
 import * as crypto from 'crypto';
-import { 
-  ShellStartResult, 
-  ShellWriteResult, 
-  ShellResizeResult 
-} from '../types';
+import { ShellStartResult, ShellWriteResult, ShellResizeResult } from '../types';
 import {
   getDefaultShell,
   getPtyOptions,
@@ -108,17 +104,18 @@ export class ShellSessionManager {
    * Generate deterministic session ID from worktree path and terminal ID
    * This ensures same session is reused for same terminal in same worktree
    */
-  private generateSessionId(worktreePath: string, terminalId?: string, forceNew: boolean = false): string {
+  private generateSessionId(
+    worktreePath: string,
+    terminalId?: string,
+    forceNew: boolean = false
+  ): string {
     if (forceNew) {
       // Generate a unique ID for independent sessions
       return crypto.randomBytes(8).toString('hex');
     }
     // Include terminal ID in the hash to ensure each terminal has its own session
     const key = terminalId ? `${worktreePath}:${terminalId}` : worktreePath;
-    return crypto.createHash('sha256')
-      .update(key)
-      .digest('hex')
-      .substring(0, 16);
+    return crypto.createHash('sha256').update(key).digest('hex').substring(0, 16);
   }
 
   /**
@@ -180,7 +177,7 @@ export class ShellSessionManager {
       // Handle PTY exit
       onPtyExit(ptyProcess, (exitCode) => {
         // Notify all exit listeners
-        session.exitListeners.forEach(listener => listener(exitCode));
+        session.exitListeners.forEach((listener) => listener(exitCode));
         // Remove session
         this.sessions.delete(sessionId);
       });
@@ -253,7 +250,12 @@ export class ShellSessionManager {
   /**
    * Add output listener for session
    */
-  addOutputListener(sessionId: string, listenerId: string, callback: (data: string) => void, skipReplay: boolean = false): boolean {
+  addOutputListener(
+    sessionId: string,
+    listenerId: string,
+    callback: (data: string) => void,
+    skipReplay: boolean = false
+  ): boolean {
     const session = this.sessions.get(sessionId);
     if (!session) return false;
 
@@ -262,20 +264,20 @@ export class ShellSessionManager {
 
     // Add new listener
     session.listeners.set(listenerId, callback);
-    
+
     // Subscribe to PTY data if this is the first listener
     if (session.listeners.size === 1) {
       // Dispose of any existing data listener first (shouldn't happen but be safe)
       if (session.dataDisposable) {
         session.dataDisposable.dispose();
       }
-      
+
       session.dataDisposable = onPtyData(session.pty, (data) => {
         // Store in buffer for replay
         this.addToBuffer(session, data);
-        
+
         // Send to all listeners
-        session.listeners.forEach(listener => listener(data));
+        session.listeners.forEach((listener) => listener(data));
       });
     }
 
@@ -298,7 +300,7 @@ export class ShellSessionManager {
    */
   private addToBuffer(session: ShellSession, data: string): void {
     session.outputBuffer.push(data);
-    
+
     // Trim buffer if it exceeds max size
     let totalSize = session.outputBuffer.reduce((sum, chunk) => sum + chunk.length, 0);
     while (totalSize > session.maxBufferSize && session.outputBuffer.length > 1) {
@@ -317,20 +319,24 @@ export class ShellSessionManager {
     if (!session) return false;
 
     const removed = session.listeners.delete(listenerId);
-    
+
     // If this was the last listener, dispose of the PTY data listener
     if (removed && session.listeners.size === 0 && session.dataDisposable) {
       session.dataDisposable.dispose();
       session.dataDisposable = undefined;
     }
-    
+
     return removed;
   }
 
   /**
    * Add exit listener for session
    */
-  addExitListener(sessionId: string, listenerId: string, callback: (code: number) => void): boolean {
+  addExitListener(
+    sessionId: string,
+    listenerId: string,
+    callback: (code: number) => void
+  ): boolean {
     const session = this.sessions.get(sessionId);
     if (!session) return false;
 
@@ -413,7 +419,6 @@ export class ShellSessionManager {
     }
   }
 
-
   /**
    * Terminate all sessions for a worktree path
    * Returns the number of sessions terminated
@@ -468,6 +473,6 @@ export class ShellSessionManager {
 
     // Terminate all sessions in parallel
     const sessionIds = Array.from(this.sessions.keys());
-    await Promise.all(sessionIds.map(sessionId => this.terminateSession(sessionId)));
+    await Promise.all(sessionIds.map((sessionId) => this.terminateSession(sessionId)));
   }
 }

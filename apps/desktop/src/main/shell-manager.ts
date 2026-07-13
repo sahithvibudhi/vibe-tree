@@ -1,5 +1,10 @@
 import { ipcMain, BrowserWindow, app } from 'electron';
-import { TerminalForkManager, getSystemDiagnostics, getExtendedDiagnostics, formatExtendedDiagnostics } from '@vibetree/core';
+import {
+  TerminalForkManager,
+  getSystemDiagnostics,
+  getExtendedDiagnostics,
+  formatExtendedDiagnostics
+} from '@vibetree/core';
 import { terminalSettingsManager } from './terminal-settings';
 import { notificationManager } from './notification-manager';
 import * as fs from 'fs';
@@ -41,7 +46,10 @@ class DesktopShellManager {
 
     if (isDev) {
       // Development: worker is in packages/core/dist/workers/pty-worker.cjs
-      const workerPath = path.join(__dirname, '../../../../packages/core/dist/workers/pty-worker.cjs');
+      const workerPath = path.join(
+        __dirname,
+        '../../../../packages/core/dist/workers/pty-worker.cjs'
+      );
       console.log('[DesktopShellManager] Worker script path:', workerPath);
       console.log('[DesktopShellManager] Worker script exists:', fs.existsSync(workerPath));
       return workerPath;
@@ -58,7 +66,7 @@ class DesktopShellManager {
     const sessions = await this.forkManager.getAllSessions();
     const worktreeSessionCounts = new Map<string, number>();
 
-    sessions.forEach(session => {
+    sessions.forEach((session) => {
       const count = worktreeSessionCounts.get(session.worktreePath) || 0;
       worktreeSessionCounts.set(session.worktreePath, count + 1);
     });
@@ -66,7 +74,7 @@ class DesktopShellManager {
     const sessionData = Object.fromEntries(worktreeSessionCounts);
 
     // Send to all windows
-    BrowserWindow.getAllWindows().forEach(window => {
+    BrowserWindow.getAllWindows().forEach((window) => {
       if (!window.isDestroyed()) {
         window.webContents.send('shell:sessions-changed', sessionData);
       }
@@ -82,7 +90,7 @@ class DesktopShellManager {
       if (!sender || sender.isDestroyed()) {
         return false;
       }
-      
+
       // Additional check for WebFrameMain disposal
       // The frame might be disposed even if sender isn't destroyed
       sender.send(channel, ...args);
@@ -95,66 +103,78 @@ class DesktopShellManager {
   }
 
   private setupIpcHandlers() {
-    ipcMain.handle('shell:start', async (event, worktreePath: string, cols?: number, rows?: number, forceNew?: boolean, terminalId?: string) => {
-      // Get current terminal settings
-      const settings = terminalSettingsManager.getSettings();
+    ipcMain.handle(
+      'shell:start',
+      async (
+        event,
+        worktreePath: string,
+        cols?: number,
+        rows?: number,
+        forceNew?: boolean,
+        terminalId?: string
+      ) => {
+        // Get current terminal settings
+        const settings = terminalSettingsManager.getSettings();
 
-      // Start session via fork manager - reuses existing session if terminalId matches
-      const result = await this.forkManager.startSession(
-        worktreePath,
-        cols ?? 80,
-        rows ?? 30,
-        settings.setLocaleVariables,
-        terminalId,
-        forceNew ?? false
-      );
+        // Start session via fork manager - reuses existing session if terminalId matches
+        const result = await this.forkManager.startSession(
+          worktreePath,
+          cols ?? 80,
+          rows ?? 30,
+          settings.setLocaleVariables,
+          terminalId,
+          forceNew ?? false
+        );
 
-      if (result.success && result.processId) {
-        const processId = result.processId;
+        if (result.success && result.processId) {
+          const processId = result.processId;
 
-        // Extract branch name from worktree path for notifications
-        const branchName = path.basename(worktreePath);
+          // Extract branch name from worktree path for notifications
+          const branchName = path.basename(worktreePath);
 
-        // Register session with notification manager (idempotent)
-        notificationManager.registerSession(processId, worktreePath, branchName);
+          // Register session with notification manager (idempotent)
+          notificationManager.registerSession(processId, worktreePath, branchName);
 
-        // Only add listeners for new sessions
-        if (result.isNew) {
-          // Add output listener - also passes output to notification manager
-          const outputListener = (data: string) => {
-            // Pass to notification manager for state detection (main process handles all logic)
-            notificationManager.processOutput(processId, data);
+          // Only add listeners for new sessions
+          if (result.isNew) {
+            // Add output listener - also passes output to notification manager
+            const outputListener = (data: string) => {
+              // Pass to notification manager for state detection (main process handles all logic)
+              notificationManager.processOutput(processId, data);
 
-            if (!this.safeSend(event.sender, `shell:output:${processId}`, data)) {
-              // Frame was disposed - remove this listener
-              this.forkManager.removeOutputListener(processId, outputListener);
-            }
-          };
-          this.forkManager.addOutputListener(processId, outputListener);
+              if (!this.safeSend(event.sender, `shell:output:${processId}`, data)) {
+                // Frame was disposed - remove this listener
+                this.forkManager.removeOutputListener(processId, outputListener);
+              }
+            };
+            this.forkManager.addOutputListener(processId, outputListener);
 
-          // Add exit listener
-          const exitListener = (exitCode: number) => {
-            // Unregister from notification manager
-            notificationManager.unregisterSession(processId);
+            // Add exit listener
+            const exitListener = (exitCode: number) => {
+              // Unregister from notification manager
+              notificationManager.unregisterSession(processId);
 
-            if (!this.safeSend(event.sender, `shell:exit:${processId}`, exitCode)) {
-              // Frame was disposed - remove this listener
-              this.forkManager.removeExitListener(processId, exitListener);
-            }
-            // Broadcast session change when terminal exits
-            this.broadcastSessionChange();
-          };
-          this.forkManager.addExitListener(processId, exitListener);
+              if (!this.safeSend(event.sender, `shell:exit:${processId}`, exitCode)) {
+                // Frame was disposed - remove this listener
+                this.forkManager.removeExitListener(processId, exitListener);
+              }
+              // Broadcast session change when terminal exits
+              this.broadcastSessionChange();
+            };
+            this.forkManager.addExitListener(processId, exitListener);
 
-          // Broadcast session change for new terminal
-          await this.broadcastSessionChange();
-        } else {
-          console.log(`[DesktopShellManager] Reusing session ${processId}, skipping listener setup`);
+            // Broadcast session change for new terminal
+            await this.broadcastSessionChange();
+          } else {
+            console.log(
+              `[DesktopShellManager] Reusing session ${processId}, skipping listener setup`
+            );
+          }
         }
-      }
 
-      return result;
-    });
+        return result;
+      }
+    );
 
     ipcMain.handle('shell:write', async (_, processId: string, data: string) => {
       return this.forkManager.writeToSession(processId, data);
@@ -210,7 +230,7 @@ class DesktopShellManager {
 
       return {
         activeProcessCount: sessions.length,
-        sessions: sessions.map(s => ({
+        sessions: sessions.map((s) => ({
           id: s.id,
           worktreePath: s.worktreePath,
           createdAt: new Date().toISOString(),
@@ -228,7 +248,7 @@ class DesktopShellManager {
       const sessions = await this.forkManager.getAllSessions();
       const worktreeSessionCounts = new Map<string, number>();
 
-      sessions.forEach(session => {
+      sessions.forEach((session) => {
         const count = worktreeSessionCounts.get(session.worktreePath) || 0;
         worktreeSessionCounts.set(session.worktreePath, count + 1);
       });
@@ -292,9 +312,13 @@ class DesktopShellManager {
             timestamp: diagnostics.timestamp,
             openFds: diagnostics.openFileDescriptors,
             fdLimit: diagnostics.fileDescriptorLimit.soft,
-            fdUsagePercent: diagnostics.openFileDescriptors && diagnostics.fileDescriptorLimit.soft
-              ? ((diagnostics.openFileDescriptors / diagnostics.fileDescriptorLimit.soft) * 100).toFixed(1)
-              : null,
+            fdUsagePercent:
+              diagnostics.openFileDescriptors && diagnostics.fileDescriptorLimit.soft
+                ? (
+                    (diagnostics.openFileDescriptors / diagnostics.fileDescriptorLimit.soft) *
+                    100
+                  ).toFixed(1)
+                : null,
             appPtyInfo: diagnostics.appPtyInfo,
             ptyProcessCount: diagnostics.ptyProcesses.count,
             ptyDeviceInfo: diagnostics.ptyDeviceInfo,
@@ -323,7 +347,7 @@ class DesktopShellManager {
 
     return {
       activeProcessCount: sessions.length,
-      sessions: sessions.map(s => ({
+      sessions: sessions.map((s) => ({
         id: s.id,
         worktreePath: s.worktreePath,
         createdAt: new Date().toISOString(),

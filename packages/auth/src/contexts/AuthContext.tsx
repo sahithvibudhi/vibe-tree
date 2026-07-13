@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import type { 
-  AuthContextType, 
-  AuthProviderProps, 
-  AuthState, 
+import type {
+  AuthContextType,
+  AuthProviderProps,
+  AuthState,
   LoginCredentials,
-  AuthConfig 
+  AuthConfig
 } from '../types';
 import { AuthAPI, AuthStorage, AuthError } from '../utils/auth';
 
@@ -24,7 +24,7 @@ const initialState: AuthState = {
   isLoading: true,
   sessionToken: null,
   error: null,
-  authConfig: null,
+  authConfig: null
 };
 
 // Auth reducer
@@ -32,42 +32,42 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
-    
+
     case 'SET_ERROR':
       return { ...state, error: action.payload, isLoading: false };
-    
+
     case 'SET_AUTH_CONFIG':
       return { ...state, authConfig: action.payload };
-    
+
     case 'LOGIN_SUCCESS':
       return {
         ...state,
         isAuthenticated: true,
         sessionToken: action.payload,
         error: null,
-        isLoading: false,
+        isLoading: false
       };
-    
+
     case 'LOGOUT':
       return {
         ...state,
         isAuthenticated: false,
         sessionToken: null,
         error: null,
-        isLoading: false,
+        isLoading: false
       };
-    
+
     case 'CLEAR_ERROR':
       return { ...state, error: null };
-    
+
     case 'RESTORE_SESSION':
       return {
         ...state,
         isAuthenticated: true,
         sessionToken: action.payload,
-        isLoading: false,
+        isLoading: false
       };
-    
+
     default:
       return state;
   }
@@ -85,17 +85,17 @@ export function AuthProvider({ children, serverUrl }: AuthProviderProps) {
   const checkAuthStatus = useCallback(async () => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      
+
       // Check server auth configuration
       const authConfig = await authAPI.checkAuthConfig();
       dispatch({ type: 'SET_AUTH_CONFIG', payload: authConfig });
-      
+
       // If auth is not required, consider user authenticated
       if (!authConfig.authRequired) {
         dispatch({ type: 'LOGIN_SUCCESS', payload: 'no-auth-required' });
         return;
       }
-      
+
       // Check for existing session token
       const existingToken = AuthStorage.getSessionToken();
       if (existingToken && AuthStorage.isAuthenticated()) {
@@ -104,35 +104,36 @@ export function AuthProvider({ children, serverUrl }: AuthProviderProps) {
       } else {
         dispatch({ type: 'SET_LOADING', payload: false });
       }
-      
     } catch (error) {
       console.error('Failed to check auth status:', error);
-      dispatch({ 
-        type: 'SET_ERROR', 
-        payload: error instanceof AuthError ? error.message : 'Failed to connect to server' 
+      dispatch({
+        type: 'SET_ERROR',
+        payload: error instanceof AuthError ? error.message : 'Failed to connect to server'
       });
     }
   }, [authAPI]);
 
   // Login function
-  const login = useCallback(async (credentials: LoginCredentials) => {
-    try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      dispatch({ type: 'CLEAR_ERROR' });
-      
-      const response = await authAPI.login(credentials);
-      
-      // Save to localStorage
-      AuthStorage.setSessionToken(response.sessionToken);
-      
-      dispatch({ type: 'LOGIN_SUCCESS', payload: response.sessionToken });
-      
-    } catch (error) {
-      console.error('Login failed:', error);
-      const errorMessage = error instanceof AuthError ? error.message : 'Login failed';
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
-    }
-  }, [authAPI]);
+  const login = useCallback(
+    async (credentials: LoginCredentials) => {
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        dispatch({ type: 'CLEAR_ERROR' });
+
+        const response = await authAPI.login(credentials);
+
+        // Save to localStorage
+        AuthStorage.setSessionToken(response.sessionToken);
+
+        dispatch({ type: 'LOGIN_SUCCESS', payload: response.sessionToken });
+      } catch (error) {
+        console.error('Login failed:', error);
+        const errorMessage = error instanceof AuthError ? error.message : 'Login failed';
+        dispatch({ type: 'SET_ERROR', payload: errorMessage });
+      }
+    },
+    [authAPI]
+  );
 
   // Logout function
   const logout = useCallback(async () => {
@@ -164,20 +165,19 @@ export function AuthProvider({ children, serverUrl }: AuthProviderProps) {
     checkAuthStatus();
   }, []); // Empty deps array - only run on mount
 
-  const contextValue: AuthContextType = React.useMemo(() => ({
-    ...state,
-    login,
-    logout,
-    checkAuthStatus,
-    clearError,
-    retry,
-  }), [state, login, logout, checkAuthStatus, clearError, retry]);
-
-  return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
+  const contextValue: AuthContextType = React.useMemo(
+    () => ({
+      ...state,
+      login,
+      logout,
+      checkAuthStatus,
+      clearError,
+      retry
+    }),
+    [state, login, logout, checkAuthStatus, clearError, retry]
   );
+
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 }
 
 // Custom hook to use auth context

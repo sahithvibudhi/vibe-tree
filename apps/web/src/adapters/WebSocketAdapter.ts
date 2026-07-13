@@ -18,14 +18,18 @@ export class WebSocketAdapter extends BaseAdapter {
   private connectionPromise: Promise<void> | null = null;
   private onDisconnect?: () => void;
 
-  constructor(private wsUrl: string, private jwt?: string, onDisconnect?: () => void) {
+  constructor(
+    private wsUrl: string,
+    private jwt?: string,
+    onDisconnect?: () => void
+  ) {
     super();
     this.onDisconnect = onDisconnect;
   }
 
   async connect(): Promise<void> {
     if (this.ws?.readyState === WebSocket.OPEN) return;
-    
+
     if (this.connectionPromise) return this.connectionPromise;
 
     this.connectionPromise = new Promise((resolve, reject) => {
@@ -47,18 +51,18 @@ export class WebSocketAdapter extends BaseAdapter {
       this.ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          
+
           // Handle response messages
           if (message.id && this.messageHandlers.has(message.id)) {
             const handler = this.messageHandlers.get(message.id)!;
             this.messageHandlers.delete(message.id);
             handler(message.payload);
           }
-          
+
           // Handle event messages
           if (message.type && this.eventHandlers.has(message.type)) {
             const handlers = this.eventHandlers.get(message.type)!;
-            handlers.forEach(handler => {
+            handlers.forEach((handler) => {
               handler(message.payload);
             });
           }
@@ -70,7 +74,7 @@ export class WebSocketAdapter extends BaseAdapter {
       this.ws.onclose = () => {
         console.log('💔 WebSocket disconnected');
         this.connectionPromise = null;
-        
+
         // Notify about disconnect (will add callback for this)
         this.onDisconnect?.();
       };
@@ -81,10 +85,10 @@ export class WebSocketAdapter extends BaseAdapter {
 
   private async sendMessage<T>(type: string, payload: any): Promise<T> {
     await this.connect();
-    
+
     return new Promise((resolve, reject) => {
       const id = (++this.messageId).toString();
-      
+
       this.messageHandlers.set(id, (data) => {
         if (data.error) {
           reject(new Error(data.error));
@@ -92,10 +96,10 @@ export class WebSocketAdapter extends BaseAdapter {
           resolve(data);
         }
       });
-      
+
       const message = { type, payload, id };
       this.ws!.send(JSON.stringify(message));
-      
+
       // Timeout after 30 seconds
       setTimeout(() => {
         if (this.messageHandlers.has(id)) {
@@ -110,9 +114,9 @@ export class WebSocketAdapter extends BaseAdapter {
     if (!this.eventHandlers.has(event)) {
       this.eventHandlers.set(event, new Set());
     }
-    
+
     this.eventHandlers.get(event)!.add(handler);
-    
+
     // Return unsubscribe function
     return () => {
       const handlers = this.eventHandlers.get(event);
@@ -125,7 +129,12 @@ export class WebSocketAdapter extends BaseAdapter {
     };
   }
 
-  async startShell(worktreePath: string, cols?: number, rows?: number, forceNew?: boolean): Promise<ShellStartResult> {
+  async startShell(
+    worktreePath: string,
+    cols?: number,
+    rows?: number,
+    forceNew?: boolean
+  ): Promise<ShellStartResult> {
     return this.sendMessage('shell:start', { worktreePath, cols, rows, forceNew });
   }
 
@@ -172,7 +181,10 @@ export class WebSocketAdapter extends BaseAdapter {
   }
 
   async getGitDiffStaged(worktreePath: string, filePath?: string): Promise<string> {
-    const result = await this.sendMessage<{ diff: string }>('git:diff:staged', { worktreePath, filePath });
+    const result = await this.sendMessage<{ diff: string }>('git:diff:staged', {
+      worktreePath,
+      filePath
+    });
     return result.diff;
   }
 
@@ -180,7 +192,11 @@ export class WebSocketAdapter extends BaseAdapter {
     return this.sendMessage('git:worktree:add', { projectPath, branchName });
   }
 
-  async removeWorktree(projectPath: string, worktreePath: string, branchName: string): Promise<WorktreeRemoveResult> {
+  async removeWorktree(
+    projectPath: string,
+    worktreePath: string,
+    branchName: string
+  ): Promise<WorktreeRemoveResult> {
     return this.sendMessage('git:worktree:remove', { projectPath, worktreePath, branchName });
   }
 
@@ -189,7 +205,10 @@ export class WebSocketAdapter extends BaseAdapter {
     return [];
   }
 
-  async openInIDE(_ideName: string, _projectPath: string): Promise<{ success: boolean; error?: string }> {
+  async openInIDE(
+    _ideName: string,
+    _projectPath: string
+  ): Promise<{ success: boolean; error?: string }> {
     // Web client can't open local IDEs
     return { success: false, error: 'Cannot open IDE from web client' };
   }
@@ -210,9 +229,9 @@ export class WebSocketAdapter extends BaseAdapter {
     const handler = (e: MediaQueryListEvent) => {
       callback(e.matches ? 'dark' : 'light');
     };
-    
+
     mediaQuery.addEventListener('change', handler);
-    
+
     return () => {
       mediaQuery.removeEventListener('change', handler);
     };

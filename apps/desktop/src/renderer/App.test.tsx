@@ -110,7 +110,7 @@ describe('App Component - Close Project Confirmation', () => {
     // Mock projects array
     const mockProjects = [
       { id: 'project-1', name: 'Project 1', path: '/path/1', worktrees: [] },
-      { id: 'project-2', name: 'Project 2', path: '/path/2', worktrees: [] },
+      { id: 'project-2', name: 'Project 2', path: '/path/2', worktrees: [] }
     ];
 
     // State for tracking project to close (simulating useState)
@@ -118,7 +118,7 @@ describe('App Component - Close Project Confirmation', () => {
 
     // Simulate handleCloseProject from App.tsx
     const handleCloseProject = (projectId: string) => {
-      const project = mockProjects.find(p => p.id === projectId);
+      const project = mockProjects.find((p) => p.id === projectId);
       if (project) {
         projectToClose = { id: project.id, name: project.name };
       }
@@ -134,7 +134,10 @@ describe('App Component - Close Project Confirmation', () => {
 
   it('should remove project when confirmation is confirmed', () => {
     // State for tracking project to close
-    let projectToClose: { id: string; name: string } | null = { id: 'project-1', name: 'Project 1' };
+    let projectToClose: { id: string; name: string } | null = {
+      id: 'project-1',
+      name: 'Project 1'
+    };
 
     // Simulate confirmCloseProject from App.tsx
     const confirmCloseProject = () => {
@@ -154,7 +157,10 @@ describe('App Component - Close Project Confirmation', () => {
 
   it('should not remove project when confirmation is cancelled', () => {
     // State for tracking project to close
-    let projectToClose: { id: string; name: string } | null = { id: 'project-1', name: 'Project 1' };
+    let projectToClose: { id: string; name: string } | null = {
+      id: 'project-1',
+      name: 'Project 1'
+    };
 
     // Simulate cancelCloseProject from App.tsx
     const cancelCloseProject = () => {

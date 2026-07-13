@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAppStore } from '../store';
-import { 
-  connectGlobalAdapter, 
-  disconnectGlobalAdapter, 
-  getGlobalAdapter, 
+import {
+  connectGlobalAdapter,
+  disconnectGlobalAdapter,
+  getGlobalAdapter,
   isConnected,
   onGlobalAdapterConnected,
   onGlobalAdapterDisconnected
@@ -12,11 +12,7 @@ import { getServerWebSocketUrl } from '../services/portDiscovery';
 import { getAuthenticatedWebSocketUrl } from '../services/authService';
 
 export function useWebSocket() {
-  const { 
-    setConnected, 
-    setConnecting, 
-    setError
-  } = useAppStore();
+  const { setConnected, setConnecting, setError } = useAppStore();
 
   // Local state to force re-renders when adapter changes
   const [adapterVersion, setAdapterVersion] = useState(0);
@@ -33,18 +29,17 @@ export function useWebSocket() {
     try {
       // Get WebSocket URL using dynamic port discovery
       const baseWsUrl = await getServerWebSocketUrl();
-      
+
       // Add authentication if available
       const wsUrl = getAuthenticatedWebSocketUrl(baseWsUrl);
-      
+
       console.log('🔌 Attempting WebSocket connection to:', wsUrl);
-      
+
       await connectGlobalAdapter(wsUrl);
-      
+
       setConnected(true);
       setConnecting(false);
-      setAdapterVersion(prev => prev + 1); // Force re-render
-
+      setAdapterVersion((prev) => prev + 1); // Force re-render
     } catch (error) {
       setConnecting(false);
       const errorMessage = error instanceof Error ? error.message : 'Failed to connect';
@@ -62,7 +57,7 @@ export function useWebSocket() {
     console.log('🔌 Disconnecting global WebSocket adapter');
     disconnectGlobalAdapter();
     setConnected(false);
-    setAdapterVersion(prev => prev + 1); // Force re-render
+    setAdapterVersion((prev) => prev + 1); // Force re-render
   }, [setConnected]);
 
   const getAdapter = useCallback(() => {
@@ -76,13 +71,13 @@ export function useWebSocket() {
     const unsubscribeConnected = onGlobalAdapterConnected(() => {
       console.log('🔌 Global adapter connected callback');
       setConnected(true);
-      setAdapterVersion(prev => prev + 1);
+      setAdapterVersion((prev) => prev + 1);
     });
 
     const unsubscribeDisconnected = onGlobalAdapterDisconnected(() => {
       console.log('💔 Global adapter disconnected callback');
       setConnected(false);
-      setAdapterVersion(prev => prev + 1);
+      setAdapterVersion((prev) => prev + 1);
     });
 
     return () => {
@@ -94,6 +89,6 @@ export function useWebSocket() {
   return {
     connect,
     disconnect,
-    getAdapter,
+    getAdapter
   };
 }

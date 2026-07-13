@@ -22,11 +22,7 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
             Choose a git repository to start collaborating with Claude in parallel worktrees
           </p>
         </div>
-        <Button
-          size="lg"
-          onClick={handleSelectFolder}
-          className="gap-2"
-        >
+        <Button size="lg" onClick={handleSelectFolder} className="gap-2">
           <FolderOpen className="h-5 w-5" />
           Open Project Folder
         </Button>

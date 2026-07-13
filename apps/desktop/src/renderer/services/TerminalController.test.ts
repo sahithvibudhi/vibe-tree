@@ -66,7 +66,9 @@ describe('TerminalController', () => {
         processId: 'process-123'
       };
 
-      await expect(controller.handleTerminalClose(event)).rejects.toThrow('IPC communication failed');
+      await expect(controller.handleTerminalClose(event)).rejects.toThrow(
+        'IPC communication failed'
+      );
 
       expect(mockShellAPI.terminate).toHaveBeenCalledWith('process-123');
       expect(onCleanupError).toHaveBeenCalledWith('terminal-1', apiError);
@@ -178,7 +180,7 @@ describe('TerminalController', () => {
       // Simulate varying response times
       mockShellAPI.terminate = vi.fn().mockImplementation(() => {
         const delay = Math.random() * 100; // Random delay up to 100ms
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
           setTimeout(() => resolve({ success: true }), delay);
         });
       });
@@ -211,7 +213,7 @@ describe('TerminalController', () => {
       const promise = controller.handleTerminalClose(event);
 
       // Should not resolve immediately
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
       expect(onCleanupSuccess).not.toHaveBeenCalled();
 
       // Wait for completion

@@ -13,13 +13,24 @@ import { autoLoadProjects } from './services/projectValidation';
 
 function App() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const { projects, activeProjectId, addProject, addProjects, removeProject, setActiveProject, setSelectedTab, theme, setTheme, connected } = useAppStore();
+  const {
+    projects,
+    activeProjectId,
+    addProject,
+    addProjects,
+    removeProject,
+    setActiveProject,
+    setSelectedTab,
+    theme,
+    setTheme,
+    connected
+  } = useAppStore();
   const { connect } = useWebSocket();
   const [showProjectSelector, setShowProjectSelector] = useState(false);
   const [autoLoadAttempted, setAutoLoadAttempted] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  
+
   // const activeProject = getActiveProject();
 
   useEffect(() => {
@@ -34,16 +45,16 @@ function App() {
         try {
           // Get auto-load configuration from backend
           const autoLoadResponse = await autoLoadProjects();
-          
+
           if (autoLoadResponse.validationResults.length > 0) {
             const validPaths = autoLoadResponse.validationResults
-              .filter(result => result.valid)
-              .map(result => result.path);
-            
+              .filter((result) => result.valid)
+              .map((result) => result.path);
+
             if (validPaths.length > 0) {
               // Add valid projects
               const addedIds = addProjects(validPaths);
-              
+
               // Set default project if specified by backend
               if (autoLoadResponse.defaultProjectPath) {
                 const defaultIndex = validPaths.indexOf(autoLoadResponse.defaultProjectPath);
@@ -52,21 +63,25 @@ function App() {
                   setActiveProject(defaultId);
                 }
               }
-              
+
               console.log(`Auto-loaded ${validPaths.length} projects`);
-              
+
               // Show success notification
-              setSuccessMessage(`Successfully auto-loaded ${validPaths.length} project${validPaths.length === 1 ? '' : 's'}`);
+              setSuccessMessage(
+                `Successfully auto-loaded ${validPaths.length} project${validPaths.length === 1 ? '' : 's'}`
+              );
               setShowSuccessNotification(true);
-              
+
               // Auto-hide notification after 3 seconds
               setTimeout(() => {
                 setShowSuccessNotification(false);
               }, 3000);
             }
-            
+
             // Log validation errors for invalid paths
-            const invalidResults = autoLoadResponse.validationResults.filter(result => !result.valid);
+            const invalidResults = autoLoadResponse.validationResults.filter(
+              (result) => !result.valid
+            );
             if (invalidResults.length > 0) {
               console.warn('Some projects failed validation:', invalidResults);
             }
@@ -74,10 +89,10 @@ function App() {
         } catch (error) {
           console.error('Auto-load failed:', error);
         }
-        
+
         setAutoLoadAttempted(true);
       };
-      
+
       loadProjects();
     }
   }, [connected, autoLoadAttempted, projects.length, addProjects, setActiveProject]);
@@ -88,7 +103,9 @@ function App() {
     if (savedTheme) {
       setTheme(savedTheme);
     } else {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light';
       setTheme(systemTheme);
     }
   }, [setTheme]);
@@ -139,11 +156,7 @@ function App() {
               className="p-2 hover:bg-accent rounded-md transition-colors"
               aria-label="Toggle theme"
             >
-              {theme === 'dark' ? (
-                <Sun className="h-4 w-4" />
-              ) : (
-                <Moon className="h-4 w-4" />
-              )}
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
             <ConnectionStatus />
           </div>
@@ -163,7 +176,7 @@ function App() {
           <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
             <CheckCircle className="h-4 w-4" />
             <span className="text-sm font-medium">{successMessage}</span>
-            <button 
+            <button
               onClick={() => setShowSuccessNotification(false)}
               className="ml-auto hover:bg-green-100 dark:hover:bg-green-800/30 rounded p-1"
             >
@@ -185,19 +198,15 @@ function App() {
             className="p-2 hover:bg-accent rounded-md transition-colors"
             aria-label="Toggle theme"
           >
-            {theme === 'dark' ? (
-              <Sun className="h-4 w-4" />
-            ) : (
-              <Moon className="h-4 w-4" />
-            )}
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
           <ConnectionStatus />
         </div>
       </header>
 
       {/* Project Tabs and Content */}
-      <Tabs 
-        value={activeProjectId || ''} 
+      <Tabs
+        value={activeProjectId || ''}
         onValueChange={setActiveProject}
         className="flex-1 flex flex-col"
       >
@@ -229,17 +238,15 @@ function App() {
         </div>
 
         {projects.map((project) => (
-          <TabsContent 
-            key={project.id} 
-            value={project.id}
-            className="flex-1 m-0 h-0"
-          >
+          <TabsContent key={project.id} value={project.id} className="flex-1 m-0 h-0">
             <div className="flex h-full overflow-hidden">
               {/* Worktree Panel - Always visible on desktop, conditional on mobile */}
-              <div className={`
+              <div
+                className={`
                 ${project.selectedWorktree ? 'hidden md:flex' : 'flex'} 
                 w-full md:w-80 border-r flex-shrink-0
-              `}>
+              `}
+              >
                 <WorktreePanel projectId={project.id} />
               </div>
 
@@ -277,15 +284,19 @@ function App() {
                   {/* Tab Content */}
                   <div className="flex-1 overflow-hidden relative">
                     {/* Terminal Tab - Managed terminals with lifecycle control */}
-                    <div className={`absolute inset-0 ${project.selectedTab === 'terminal' ? 'block' : 'hidden'}`}>
-                      <TerminalManager 
+                    <div
+                      className={`absolute inset-0 ${project.selectedTab === 'terminal' ? 'block' : 'hidden'}`}
+                    >
+                      <TerminalManager
                         worktrees={project.worktrees || []}
                         selectedWorktree={project.selectedWorktree}
                       />
                     </div>
-                    
+
                     {/* Keep GitDiffView mounted but hidden to preserve state */}
-                    <div className={`absolute inset-0 ${project.selectedTab === 'changes' ? 'block' : 'hidden'}`}>
+                    <div
+                      className={`absolute inset-0 ${project.selectedTab === 'changes' ? 'block' : 'hidden'}`}
+                    >
                       <GitDiffView worktreePath={project.selectedWorktree} theme={theme} />
                     </div>
                   </div>

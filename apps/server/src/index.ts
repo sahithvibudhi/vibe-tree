@@ -32,17 +32,17 @@ async function findAvailablePort(): Promise<number> {
   if (process.env.PORT) {
     return parseInt(process.env.PORT);
   }
-  
+
   // Start with default port 3002 and try sequential ports if needed
   let port = 3002;
-  
+
   for (let attempt = 0; attempt < 3; attempt++) {
     if (await isPortAvailable(port)) {
       return port;
     }
     port++; // Try next port
   }
-  
+
   // If all 3 attempts fail, let the server fail with a clear error
   throw new Error(`Could not find available port after 3 attempts starting from ${port - 3}`);
 }
@@ -99,7 +99,7 @@ async function startServer() {
   // Start server
   server.listen(parseInt(PORT.toString()), HOST, async () => {
     const socketUrls = getNetworkUrls(PORT, HOST);
-    
+
     // Try to read web port from file, fallback to 3000
     let webPort = 3000;
     try {
@@ -110,16 +110,16 @@ async function startServer() {
     } catch (error) {
       console.warn('Could not read web port file, using default port 3000');
     }
-    
+
     const webUrls = getNetworkUrls(webPort, HOST);
-    
+
     console.log('\n╔════════════════════════════════════════════════════════╗');
     console.log('║               VibeTree Services Started                   ║');
     console.log('╚════════════════════════════════════════════════════════╝\n');
-    
+
     console.log('📁 Project Path:', PROJECT_PATH);
     console.log();
-    
+
     // Display authentication status
     const authConfig = authService.getAuthConfig();
     console.log('🔐 Authentication:');
@@ -129,18 +129,18 @@ async function startServer() {
       console.log('   ⚠️  Warning: AUTH_REQUIRED=true but USERNAME/PASSWORD not set');
     }
     console.log();
-    
+
     console.log('🌐 Web Application (UI):');
     console.log(`   Local:   ${webUrls.local}`);
     console.log(`   Network: ${webUrls.network}`);
     console.log();
-    
+
     console.log('🔌 Socket Server (API/WebSocket):');
     console.log(`   Local:   ${socketUrls.local}`);
     console.log(`   Network: ${socketUrls.network}`);
     console.log(`   WS:      ws://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
     console.log();
-    
+
     // Generate QR code for mobile access to web app
     if (HOST === '0.0.0.0' || !HOST) {
       try {
@@ -153,7 +153,7 @@ async function startServer() {
         console.error('Failed to generate QR code:', err);
       }
     }
-    
+
     console.log('ℹ️  Make sure the web app is running: pnpm dev:web');
     console.log('Press Ctrl+C to stop the server\n');
   });

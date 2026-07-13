@@ -3,7 +3,6 @@ import { escapeShellPath } from '@vibetree/core';
 
 // Test the escapeShellPath function
 describe('ClaudeTerminal - escapeShellPath', () => {
-
   it('should correctly escape shell paths', () => {
     expect(escapeShellPath('/simple/path')).toBe('/simple/path');
     expect(escapeShellPath('/path with spaces/file.txt')).toBe("'/path with spaces/file.txt'");
@@ -13,8 +12,9 @@ describe('ClaudeTerminal - escapeShellPath', () => {
   });
 
   it('should handle complex paths with multiple special characters', () => {
-    expect(escapeShellPath("/Users/My Documents/Project (2024)/it's & file's.txt"))
-      .toBe("'/Users/My Documents/Project (2024)/it'\\''s & file'\\''s.txt'");
+    expect(escapeShellPath("/Users/My Documents/Project (2024)/it's & file's.txt")).toBe(
+      "'/Users/My Documents/Project (2024)/it'\\''s & file'\\''s.txt'"
+    );
   });
 
   it('should not escape paths without special characters', () => {

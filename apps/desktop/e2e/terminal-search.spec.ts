@@ -24,10 +24,10 @@ test.describe('Terminal Search Functionality', () => {
         ...process.env,
         NODE_ENV: 'test',
         TEST_MODE: 'true',
-        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
+        DISABLE_QUIT_DIALOG: 'true' // Prevent blocking on quit dialog
       },
       args: [testMainPath],
-      cwd: appDir,
+      cwd: appDir
     });
 
     page = await electronApp.firstWindow();
@@ -48,7 +48,9 @@ test.describe('Terminal Search Functionality', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Verify the app launches with project selector
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({
+      timeout: 10000
+    });
 
     // Click the "Open Project Folder" button
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
@@ -89,7 +91,7 @@ test.describe('Terminal Search Functionality', () => {
 
     for (const selector of terminalSelectors) {
       const element = page.locator(selector).first();
-      if (await element.count() > 0) {
+      if ((await element.count()) > 0) {
         terminalElement = element;
         break;
       }
@@ -193,7 +195,9 @@ test.describe('Terminal Search Functionality', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Navigate to terminal (reusing setup from previous test)
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({
+      timeout: 10000
+    });
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
     await expect(openButton).toBeVisible();
 

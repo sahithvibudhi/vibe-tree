@@ -129,5 +129,4 @@ app.on('activate', () => {
   }
 });
 
-
 // Parsing functions are now imported from @vibetree/core

@@ -13,17 +13,17 @@ export default defineConfig({
   globalTimeout: process.env.CI ? 1200000 : 0, // 20 minutes in CI, unlimited locally
   // Increase expect timeout for slow operations
   expect: {
-    timeout: 10000,
+    timeout: 10000
   },
   use: {
-    trace: 'on-first-retry',
+    trace: 'on-first-retry'
   },
   projects: [
     {
       name: 'electron',
       use: {
-        ...devices['Desktop Chrome'],
-      },
-    },
-  ],
+        ...devices['Desktop Chrome']
+      }
+    }
+  ]
 });

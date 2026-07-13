@@ -2,42 +2,38 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
 const api = {
   git: {
-    listWorktrees: (projectPath: string) => 
-      ipcRenderer.invoke('git:worktree-list', projectPath),
-    addWorktree: (projectPath: string, branchName: string) => 
+    listWorktrees: (projectPath: string) => ipcRenderer.invoke('git:worktree-list', projectPath),
+    addWorktree: (projectPath: string, branchName: string) =>
       ipcRenderer.invoke('git:worktree-add', projectPath, branchName),
-    removeWorktree: (projectPath: string, worktreePath: string, branchName: string) => 
+    removeWorktree: (projectPath: string, worktreePath: string, branchName: string) =>
       ipcRenderer.invoke('git:worktree-remove', projectPath, worktreePath, branchName),
-    status: (worktreePath: string) =>
-      ipcRenderer.invoke('git:status', worktreePath),
+    status: (worktreePath: string) => ipcRenderer.invoke('git:status', worktreePath),
     diff: (worktreePath: string, filePath?: string) =>
       ipcRenderer.invoke('git:diff', worktreePath, filePath),
     diffStaged: (worktreePath: string, filePath?: string) =>
-      ipcRenderer.invoke('git:diff-staged', worktreePath, filePath),
+      ipcRenderer.invoke('git:diff-staged', worktreePath, filePath)
   },
   shell: {
-    start: (worktreePath: string, cols?: number, rows?: number, forceNew?: boolean, terminalId?: string) =>
-      ipcRenderer.invoke('shell:start', worktreePath, cols, rows, forceNew, terminalId),
-    write: (processId: string, data: string) =>
-      ipcRenderer.invoke('shell:write', processId, data),
+    start: (
+      worktreePath: string,
+      cols?: number,
+      rows?: number,
+      forceNew?: boolean,
+      terminalId?: string
+    ) => ipcRenderer.invoke('shell:start', worktreePath, cols, rows, forceNew, terminalId),
+    write: (processId: string, data: string) => ipcRenderer.invoke('shell:write', processId, data),
     resize: (processId: string, cols: number, rows: number) =>
       ipcRenderer.invoke('shell:resize', processId, cols, rows),
-    status: (processId: string) =>
-      ipcRenderer.invoke('shell:status', processId),
+    status: (processId: string) => ipcRenderer.invoke('shell:status', processId),
     getForegroundProcess: (processId: string) =>
       ipcRenderer.invoke('shell:get-foreground-process', processId),
-    getBuffer: (processId: string) =>
-      ipcRenderer.invoke('shell:get-buffer', processId),
-    openExternal: (url: string) =>
-      ipcRenderer.invoke('shell:open-external', url),
-    terminate: (processId: string) =>
-      ipcRenderer.invoke('shell:terminate', processId),
+    getBuffer: (processId: string) => ipcRenderer.invoke('shell:get-buffer', processId),
+    openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url),
+    terminate: (processId: string) => ipcRenderer.invoke('shell:terminate', processId),
     terminateForWorktree: (worktreePath: string) =>
       ipcRenderer.invoke('shell:terminate-for-worktree', worktreePath),
-    getStats: () =>
-      ipcRenderer.invoke('shell:get-stats'),
-    getWorktreeSessions: () =>
-      ipcRenderer.invoke('shell:get-worktree-sessions'),
+    getStats: () => ipcRenderer.invoke('shell:get-stats'),
+    getWorktreeSessions: () => ipcRenderer.invoke('shell:get-worktree-sessions'),
     onOutput: (processId: string, callback: (data: string) => void) => {
       const channel = `shell:output:${processId}`;
       const listener = (_: unknown, data: string) => callback(data);
@@ -54,22 +50,23 @@ const api = {
       const listener = (_: unknown, sessions: Record<string, number>) => callback(sessions);
       ipcRenderer.on('shell:sessions-changed', listener);
       return () => ipcRenderer.removeListener('shell:sessions-changed', listener);
-    },
+    }
   },
   ide: {
     detect: () => ipcRenderer.invoke('ide:detect'),
-    open: (ideName: string, worktreePath: string) => 
-      ipcRenderer.invoke('ide:open', ideName, worktreePath),
+    open: (ideName: string, worktreePath: string) =>
+      ipcRenderer.invoke('ide:open', ideName, worktreePath)
   },
   theme: {
     get: () => ipcRenderer.invoke('theme:get'),
     onChange: (callback: (theme: 'light' | 'dark') => void) => {
       ipcRenderer.on('theme:changed', (_, theme) => callback(theme));
-    },
+    }
   },
   dialog: {
     selectDirectory: () => ipcRenderer.invoke('dialog:select-directory'),
-    showError: (title: string, message: string) => ipcRenderer.invoke('dialog:show-error', title, message)
+    showError: (title: string, message: string) =>
+      ipcRenderer.invoke('dialog:show-error', title, message)
   },
   project: {
     openPath: (projectPath: string) => ipcRenderer.invoke('project:open-path', projectPath),
@@ -89,11 +86,12 @@ const api = {
       const listener = (_: unknown, path: string) => callback(path);
       ipcRenderer.on('project:open-recent', listener);
       return () => ipcRenderer.removeListener('project:open-recent', listener);
-    },
+    }
   },
   terminalSettings: {
     get: () => ipcRenderer.invoke('terminal-settings:get'),
-    update: (updates: Record<string, unknown>) => ipcRenderer.invoke('terminal-settings:update', updates),
+    update: (updates: Record<string, unknown>) =>
+      ipcRenderer.invoke('terminal-settings:update', updates),
     reset: () => ipcRenderer.invoke('terminal-settings:reset'),
     getFonts: () => ipcRenderer.invoke('terminal-settings:get-fonts'),
     onChange: (callback: (settings: Record<string, unknown>) => void) => {
@@ -106,7 +104,7 @@ const api = {
     get: () => ipcRenderer.invoke('scheduler-history:get'),
     add: (command: string, delayMs: number, repeat: boolean) =>
       ipcRenderer.invoke('scheduler-history:add', command, delayMs, repeat),
-    clear: () => ipcRenderer.invoke('scheduler-history:clear'),
+    clear: () => ipcRenderer.invoke('scheduler-history:clear')
   },
   menu: {
     onOpenTerminalSettings: (callback: () => void) => {
@@ -127,12 +125,14 @@ const api = {
   },
   debug: {
     createStressTestRepo: () => ipcRenderer.invoke('debug:create-stress-test-repo'),
-    addStressTestWorktree: (repoPath: string, index: number) => ipcRenderer.invoke('debug:add-stress-test-worktree', repoPath, index)
+    addStressTestWorktree: (repoPath: string, index: number) =>
+      ipcRenderer.invoke('debug:add-stress-test-worktree', repoPath, index)
   },
   // General notification APIs - can be used by any feature
   notification: {
     getSettings: () => ipcRenderer.invoke('notification:get-settings'),
-    updateSettings: (updates: Record<string, unknown>) => ipcRenderer.invoke('notification:update-settings', updates),
+    updateSettings: (updates: Record<string, unknown>) =>
+      ipcRenderer.invoke('notification:update-settings', updates),
     resetSettings: () => ipcRenderer.invoke('notification:reset-settings'),
     getPermissionStatus: () => ipcRenderer.invoke('notification:get-permission-status'),
     openSystemSettings: () => ipcRenderer.invoke('notification:open-system-settings'),
@@ -148,10 +148,13 @@ const api = {
   claudeNotification: {
     enable: (processId: string) => ipcRenderer.invoke('claude-notification:enable', processId),
     disable: (processId: string) => ipcRenderer.invoke('claude-notification:disable', processId),
-    isEnabled: (processId: string) => ipcRenderer.invoke('claude-notification:is-enabled', processId),
-    markUserInput: (processId: string) => ipcRenderer.invoke('claude-notification:mark-user-input', processId),
+    isEnabled: (processId: string) =>
+      ipcRenderer.invoke('claude-notification:is-enabled', processId),
+    markUserInput: (processId: string) =>
+      ipcRenderer.invoke('claude-notification:mark-user-input', processId),
     onClicked: (callback: (processId: string, worktreePath: string) => void) => {
-      const listener = (_: unknown, processId: string, worktreePath: string) => callback(processId, worktreePath);
+      const listener = (_: unknown, processId: string, worktreePath: string) =>
+        callback(processId, worktreePath);
       ipcRenderer.on('claude-notification:clicked', listener);
       return () => ipcRenderer.removeListener('claude-notification:clicked', listener);
     }

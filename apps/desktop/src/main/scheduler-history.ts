@@ -25,11 +25,12 @@ class SchedulerHistoryManager {
         const data = fs.readFileSync(this.storageFile, 'utf8');
         this.historyEntries = JSON.parse(data);
         // Validate and clean up invalid entries
-        this.historyEntries = this.historyEntries.filter(entry =>
-          typeof entry.command === 'string' &&
-          typeof entry.delayMs === 'number' &&
-          typeof entry.repeat === 'boolean' &&
-          typeof entry.timestamp === 'number'
+        this.historyEntries = this.historyEntries.filter(
+          (entry) =>
+            typeof entry.command === 'string' &&
+            typeof entry.delayMs === 'number' &&
+            typeof entry.repeat === 'boolean' &&
+            typeof entry.timestamp === 'number'
         );
 
         // Ensure we don't exceed max entries even after loading
@@ -60,7 +61,7 @@ class SchedulerHistoryManager {
   addHistoryEntry(command: string, delayMs: number, repeat: boolean) {
     // Check if an identical entry already exists (ignoring timestamp)
     const existingIndex = this.historyEntries.findIndex(
-      entry => entry.command === command && entry.delayMs === delayMs && entry.repeat === repeat
+      (entry) => entry.command === command && entry.delayMs === delayMs && entry.repeat === repeat
     );
 
     const entry: SchedulerHistoryEntry = {

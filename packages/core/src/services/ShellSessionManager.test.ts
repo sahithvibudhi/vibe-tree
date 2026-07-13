@@ -21,11 +21,19 @@ function createMockPty(): MockIPty {
     handleFlowControl: false,
     onData: (callback: (data: string) => void) => {
       mockPty.onDataCallback = callback;
-      return { dispose: () => { mockPty.onDataCallback = undefined; } };
+      return {
+        dispose: () => {
+          mockPty.onDataCallback = undefined;
+        }
+      };
     },
     onExit: (callback: (code: { exitCode: number; signal?: number }) => void) => {
       mockPty.onExitCallback = (code: number) => callback({ exitCode: code });
-      return { dispose: () => { mockPty.onExitCallback = undefined; } };
+      return {
+        dispose: () => {
+          mockPty.onExitCallback = undefined;
+        }
+      };
     },
     write: (data: string) => {
       // Simulate writing data
@@ -80,7 +88,8 @@ describe('ShellSessionManager', () => {
       const mockPty2 = createMockPty();
 
       // Create a spawn function that returns our mock PTYs
-      const mockSpawnFn = vi.fn()
+      const mockSpawnFn = vi
+        .fn()
         .mockReturnValueOnce(mockPty1a)
         .mockReturnValueOnce(mockPty1b)
         .mockReturnValueOnce(mockPty2);
@@ -131,20 +140,13 @@ describe('ShellSessionManager', () => {
       const mockPtys = Array.from({ length: 5 }, () => createMockPty());
 
       const mockSpawnFn = vi.fn();
-      mockPtys.forEach(pty => {
+      mockPtys.forEach((pty) => {
         mockSpawnFn.mockReturnValueOnce(pty);
       });
 
       // Start 5 sessions for the same worktree (with different terminal IDs)
       for (let i = 0; i < 5; i++) {
-        await manager.startSession(
-          worktreePath,
-          80,
-          30,
-          mockSpawnFn,
-          true,
-          `terminal-${i}`
-        );
+        await manager.startSession(worktreePath, 80, 30, mockSpawnFn, true, `terminal-${i}`);
       }
 
       // Verify all sessions are created
@@ -157,7 +159,7 @@ describe('ShellSessionManager', () => {
       expect(terminatedCount).toBe(5);
 
       // Verify all PTY processes were killed
-      mockPtys.forEach(pty => {
+      mockPtys.forEach((pty) => {
         expect(pty.killed).toBe(true);
       });
 
@@ -226,7 +228,8 @@ describe('ShellSessionManager', () => {
       const mockPty2 = createMockPty();
       const mockPty3 = createMockPty();
 
-      const mockSpawnFn = vi.fn()
+      const mockSpawnFn = vi
+        .fn()
         .mockReturnValueOnce(mockPty1)
         .mockReturnValueOnce(mockPty2)
         .mockReturnValueOnce(mockPty3);
@@ -268,9 +271,7 @@ describe('ShellSessionManager', () => {
       const mockPty1 = createMockPty();
       const mockPty2 = createMockPty();
 
-      const mockSpawnFn = vi.fn()
-        .mockReturnValueOnce(mockPty1)
-        .mockReturnValueOnce(mockPty2);
+      const mockSpawnFn = vi.fn().mockReturnValueOnce(mockPty1).mockReturnValueOnce(mockPty2);
 
       // Start sessions
       await manager.startSession(worktreePath1, 80, 30, mockSpawnFn, true);
@@ -297,9 +298,7 @@ describe('ShellSessionManager', () => {
       const mockPty1 = createMockPty();
       const mockPty2 = createMockPty();
 
-      const mockSpawnFn = vi.fn()
-        .mockReturnValueOnce(mockPty1)
-        .mockReturnValueOnce(mockPty2);
+      const mockSpawnFn = vi.fn().mockReturnValueOnce(mockPty1).mockReturnValueOnce(mockPty2);
 
       // Start sessions for different worktrees
       await manager.startSession(worktreePath1, 80, 30, mockSpawnFn, true);

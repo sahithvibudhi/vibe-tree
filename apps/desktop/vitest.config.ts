@@ -7,8 +7,8 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src/renderer'),
-    },
+      '@': path.resolve(__dirname, './src/renderer')
+    }
   },
   test: {
     environment: 'jsdom',
@@ -17,15 +17,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8'
     },
-    exclude: [
-      '**/node_modules/**',
-      '**/dist/**',
-      '**/e2e/**',
-      '**/*.e2e.*',
-      '**/*.spec.*'
-    ],
-    include: [
-      '**/*.test.*'
-    ]
+    exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**', '**/*.e2e.*', '**/*.spec.*'],
+    include: ['**/*.test.*']
   }
 });

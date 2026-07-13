@@ -14,7 +14,7 @@ await build({
   format: 'esm',
   platform: 'browser',
   target: 'es2020',
-  sourcemap: true,
+  sourcemap: true
 });
 
 // Build Node ESM version (with Node.js deps)
@@ -27,7 +27,7 @@ await build({
   platform: 'node',
   target: 'node18',
   external: ['child_process', 'path', 'crypto'],
-  sourcemap: true,
+  sourcemap: true
 });
 
 // Build Node CJS version
@@ -40,7 +40,7 @@ await build({
   platform: 'node',
   target: 'node18',
   external: ['child_process', 'path', 'crypto'],
-  sourcemap: true,
+  sourcemap: true
 });
 
 // Build PTY Worker (standalone CJS for forking)
@@ -53,7 +53,7 @@ await build({
   platform: 'node',
   target: 'node18',
   external: ['node-pty'],
-  sourcemap: true,
+  sourcemap: true
 });
 
 console.log('Build complete!');

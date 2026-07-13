@@ -19,5 +19,5 @@ export type {
   AuthContextType,
   AuthProviderProps,
   LoginPageProps,
-  AuthError as AuthErrorType,
+  AuthError as AuthErrorType
 } from './types';

@@ -27,6 +27,7 @@ pnpm build:deps
 ```
 
 This command builds:
+
 - `@vibetree/core` - Core functionality shared across applications
 - `@vibetree/ui` - Shared UI components
 
@@ -49,6 +50,7 @@ pnpm --filter @vibetree/desktop test:e2e
 ```
 
 This command will:
+
 1. Build the desktop application (main, preload, and renderer processes)
 2. Run all Playwright E2E tests
 
@@ -66,6 +68,7 @@ The E2E tests are located in `apps/desktop/e2e/` and include:
 ## Configuration
 
 The Playwright configuration is defined in `apps/desktop/playwright.config.ts` with:
+
 - Test timeout: 60 seconds
 - Workers: 1 (for Electron stability)
 - Retry on CI: 2 attempts
@@ -104,17 +107,21 @@ pnpm --filter @vibetree/desktop test:e2e --grep "vertical split"
 ## Troubleshooting
 
 ### Issue: "Process failed to launch!" errors
+
 **Solution:** Run `pnpm fix:electron` to fix the Electron installation.
 
 ### Issue: TypeScript compilation errors
+
 **Solution:** Ensure workspace dependencies are built with `pnpm build:deps`.
 
 ### Issue: Tests timeout
+
 **Solution:** The default timeout is 60 seconds. For slower systems, you may need to adjust the timeout in `playwright.config.ts`.
 
 ## Continuous Integration
 
 The E2E tests are designed to run in CI environments with:
+
 - Automatic retries (2 attempts)
 - HTML report generation
 - Trace collection for failed tests

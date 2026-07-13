@@ -24,9 +24,9 @@ export function DeletionReportingDialog({
   worktreePath,
   steps,
   isComplete,
-  onClose,
+  onClose
 }: DeletionReportingDialogProps) {
-  const hasErrors = steps.some(step => step.status === 'error');
+  const hasErrors = steps.some((step) => step.status === 'error');
 
   return (
     <Dialog open={open} onOpenChange={isComplete ? onClose : undefined}>
@@ -72,15 +72,11 @@ export function DeletionReportingDialog({
                     {step.status === 'success' && (
                       <CheckCircle className="w-4 h-4 text-green-500" />
                     )}
-                    {step.status === 'error' && (
-                      <XCircle className="w-4 h-4 text-red-500" />
-                    )}
+                    {step.status === 'error' && <XCircle className="w-4 h-4 text-red-500" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">{step.message}</p>
-                    {step.error && (
-                      <p className="text-xs text-red-500 mt-1">{step.error}</p>
-                    )}
+                    {step.error && <p className="text-xs text-red-500 mt-1">{step.error}</p>}
                   </div>
                 </div>
               ))}
@@ -90,7 +86,9 @@ export function DeletionReportingDialog({
 
         {isComplete && (
           <div className="flex justify-end">
-            <Button onClick={onClose} data-testid="deletion-dialog-close-button">Close</Button>
+            <Button onClick={onClose} data-testid="deletion-dialog-close-button">
+              Close
+            </Button>
           </div>
         )}
       </DialogContent>

@@ -40,9 +40,12 @@ export function registerIpcHandlers(mainWindow: BrowserWindow | null) {
     return addWorktree(projectPath, branchName);
   });
 
-  ipcMain.handle('git:worktree-remove', async (_, projectPath: string, worktreePath: string, branchName: string) => {
-    return removeWorktree(projectPath, worktreePath, branchName);
-  });
+  ipcMain.handle(
+    'git:worktree-remove',
+    async (_, projectPath: string, worktreePath: string, branchName: string) => {
+      return removeWorktree(projectPath, worktreePath, branchName);
+    }
+  );
 
   // Theme handling
   ipcMain.handle('theme:get', () => {
@@ -50,7 +53,10 @@ export function registerIpcHandlers(mainWindow: BrowserWindow | null) {
   });
 
   nativeTheme.on('updated', () => {
-    mainWindow?.webContents.send('theme:changed', nativeTheme.shouldUseDarkColors ? 'dark' : 'light');
+    mainWindow?.webContents.send(
+      'theme:changed',
+      nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
+    );
   });
 
   // Dialog handling
@@ -133,7 +139,10 @@ export function registerIpcHandlers(mainWindow: BrowserWindow | null) {
     terminalSettingsManager.updateSettings(updates);
     // Notify all renderer processes about the settings update
     if (mainWindow) {
-      mainWindow.webContents.send('terminal-settings:changed', terminalSettingsManager.getSettings());
+      mainWindow.webContents.send(
+        'terminal-settings:changed',
+        terminalSettingsManager.getSettings()
+      );
     }
   });
 
@@ -141,7 +150,10 @@ export function registerIpcHandlers(mainWindow: BrowserWindow | null) {
     terminalSettingsManager.resetToDefaults();
     // Notify all renderer processes about the reset
     if (mainWindow) {
-      mainWindow.webContents.send('terminal-settings:changed', terminalSettingsManager.getSettings());
+      mainWindow.webContents.send(
+        'terminal-settings:changed',
+        terminalSettingsManager.getSettings()
+      );
     }
   });
 
@@ -154,9 +166,12 @@ export function registerIpcHandlers(mainWindow: BrowserWindow | null) {
     return schedulerHistoryManager.getHistory();
   });
 
-  ipcMain.handle('scheduler-history:add', (_, command: string, delayMs: number, repeat: boolean) => {
-    schedulerHistoryManager.addHistoryEntry(command, delayMs, repeat);
-  });
+  ipcMain.handle(
+    'scheduler-history:add',
+    (_, command: string, delayMs: number, repeat: boolean) => {
+      schedulerHistoryManager.addHistoryEntry(command, delayMs, repeat);
+    }
+  );
 
   ipcMain.handle('scheduler-history:clear', () => {
     schedulerHistoryManager.clearHistory();
@@ -208,7 +223,10 @@ export function registerIpcHandlers(mainWindow: BrowserWindow | null) {
 
       return { success: true, path: wtPath, branch: branchName };
     } catch (error) {
-      console.error(`Failed to create worktree ${index}:`, error instanceof Error ? error.message : String(error));
+      console.error(
+        `Failed to create worktree ${index}:`,
+        error instanceof Error ? error.message : String(error)
+      );
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error)
@@ -228,14 +246,20 @@ export function registerIpcHandlers(mainWindow: BrowserWindow | null) {
   ipcMain.handle('notification:update-settings', (_, updates) => {
     notificationSettingsManager.updateSettings(updates);
     if (mainWindow) {
-      mainWindow.webContents.send('notification:settings-changed', notificationSettingsManager.getSettings());
+      mainWindow.webContents.send(
+        'notification:settings-changed',
+        notificationSettingsManager.getSettings()
+      );
     }
   });
 
   ipcMain.handle('notification:reset-settings', () => {
     notificationSettingsManager.resetToDefaults();
     if (mainWindow) {
-      mainWindow.webContents.send('notification:settings-changed', notificationSettingsManager.getSettings());
+      mainWindow.webContents.send(
+        'notification:settings-changed',
+        notificationSettingsManager.getSettings()
+      );
     }
   });
 
@@ -247,9 +271,16 @@ export function registerIpcHandlers(mainWindow: BrowserWindow | null) {
     notificationManager.openSystemSettings();
   });
 
-  ipcMain.handle('notification:show-test', (_, type: string, worktreePath: string, branchName: string) => {
-    return notificationManager.showTestNotification(type as 'completed' | 'question', worktreePath, branchName);
-  });
+  ipcMain.handle(
+    'notification:show-test',
+    (_, type: string, worktreePath: string, branchName: string) => {
+      return notificationManager.showTestNotification(
+        type as 'completed' | 'question',
+        worktreePath,
+        branchName
+      );
+    }
+  );
 
   // ===========================================
   // Claude Notification APIs (claude-notification:*)

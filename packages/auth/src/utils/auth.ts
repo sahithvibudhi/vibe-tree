@@ -2,7 +2,7 @@ import type { AuthConfig, LoginCredentials, LoginResponse } from '../types';
 
 const STORAGE_KEYS = {
   SESSION_TOKEN: 'vibetree_session_token',
-  IS_AUTHENTICATED: 'vibetree_is_authenticated',
+  IS_AUTHENTICATED: 'vibetree_is_authenticated'
 } as const;
 
 export class AuthAPI {
@@ -18,13 +18,13 @@ export class AuthAPI {
     const commonPorts = ['3002', '3001', '8080'];
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
-    
+
     // If we're on localhost, try development server ports
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       // Default to port 3002 (server default)
       return `${protocol}//${hostname}:3002`;
     }
-    
+
     // For production or other environments, use current origin
     return window.location.origin;
   }
@@ -41,9 +41,9 @@ export class AuthAPI {
     const response = await fetch(`${this.baseUrl}/api/auth/login`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify(credentials),
+      body: JSON.stringify(credentials)
     });
 
     if (!response.ok) {
@@ -59,8 +59,8 @@ export class AuthAPI {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${sessionToken}`,
-      },
+        Authorization: `Bearer ${sessionToken}`
+      }
     });
 
     if (!response.ok) {
@@ -77,7 +77,7 @@ export class AuthAPI {
 
   getAuthHeaders(sessionToken: string): Record<string, string> {
     return {
-      'Authorization': `Bearer ${sessionToken}`,
+      Authorization: `Bearer ${sessionToken}`
     };
   }
 }
@@ -111,8 +111,10 @@ export class AuthStorage {
 
   static isAuthenticated(): boolean {
     try {
-      return localStorage.getItem(STORAGE_KEYS.IS_AUTHENTICATED) === 'true' && 
-             !!localStorage.getItem(STORAGE_KEYS.SESSION_TOKEN);
+      return (
+        localStorage.getItem(STORAGE_KEYS.IS_AUTHENTICATED) === 'true' &&
+        !!localStorage.getItem(STORAGE_KEYS.SESSION_TOKEN)
+      );
     } catch {
       return false;
     }
@@ -132,7 +134,7 @@ export class AuthError extends Error {
 export function createAuthenticatedFetch(baseUrl: string, getSessionToken: () => string | null) {
   return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const sessionToken = getSessionToken();
-    
+
     const headers = new Headers(init?.headers);
     if (sessionToken) {
       headers.set('Authorization', `Bearer ${sessionToken}`);
@@ -140,7 +142,7 @@ export function createAuthenticatedFetch(baseUrl: string, getSessionToken: () =>
 
     return fetch(input, {
       ...init,
-      headers,
+      headers
     });
   };
 }

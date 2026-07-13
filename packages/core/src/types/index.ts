@@ -1,6 +1,6 @@
 export interface Worktree {
   path: string;
-  branch?: string;  // Optional - can be undefined for detached HEAD
+  branch?: string; // Optional - can be undefined for detached HEAD
   head: string;
 }
 

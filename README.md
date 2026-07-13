@@ -1,18 +1,18 @@
 <div align="center">
   <img src="assets/icons/VibeTree.png" alt="VibeTree Logo" width="128" height="128">
-  
-  # VibeTree
-  
-  **Vibe code with AI in parallel git worktrees**
-  
-  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-  [![Release](https://img.shields.io/github/v/release/sahithvibudhi/vibe-tree)](https://github.com/sahithvibudhi/vibe-tree/releases)
+
+# VibeTree
+
+**Vibe code with AI in parallel git worktrees**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Release](https://img.shields.io/github/v/release/sahithvibudhi/vibe-tree)](https://github.com/sahithvibudhi/vibe-tree/releases)
 </div>
 
 ---
 
 > [!IMPORTANT]
-> 🚧 **Active Development Notice**: We're currently working on adding cloud support and multi-platform capabilities. 
+> 🚧 **Active Development Notice**: We're currently working on adding cloud support and multi-platform capabilities.
 > For a stable desktop-only version, please use the [`release-v0.1`](https://github.com/sahithvibudhi/vibe-tree/tree/release-v0.1) branch.
 
 ---
@@ -78,6 +78,7 @@ npm run deploy
 This automatically builds and runs VibeTree in a Docker container. Perfect for deployment on EC2, Digital Ocean, or any Docker-enabled environment. See [DOCKER.md](DOCKER.md) for detailed instructions.
 
 **Access VibeTree:**
+
 - **Web Interface**: http://localhost:3000
 - **API Server**: http://localhost:3002
 - **Health Check**: http://localhost:3002/health
@@ -96,10 +97,12 @@ npm run deploy
 Configure security groups to allow ports 3000 and 3002, then access via `http://your-vm-ip:3000`.
 
 **Safari/iOS Requirements:**
+
 - Both services must be running (web on random 3XXX port, server on random 3XXX port)
 - Allow firewall connections on both ports if prompted
 
 #### LAN Dev Mode (no pairing)
+
 When opening from a phone on your Wi‑Fi, the web UI loads over LAN and the web app automatically discovers and connects to the socket server via WebSocket. In development, enable LAN WebSocket access without pairing:
 
 ```bash

@@ -54,9 +54,9 @@ The `openCwd` method allows you to quickly open the current working directory (w
 ```javascript
 // One-liner to open current directory
 mcp__electron__send_command_to_electron({
-  command: "eval",
-  args: { code: "window.electronAPI.project.openCwd()" }
-})
+  command: 'eval',
+  args: { code: 'window.electronAPI.project.openCwd()' }
+});
 ```
 
 #### Use Cases
@@ -70,8 +70,8 @@ mcp__electron__send_command_to_electron({
 
 ```javascript
 mcp__electron__send_command_to_electron({
-  command: "eval",
-  args: { 
+  command: 'eval',
+  args: {
     code: `
       window.electronAPI.project.openCwd()
         .then(result => {
@@ -89,18 +89,20 @@ mcp__electron__send_command_to_electron({
         })
     `
   }
-})
+});
 ```
 
 #### Implementation Details
 
 The `openCwd` method:
+
 - Gets the current working directory using `process.cwd()` in the main process
 - Verifies the directory exists
 - Sends an IPC message to open the project
 - Returns success status and the opened path
 
 This is exposed through:
+
 1. **Main Process**: `ipcMain.handle('project:open-cwd')` in `src/main/index.ts:254-261`
 2. **Preload Script**: `window.electronAPI.project.openCwd()` in `src/preload/index.ts:60`
 3. **Renderer**: Receives `project:open` event to update UI
@@ -109,12 +111,12 @@ This is exposed through:
 
 ```javascript
 // Using Electron API directly
-window.electronAPI.project.openPath('/path/to/project')
+window.electronAPI.project.openPath('/path/to/project');
 
 // Using Electron MCP
 mcp__electron__send_command_to_electron({
-  command: "eval",
-  args: { 
+  command: 'eval',
+  args: {
     code: `
       window.electronAPI.project.openPath('/path/to/project').then(result => {
         console.log('Opened path:', result);
@@ -122,24 +124,24 @@ mcp__electron__send_command_to_electron({
       })
     `
   }
-})
+});
 ```
 
 ### Method 3: Using Recent Projects API
 
 ```javascript
 // Add to recent projects
-window.electronAPI.recentProjects.add('/path/to/project')
+window.electronAPI.recentProjects.add('/path/to/project');
 
 // Get recent projects
-window.electronAPI.recentProjects.get()
+window.electronAPI.recentProjects.get();
 ```
 
 ### Method 4: Using Dialog API
 
 ```javascript
 // Open native folder selector
-window.electronAPI.dialog.selectDirectory()
+window.electronAPI.dialog.selectDirectory();
 ```
 
 ## Example: Complete Project Open Flow
@@ -149,32 +151,35 @@ window.electronAPI.dialog.selectDirectory()
 await mcp__electron__get_electron_window_info({ includeChildren: true });
 
 // 2. Take screenshot to see current state
-await mcp__electron__take_screenshot({ outputPath: "/tmp/current.png" });
+await mcp__electron__take_screenshot({ outputPath: '/tmp/current.png' });
 
 // 3. Open current working directory
 await mcp__electron__send_command_to_electron({
-  command: "eval",
-  args: { 
+  command: 'eval',
+  args: {
     code: `window.electronAPI.project.openCwd()`
   }
 });
 
 // 4. Wait for project to load
-await new Promise(resolve => setTimeout(resolve, 2000));
+await new Promise((resolve) => setTimeout(resolve, 2000));
 
 // 5. Verify project opened
-await mcp__electron__take_screenshot({ outputPath: "/tmp/after.png" });
+await mcp__electron__take_screenshot({ outputPath: '/tmp/after.png' });
 ```
 
 ## Common Issues and Solutions
 
 ### Issue: Native File Dialog Cannot Be Controlled
+
 **Problem**: Electron MCP cannot interact with native OS dialogs.
 **Solution**: Use the IPC bridge or programmatic methods to set project paths directly.
 
 ### Issue: React State Not Accessible
+
 **Problem**: React component state is encapsulated and not directly accessible.
-**Solution**: 
+**Solution**:
+
 1. Use React DevTools hook: `window.__REACT_DEVTOOLS_GLOBAL_HOOK__`
 2. Use the IPC bridge to communicate with the main process
 

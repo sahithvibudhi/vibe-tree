@@ -4,11 +4,7 @@
   "directories": {
     "output": "release"
   },
-  "files": [
-    "dist/**/*",
-    "package.json",
-    "assets/icons/**/*"
-  ],
+  "files": ["dist/**/*", "package.json", "assets/icons/**/*"],
   "publish": null,
   "mac": {
     "category": "public.app-category.developer-tools",

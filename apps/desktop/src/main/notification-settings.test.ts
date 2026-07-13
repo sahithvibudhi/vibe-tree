@@ -169,7 +169,7 @@ describe('NotificationSettingsManager', () => {
     // readFileSync should only be called once (during first initialize)
     // Note: existsSync is called in loadSettings, so we check that
     const existsSyncCalls = mockFs.existsSync.mock.calls.filter(
-      call => call[0] === expectedStoragePath
+      (call) => call[0] === expectedStoragePath
     );
     expect(existsSyncCalls.length).toBe(1);
   });

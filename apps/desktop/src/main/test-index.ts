@@ -27,7 +27,7 @@ function showQuitConfirmation() {
     cancelId: 0,
     title: 'Quit VibeTree?',
     message: 'Quit VibeTree?',
-    detail: 'All sessions will be closed.',
+    detail: 'All sessions will be closed.'
   };
 
   const choice = mainWindow
@@ -61,9 +61,9 @@ function createWindow() {
   const rendererPath = path.join(__dirname, '../renderer/index.html');
   console.log('Loading renderer from:', rendererPath);
   console.log('Renderer file exists:', fs.existsSync(rendererPath));
-  
+
   mainWindow.loadFile(rendererPath);
-  
+
   // Don't open DevTools in tests as it can interfere with content detection
 
   mainWindow.on('close', (event) => {
@@ -114,4 +114,3 @@ app.on('activate', () => {
     createWindow();
   }
 });
-

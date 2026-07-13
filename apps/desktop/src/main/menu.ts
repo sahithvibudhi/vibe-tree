@@ -53,7 +53,7 @@ ipcMain.on('stats-dialog:close', () => {
 export function createMenu(mainWindow: BrowserWindow | null) {
   const recentProjects = recentProjectsManager.getRecentProjects();
 
-  const recentProjectsMenu = recentProjects.map(project => ({
+  const recentProjectsMenu = recentProjects.map((project) => ({
     label: `${project.name} (${project.path})`,
     click: () => {
       if (mainWindow) {
@@ -81,19 +81,20 @@ export function createMenu(mainWindow: BrowserWindow | null) {
         { type: 'separator' },
         {
           label: 'Recent Projects',
-          submenu: recentProjects.length > 0
-            ? [
-                ...recentProjectsMenu,
-                { type: 'separator' },
-                {
-                  label: 'Clear Recent Projects',
-                  click: () => {
-                    recentProjectsManager.clearRecentProjects();
-                    createMenu(mainWindow); // Recreate menu to update the list
+          submenu:
+            recentProjects.length > 0
+              ? [
+                  ...recentProjectsMenu,
+                  { type: 'separator' },
+                  {
+                    label: 'Clear Recent Projects',
+                    click: () => {
+                      recentProjectsManager.clearRecentProjects();
+                      createMenu(mainWindow); // Recreate menu to update the list
+                    }
                   }
-                }
-              ]
-            : [{ label: 'No recent projects', enabled: false }]
+                ]
+              : [{ label: 'No recent projects', enabled: false }]
         },
         { type: 'separator' },
         { role: 'quit' }
@@ -147,10 +148,7 @@ export function createMenu(mainWindow: BrowserWindow | null) {
     },
     {
       label: 'Window',
-      submenu: [
-        { role: 'minimize' },
-        { role: 'close' }
-      ]
+      submenu: [{ role: 'minimize' }, { role: 'close' }]
     }
   ];
 
@@ -184,10 +182,7 @@ export function createMenu(mainWindow: BrowserWindow | null) {
     // Window menu - after adding the app menu, Window menu is now at index 4
     const windowMenu = template[4];
     if (windowMenu && windowMenu.submenu && Array.isArray(windowMenu.submenu)) {
-      windowMenu.submenu.push(
-        { type: 'separator' },
-        { role: 'front' }
-      );
+      windowMenu.submenu.push({ type: 'separator' }, { role: 'front' });
     }
   }
 

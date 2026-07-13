@@ -8,18 +8,13 @@ interface WorktreePanelProps {
 }
 
 export function WorktreePanel({ projectId }: WorktreePanelProps) {
-  const { 
-    getProject,
-    updateProjectWorktrees,
-    setSelectedWorktree,
-    connected
-  } = useAppStore();
-  
+  const { getProject, updateProjectWorktrees, setSelectedWorktree, connected } = useAppStore();
+
   const { getAdapter } = useWebSocket();
   const [loading, setLoading] = useState(false);
   const [showNewBranchDialog, setShowNewBranchDialog] = useState(false);
   const [newBranchName, setNewBranchName] = useState('');
-  
+
   const project = getProject(projectId);
   const adapter = getAdapter(); // Get adapter once per render
 
@@ -39,10 +34,10 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
   };
 
   const handleSelectWorktree = (path: string) => {
-    console.log('🎯 WorktreePanel: Selecting worktree:', { 
-      projectId, 
-      path, 
-      currentSelection: project?.selectedWorktree 
+    console.log('🎯 WorktreePanel: Selecting worktree:', {
+      projectId,
+      path,
+      currentSelection: project?.selectedWorktree
     });
     setSelectedWorktree(projectId, path);
   };
@@ -59,14 +54,14 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
     try {
       const result = await adapter.addWorktree(project.path, newBranchName);
       console.log('✅ Created worktree:', result);
-      
+
       setShowNewBranchDialog(false);
       setNewBranchName('');
-      
+
       // Refresh worktrees to show the new one
       const trees = await adapter.listWorktrees(project.path);
       updateProjectWorktrees(projectId, trees);
-      
+
       // Select the newly created worktree
       setSelectedWorktree(projectId, result.path);
     } catch (error) {
@@ -79,31 +74,31 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
 
   // Auto-load worktrees when component mounts or project changes
   useEffect(() => {
-    console.log('🔄 WorktreePanel useEffect triggered:', { 
-      projectId, 
-      connected, 
+    console.log('🔄 WorktreePanel useEffect triggered:', {
+      projectId,
+      connected,
       loading,
       hasProject: !!project,
       hasAdapter: !!adapter,
       projectPath: project?.path,
       currentWorktrees: project?.worktrees?.length || 0
     });
-    
+
     if (!project || !connected || loading || !adapter) {
-      console.log('❌ Early return from useEffect:', { 
-        hasProject: !!project, 
-        connected, 
+      console.log('❌ Early return from useEffect:', {
+        hasProject: !!project,
+        connected,
         loading,
         hasAdapter: !!adapter
       });
       return;
     }
-    
+
     // Inline refresh logic with stable dependencies
     const loadWorktrees = async () => {
       console.log('🚀 Starting worktree load for:', project.path);
       setLoading(true);
-      
+
       try {
         const trees = await adapter.listWorktrees(project.path);
         console.log('✅ Worktrees loaded:', trees);
@@ -116,12 +111,16 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
         console.log('🏁 Loading finished');
       }
     };
-    
+
     loadWorktrees();
   }, [projectId, connected, adapter?.constructor?.name]); // Stable dependency on adapter presence
-  
+
   if (!project) {
-    return <div className="flex-1 flex items-center justify-center text-muted-foreground">Project not found</div>;
+    return (
+      <div className="flex-1 flex items-center justify-center text-muted-foreground">
+        Project not found
+      </div>
+    );
   }
 
   return (
@@ -131,10 +130,7 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
         <div className="flex items-center gap-2">
           {/* Back button on mobile when terminal is selected */}
           {project.selectedWorktree && (
-            <button
-              onClick={handleBack}
-              className="md:hidden p-1 hover:bg-accent rounded"
-            >
+            <button onClick={handleBack} className="md:hidden p-1 hover:bg-accent rounded">
               <ChevronLeft className="h-4 w-4" />
             </button>
           )}
@@ -176,53 +172,56 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
           </div>
         ) : (
           <div className="p-2">
-            {[...project.worktrees].sort((a, b) => {
-              // Extract branch names, handling refs/heads/ prefix and detached HEAD
-              const getBranchName = (wt: typeof a) => {
-                if (!wt.branch) return wt.head.substring(0, 8); // detached HEAD
-                return wt.branch.replace('refs/heads/', '');
-              };
+            {[...project.worktrees]
+              .sort((a, b) => {
+                // Extract branch names, handling refs/heads/ prefix and detached HEAD
+                const getBranchName = (wt: typeof a) => {
+                  if (!wt.branch) return wt.head.substring(0, 8); // detached HEAD
+                  return wt.branch.replace('refs/heads/', '');
+                };
 
-              const branchA = getBranchName(a);
-              const branchB = getBranchName(b);
+                const branchA = getBranchName(a);
+                const branchB = getBranchName(b);
 
-              // Keep main or master first
-              if (branchA === 'main' || branchA === 'master') return -1;
-              if (branchB === 'main' || branchB === 'master') return 1;
+                // Keep main or master first
+                if (branchA === 'main' || branchA === 'master') return -1;
+                if (branchB === 'main' || branchB === 'master') return 1;
 
-              // Sort alphabetically for the rest
-              return branchA.localeCompare(branchB);
-            }).map((worktree) => {
-              console.log('🌳 Rendering worktree:', { 
-                branch: worktree.branch, 
-                path: worktree.path,
-                isSelected: project.selectedWorktree === worktree.path
-              });
-              return (
-                <button
-                  key={worktree.path}
-                  onClick={() => handleSelectWorktree(worktree.path)}
-                  className={`
+                // Sort alphabetically for the rest
+                return branchA.localeCompare(branchB);
+              })
+              .map((worktree) => {
+                console.log('🌳 Rendering worktree:', {
+                  branch: worktree.branch,
+                  path: worktree.path,
+                  isSelected: project.selectedWorktree === worktree.path
+                });
+                return (
+                  <button
+                    key={worktree.path}
+                    onClick={() => handleSelectWorktree(worktree.path)}
+                    className={`
                     w-full text-left p-3 rounded-md mb-1 transition-colors
-                    ${project.selectedWorktree === worktree.path 
-                      ? 'bg-accent' 
-                      : 'hover:bg-accent/50'
+                    ${
+                      project.selectedWorktree === worktree.path
+                        ? 'bg-accent'
+                        : 'hover:bg-accent/50'
                     }
                   `}
-                >
-                <div className="flex items-start gap-2">
-                  <GitBranch className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="truncate" style={{ fontSize: '21px', fontWeight: 'bold' }}>
-                      {worktree.branch
-                        ? worktree.branch.replace('refs/heads/', '')
-                        : `Detached HEAD (${worktree.head.substring(0, 8)})`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <GitBranch className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="truncate" style={{ fontSize: '21px', fontWeight: 'bold' }}>
+                          {worktree.branch
+                            ? worktree.branch.replace('refs/heads/', '')
+                            : `Detached HEAD (${worktree.head.substring(0, 8)})`}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </button>
-              );
-            })}
+                  </button>
+                );
+              })}
           </div>
         )}
       </div>
@@ -236,7 +235,7 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
               <p className="text-sm text-muted-foreground mb-4">
                 This will create a new git worktree for parallel development
               </p>
-              
+
               <input
                 type="text"
                 placeholder="feature-name"
@@ -254,7 +253,7 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
                 className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
                 autoFocus
               />
-              
+
               <div className="flex justify-end gap-2 mt-6">
                 <button
                   onClick={() => {

@@ -61,10 +61,10 @@ test.describe('Terminal Split Feature', () => {
         ...process.env,
         NODE_ENV: 'test',
         TEST_MODE: 'true',
-        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
+        DISABLE_QUIT_DIALOG: 'true' // Prevent blocking on quit dialog
       },
       args: [testMainPath],
-      cwd: appDir,
+      cwd: appDir
     });
 
     page = await electronApp.firstWindow();
@@ -174,7 +174,9 @@ test.describe('Terminal Split Feature', () => {
     expect(initialTerminalCount).toBe(1);
 
     // Find and click the horizontal split button (Rows2 icon button)
-    const horizontalSplitButton = page.locator('button[title="Split Terminal Horizontally"]').first();
+    const horizontalSplitButton = page
+      .locator('button[title="Split Terminal Horizontally"]')
+      .first();
     await expect(horizontalSplitButton).toBeVisible();
     await horizontalSplitButton.click();
 
@@ -259,7 +261,7 @@ test.describe('Terminal Split Feature', () => {
     await page.keyboard.type('echo $TEST_VAR_1');
     await page.keyboard.press('Enter');
     await page.waitForTimeout(1000);
-    
+
     let firstContent = await firstTerminalScreen.textContent();
     expect(firstContent).toContain('First Terminal');
 
@@ -267,7 +269,7 @@ test.describe('Terminal Split Feature', () => {
     await page.keyboard.type('echo $TEST_VAR_2');
     await page.keyboard.press('Enter');
     await page.waitForTimeout(1000);
-    
+
     firstContent = await firstTerminalScreen.textContent();
     expect(firstContent).not.toContain('Second Terminal');
 
@@ -276,7 +278,7 @@ test.describe('Terminal Split Feature', () => {
     await page.keyboard.type('echo $TEST_VAR_2');
     await page.keyboard.press('Enter');
     await page.waitForTimeout(1000);
-    
+
     let secondContent = await secondTerminalScreen.textContent();
     expect(secondContent).toContain('Second Terminal');
 
@@ -284,7 +286,7 @@ test.describe('Terminal Split Feature', () => {
     await page.keyboard.type('echo $TEST_VAR_1');
     await page.keyboard.press('Enter');
     await page.waitForTimeout(1000);
-    
+
     secondContent = await secondTerminalScreen.textContent();
     expect(secondContent).not.toContain('First Terminal');
   });

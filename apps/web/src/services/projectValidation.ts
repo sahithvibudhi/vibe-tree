@@ -19,17 +19,19 @@ interface AutoLoadResponse {
  * @param projectPaths - Array of project paths to validate
  * @returns Promise with validation results
  */
-export async function validateProjectPaths(projectPaths: string[]): Promise<ProjectValidationResult[]> {
+export async function validateProjectPaths(
+  projectPaths: string[]
+): Promise<ProjectValidationResult[]> {
   if (projectPaths.length === 0) {
     return [];
   }
 
   try {
     const httpUrl = await getServerHttpUrl();
-    
+
     const response = await authenticatedFetch(`${httpUrl}/api/projects/validate`, {
       method: 'POST',
-      body: JSON.stringify({ projectPaths }),
+      body: JSON.stringify({ projectPaths })
     });
 
     if (!response.ok) {
@@ -40,10 +42,10 @@ export async function validateProjectPaths(projectPaths: string[]): Promise<Proj
   } catch (error) {
     console.error('Failed to validate projects:', error);
     // Return error results for all paths
-    return projectPaths.map(path => ({
+    return projectPaths.map((path) => ({
       path,
       valid: false,
-      error: `Validation failed: ${(error as Error).message}`,
+      error: `Validation failed: ${(error as Error).message}`
     }));
   }
 }
@@ -55,7 +57,7 @@ export async function validateProjectPaths(projectPaths: string[]): Promise<Proj
 export async function autoLoadProjects(): Promise<AutoLoadResponse> {
   try {
     const httpUrl = await getServerHttpUrl();
-    
+
     const response = await authenticatedFetch(`${httpUrl}/api/projects/auto-load`);
 
     if (!response.ok) {
@@ -69,7 +71,7 @@ export async function autoLoadProjects(): Promise<AutoLoadResponse> {
     return {
       projectPaths: [],
       validationResults: [],
-      defaultProjectPath: null,
+      defaultProjectPath: null
     };
   }
 }

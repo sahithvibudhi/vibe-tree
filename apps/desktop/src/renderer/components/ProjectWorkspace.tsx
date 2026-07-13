@@ -12,7 +12,11 @@ export function ProjectWorkspace({ projectId, theme }: ProjectWorkspaceProps) {
   const project = getProject(projectId);
 
   if (!project) {
-    return <div className="flex-1 flex items-center justify-center text-muted-foreground">Project not found</div>;
+    return (
+      <div className="flex-1 flex items-center justify-center text-muted-foreground">
+        Project not found
+      </div>
+    );
   }
 
   return (

@@ -15,9 +15,7 @@ export interface IPty {
  * @returns Shell path
  */
 export function getDefaultShell(): string {
-  return process.platform === 'win32' 
-    ? 'powershell.exe' 
-    : process.env.SHELL || '/bin/bash';
+  return process.platform === 'win32' ? 'powershell.exe' : process.env.SHELL || '/bin/bash';
 }
 
 /**
@@ -36,10 +34,10 @@ function getSystemLocale(): string {
     try {
       // Try to get macOS system locale preference
       const { execSync } = require('child_process');
-      const appleLocale = execSync('defaults read NSGlobalDomain AppleLocale 2>/dev/null', { 
-        encoding: 'utf8' 
+      const appleLocale = execSync('defaults read NSGlobalDomain AppleLocale 2>/dev/null', {
+        encoding: 'utf8'
       }).trim();
-      
+
       if (appleLocale) {
         // Convert Apple locale format (e.g., 'en_US') to POSIX format (e.g., 'en_US.UTF-8')
         return `${appleLocale}.UTF-8`;
@@ -48,7 +46,7 @@ function getSystemLocale(): string {
       // Silently fall through to default
     }
   }
-  
+
   // Default fallback
   return 'en_US.UTF-8';
 }
@@ -66,14 +64,14 @@ export function getPtyOptions(
   // ELECTRON_RUN_AS_NODE makes Electron behave as Node.js, causing issues with
   // Electron-based tools (like VSCode) run from within the terminal
   delete env.ELECTRON_RUN_AS_NODE;
-  
+
   // Set LANG if not already set and setting is enabled
   // This matches iTerm2 and Terminal.app "Set locale environment variables automatically" behavior
   if (setLocaleVariables && (!env.LANG || env.LANG === '')) {
     // Use the system's locale preference, matching iTerm2's behavior
     env.LANG = getSystemLocale();
   }
-  
+
   return {
     name: 'xterm-256color',
     cols,
@@ -160,7 +158,10 @@ export async function killPtyForce(ptyProcess: IPty): Promise<void> {
           process.kill(-pid, 'SIGKILL');
           console.log(`Sent SIGKILL to process group -${pid}`);
         } catch (pgError) {
-          console.warn(`Could not kill process group -${pid}, falling back to PTY process:`, pgError);
+          console.warn(
+            `Could not kill process group -${pid}, falling back to PTY process:`,
+            pgError
+          );
           ptyProcess.kill('SIGKILL');
           console.log(`Sent SIGKILL to PTY process ${pid}`);
         }
@@ -219,10 +220,7 @@ export function killPtySync(ptyProcess: IPty): void {
  * @returns 16-character hex string
  */
 export function generateSessionId(worktreePath: string): string {
-  return crypto.createHash('sha256')
-    .update(worktreePath)
-    .digest('hex')
-    .substring(0, 16);
+  return crypto.createHash('sha256').update(worktreePath).digest('hex').substring(0, 16);
 }
 
 /**
@@ -232,7 +230,7 @@ export function generateSessionId(worktreePath: string): string {
  * @returns Disposable to remove the listener
  */
 export function onPtyData(
-  ptyProcess: IPty, 
+  ptyProcess: IPty,
   callback: (data: string) => void
 ): { dispose: () => void } {
   return ptyProcess.onData(callback);
@@ -245,7 +243,7 @@ export function onPtyData(
  * @returns Disposable to remove the listener
  */
 export function onPtyExit(
-  ptyProcess: IPty, 
+  ptyProcess: IPty,
   callback: (exitCode: number) => void
 ): { dispose: () => void } {
   return ptyProcess.onExit((event) => callback(event.exitCode));

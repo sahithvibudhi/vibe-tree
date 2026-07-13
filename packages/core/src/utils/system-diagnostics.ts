@@ -118,7 +118,9 @@ async function getProcessLimit(): Promise<number | null> {
 async function getCurrentProcessCount(): Promise<number | null> {
   try {
     if (process.platform === 'darwin' || process.platform === 'linux') {
-      const { stdout } = await execAsync(`ps -u ${process.env.USER || process.env.USERNAME} | wc -l`);
+      const { stdout } = await execAsync(
+        `ps -u ${process.env.USER || process.env.USERNAME} | wc -l`
+      );
       // ps includes header line, so subtract 1
       return Math.max(0, parseInt(stdout.trim(), 10) - 1);
     }
@@ -133,13 +135,13 @@ async function getCurrentProcessCount(): Promise<number | null> {
  */
 function getStateDescription(state: string): string {
   const stateMap: Record<string, string> = {
-    'R': 'Running',
-    'S': 'Sleeping',
-    'I': 'Idle',
-    'T': 'Stopped',
-    'Z': 'Zombie',
-    'D': 'Uninterruptible',
-    'U': 'Uninterruptible'
+    R: 'Running',
+    S: 'Sleeping',
+    I: 'Idle',
+    T: 'Stopped',
+    Z: 'Zombie',
+    D: 'Uninterruptible',
+    U: 'Uninterruptible'
   };
 
   // Handle composite states like 'R+', 'S+', etc.
@@ -169,7 +171,9 @@ async function getChildProcesses(): Promise<ChildProcessInfo[]> {
       // Get all processes with their parent PIDs and memory info
       // Format: PID PPID RSS VSZ STATE STARTED TIME COMMAND
       // RSS and VSZ are in KB
-      const { stdout } = await execAsync(`ps -A -o pid,ppid,rss,vsz,state,lstart,time,command | grep -v 'PID' || true`);
+      const { stdout } = await execAsync(
+        `ps -A -o pid,ppid,rss,vsz,state,lstart,time,command | grep -v 'PID' || true`
+      );
 
       if (!stdout.trim()) {
         return [];
@@ -185,7 +189,9 @@ async function getChildProcesses(): Promise<ChildProcessInfo[]> {
 
         // Parse the line - format is complex due to LSTART
         // PID PPID RSS VSZ STATE LSTART(5 fields) TIME COMMAND
-        const match = trimmed.match(/^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(\w+\s+\w+\s+\d+\s+\d+:\d+:\d+\s+\d+)\s+(\S+)\s+(.+)$/);
+        const match = trimmed.match(
+          /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(\w+\s+\w+\s+\d+\s+\d+:\d+:\d+\s+\d+)\s+(\S+)\s+(.+)$/
+        );
         if (!match) continue;
 
         const [, pidStr, ppidStr, rssStr, vszStr, state, startTime, cpuTime, command] = match;
@@ -326,22 +332,30 @@ function generateWarnings(diagnostics: SystemDiagnostics): string[] {
   if (diagnostics.openFileDescriptors !== null && diagnostics.fileDescriptorLimit.soft !== null) {
     const usage = diagnostics.openFileDescriptors / diagnostics.fileDescriptorLimit.soft;
     if (usage > 0.9) {
-      warnings.push(`File descriptor usage is at ${(usage * 100).toFixed(0)}% (${diagnostics.openFileDescriptors}/${diagnostics.fileDescriptorLimit.soft})`);
+      warnings.push(
+        `File descriptor usage is at ${(usage * 100).toFixed(0)}% (${diagnostics.openFileDescriptors}/${diagnostics.fileDescriptorLimit.soft})`
+      );
     } else if (usage > 0.75) {
-      warnings.push(`File descriptor usage is high: ${(usage * 100).toFixed(0)}% (${diagnostics.openFileDescriptors}/${diagnostics.fileDescriptorLimit.soft})`);
+      warnings.push(
+        `File descriptor usage is high: ${(usage * 100).toFixed(0)}% (${diagnostics.openFileDescriptors}/${diagnostics.fileDescriptorLimit.soft})`
+      );
     }
   }
 
   // Check if limit is too low
   if (diagnostics.fileDescriptorLimit.soft !== null && diagnostics.fileDescriptorLimit.soft < 256) {
-    warnings.push(`File descriptor soft limit is very low (${diagnostics.fileDescriptorLimit.soft}). Consider increasing with 'ulimit -n 1024'`);
+    warnings.push(
+      `File descriptor soft limit is very low (${diagnostics.fileDescriptorLimit.soft}). Consider increasing with 'ulimit -n 1024'`
+    );
   }
 
   // Check process usage
   if (diagnostics.currentProcessCount !== null && diagnostics.processLimit !== null) {
     const usage = diagnostics.currentProcessCount / diagnostics.processLimit;
     if (usage > 0.9) {
-      warnings.push(`Process count is at ${(usage * 100).toFixed(0)}% (${diagnostics.currentProcessCount}/${diagnostics.processLimit})`);
+      warnings.push(
+        `Process count is at ${(usage * 100).toFixed(0)}% (${diagnostics.currentProcessCount}/${diagnostics.processLimit})`
+      );
     }
   }
 
@@ -353,7 +367,9 @@ function generateWarnings(diagnostics: SystemDiagnostics): string[] {
 
   // Check for zombie processes
   if (diagnostics.zombieProcessCount > 0) {
-    warnings.push(`Found ${diagnostics.zombieProcessCount} zombie process${diagnostics.zombieProcessCount > 1 ? 'es' : ''} - these may hold file descriptors`);
+    warnings.push(
+      `Found ${diagnostics.zombieProcessCount} zombie process${diagnostics.zombieProcessCount > 1 ? 'es' : ''} - these may hold file descriptors`
+    );
   }
 
   // Check for high child process count
@@ -369,14 +385,15 @@ function generateWarnings(diagnostics: SystemDiagnostics): string[] {
  * Collect comprehensive system diagnostics
  */
 export async function getSystemDiagnostics(): Promise<SystemDiagnostics> {
-  const [fdLimits, openFds, processLimit, processCount, childProcesses, currentProcessMemory] = await Promise.all([
-    getFileDescriptorLimits(),
-    getOpenFileDescriptors(),
-    getProcessLimit(),
-    getCurrentProcessCount(),
-    getChildProcesses(),
-    getCurrentProcessMemory()
-  ]);
+  const [fdLimits, openFds, processLimit, processCount, childProcesses, currentProcessMemory] =
+    await Promise.all([
+      getFileDescriptorLimits(),
+      getOpenFileDescriptors(),
+      getProcessLimit(),
+      getCurrentProcessCount(),
+      getChildProcesses(),
+      getCurrentProcessMemory()
+    ]);
 
   const zombieCount = countZombiesInTree(childProcesses);
   const childrenMemory = calculateTreeMemory(childProcesses);
@@ -432,7 +449,10 @@ export function formatDiagnostics(diagnostics: SystemDiagnostics): string {
   if (diagnostics.openFileDescriptors !== null) {
     lines.push(`  Currently Open: ${diagnostics.openFileDescriptors}`);
     if (diagnostics.fileDescriptorLimit.soft !== null) {
-      const usage = (diagnostics.openFileDescriptors / diagnostics.fileDescriptorLimit.soft * 100).toFixed(1);
+      const usage = (
+        (diagnostics.openFileDescriptors / diagnostics.fileDescriptorLimit.soft) *
+        100
+      ).toFixed(1);
       lines.push(`  Usage: ${usage}%`);
     }
   }
@@ -448,8 +468,8 @@ export function formatDiagnostics(diagnostics: SystemDiagnostics): string {
   lines.push('');
 
   lines.push('Memory:');
-  const totalGB = (diagnostics.totalMemory / (1024 ** 3)).toFixed(2);
-  const freeGB = (diagnostics.freeMemory / (1024 ** 3)).toFixed(2);
+  const totalGB = (diagnostics.totalMemory / 1024 ** 3).toFixed(2);
+  const freeGB = (diagnostics.freeMemory / 1024 ** 3).toFixed(2);
   const usedPercent = ((1 - diagnostics.freeMemory / diagnostics.totalMemory) * 100).toFixed(1);
   lines.push(`  Total: ${totalGB} GB`);
   lines.push(`  Free: ${freeGB} GB`);
@@ -458,7 +478,7 @@ export function formatDiagnostics(diagnostics: SystemDiagnostics): string {
   if (diagnostics.warnings.length > 0) {
     lines.push('');
     lines.push('⚠️  WARNINGS:');
-    diagnostics.warnings.forEach(warning => {
+    diagnostics.warnings.forEach((warning) => {
       lines.push(`  - ${warning}`);
     });
   }
@@ -674,7 +694,11 @@ async function getPtyProcesses(): Promise<ExtendedDiagnostics['ptyProcesses']> {
       const pids: number[] = [];
 
       for (const line of lines) {
-        const match = line.trim().match(/^\s*(\d+)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(\w+\s+\w+\s+\d+\s+\d+:\d+:\d+\s+\d+)\s+(.+)$/);
+        const match = line
+          .trim()
+          .match(
+            /^\s*(\d+)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(\w+\s+\w+\s+\d+\s+\d+:\d+:\d+\s+\d+)\s+(.+)$/
+          );
         if (match) {
           const [, pidStr, , state, rssStr, cpuTime, startTime, command] = match;
           const pid = parseInt(pidStr, 10);
@@ -716,8 +740,9 @@ async function countAppPtyChildProcesses(allChildProcesses: ChildProcessInfo[]):
       // Check if this is a PTY-related process
       // Common indicators: bash, zsh, sh processes with TTY, or processes with pts/ttys in command
       const command = child.command.toLowerCase();
-      const isPtyShell = (command.includes('bash') || command.includes('zsh') || command.includes('sh'))
-                         && !command.includes('ssh');
+      const isPtyShell =
+        (command.includes('bash') || command.includes('zsh') || command.includes('sh')) &&
+        !command.includes('ssh');
       const hasPtyInCommand = command.includes('pts/') || command.includes('ttys');
 
       if (isPtyShell || hasPtyInCommand) {
@@ -888,7 +913,9 @@ async function getAppPtyFileDescriptors(): Promise<{
 
     try {
       // Count PTY master devices (/dev/ptmx)
-      const { stdout: masterStdout } = await execAsync(`lsof -p ${pid} 2>/dev/null | grep "/dev/ptmx" | wc -l`);
+      const { stdout: masterStdout } = await execAsync(
+        `lsof -p ${pid} 2>/dev/null | grep "/dev/ptmx" | wc -l`
+      );
       const masterCount = parseInt(masterStdout.trim(), 10);
       if (!isNaN(masterCount)) {
         result.ptyMasterFds = masterCount;
@@ -899,7 +926,9 @@ async function getAppPtyFileDescriptors(): Promise<{
 
     try {
       // Count PTY slave devices (ttys/ttyp)
-      const { stdout: slaveStdout } = await execAsync(`lsof -p ${pid} 2>/dev/null | grep -E "ttys|ttyp" | wc -l`);
+      const { stdout: slaveStdout } = await execAsync(
+        `lsof -p ${pid} 2>/dev/null | grep -E "ttys|ttyp" | wc -l`
+      );
       const slaveCount = parseInt(slaveStdout.trim(), 10);
       if (!isNaN(slaveCount)) {
         result.ptySlaveFds = slaveCount;
@@ -910,7 +939,9 @@ async function getAppPtyFileDescriptors(): Promise<{
 
     try {
       // Count total PTY-related file descriptors
-      const { stdout: totalStdout } = await execAsync(`lsof -p ${pid} 2>/dev/null | grep -E "/dev/tty|/dev/ptmx" | wc -l`);
+      const { stdout: totalStdout } = await execAsync(
+        `lsof -p ${pid} 2>/dev/null | grep -E "/dev/tty|/dev/ptmx" | wc -l`
+      );
       const totalCount = parseInt(totalStdout.trim(), 10);
       if (!isNaN(totalCount)) {
         result.totalPtyFds = totalCount;
@@ -937,15 +968,16 @@ export async function getExtendedDiagnostics(sessionManagerStats?: {
   const baseDiagnostics = await getSystemDiagnostics();
 
   // Get additional diagnostic info in parallel
-  const [fdDetails, threadInfo, ptyProcesses, kernelLimits, ptyDeviceInfo, appPtyFds, systemFds] = await Promise.all([
-    getFileDescriptorDetails(),
-    getThreadInfo(),
-    getPtyProcesses(),
-    getKernelLimits(),
-    getPtyDeviceInfo(),
-    getAppPtyFileDescriptors(),
-    getSystemFileDescriptors()
-  ]);
+  const [fdDetails, threadInfo, ptyProcesses, kernelLimits, ptyDeviceInfo, appPtyFds, systemFds] =
+    await Promise.all([
+      getFileDescriptorDetails(),
+      getThreadInfo(),
+      getPtyProcesses(),
+      getKernelLimits(),
+      getPtyDeviceInfo(),
+      getAppPtyFileDescriptors(),
+      getSystemFileDescriptors()
+    ]);
 
   // Count PTY child processes of our app
   const ptyChildProcesses = await countAppPtyChildProcesses(baseDiagnostics.childProcesses);
@@ -1029,7 +1061,10 @@ export function formatExtendedDiagnostics(diagnostics: ExtendedDiagnostics): str
   if (diagnostics.openFileDescriptors !== null) {
     lines.push(`  Currently Open: ${diagnostics.openFileDescriptors}`);
     if (diagnostics.fileDescriptorLimit.soft !== null) {
-      const usage = (diagnostics.openFileDescriptors / diagnostics.fileDescriptorLimit.soft * 100).toFixed(1);
+      const usage = (
+        (diagnostics.openFileDescriptors / diagnostics.fileDescriptorLimit.soft) *
+        100
+      ).toFixed(1);
       lines.push(`  Usage: ${usage}%`);
     }
   }
@@ -1044,8 +1079,10 @@ export function formatExtendedDiagnostics(diagnostics: ExtendedDiagnostics): str
 
     if (diagnostics.fileDescriptorDetails.topConsumers) {
       lines.push('  Top Consumers:');
-      diagnostics.fileDescriptorDetails.topConsumers.forEach(consumer => {
-        lines.push(`    ${consumer.type}: ${consumer.count} (${consumer.name.substring(0, 50)}...)`);
+      diagnostics.fileDescriptorDetails.topConsumers.forEach((consumer) => {
+        lines.push(
+          `    ${consumer.type}: ${consumer.count} (${consumer.name.substring(0, 50)}...)`
+        );
       });
     }
   }
@@ -1081,9 +1118,12 @@ export function formatExtendedDiagnostics(diagnostics: ExtendedDiagnostics): str
   lines.push(`  PTY Child Processes: ${diagnostics.appPtyInfo.ptyChildProcesses}`);
 
   // App PTY File Descriptors
-  const ptyMasterFds = diagnostics.appPtyInfo.ptyMasterFds !== null ? diagnostics.appPtyInfo.ptyMasterFds : 0;
-  const ptySlaveFds = diagnostics.appPtyInfo.ptySlaveFds !== null ? diagnostics.appPtyInfo.ptySlaveFds : 0;
-  const totalPtyFds = diagnostics.appPtyInfo.totalPtyFds !== null ? diagnostics.appPtyInfo.totalPtyFds : 0;
+  const ptyMasterFds =
+    diagnostics.appPtyInfo.ptyMasterFds !== null ? diagnostics.appPtyInfo.ptyMasterFds : 0;
+  const ptySlaveFds =
+    diagnostics.appPtyInfo.ptySlaveFds !== null ? diagnostics.appPtyInfo.ptySlaveFds : 0;
+  const totalPtyFds =
+    diagnostics.appPtyInfo.totalPtyFds !== null ? diagnostics.appPtyInfo.totalPtyFds : 0;
 
   lines.push(`  PTY Master FDs (/dev/ptmx): ${ptyMasterFds}`);
   lines.push(`  PTY Slave FDs (ttys/ttyp): ${ptySlaveFds}`);
@@ -1100,7 +1140,9 @@ export function formatExtendedDiagnostics(diagnostics: ExtendedDiagnostics): str
   const expectedMaxFds = activeSessions * 3;
   if (ptyMasterFds > expectedMaxFds) {
     const leaked = ptyMasterFds - activeSessions;
-    lines.push(`  ⚠️  Potential PTY Leak: ${leaked} excess master FDs (${ptyMasterFds} FDs - ${activeSessions} sessions)`);
+    lines.push(
+      `  ⚠️  Potential PTY Leak: ${leaked} excess master FDs (${ptyMasterFds} FDs - ${activeSessions} sessions)`
+    );
   }
   lines.push('');
 
@@ -1109,8 +1151,10 @@ export function formatExtendedDiagnostics(diagnostics: ExtendedDiagnostics): str
   lines.push(`  Count: ${diagnostics.ptyProcesses.count}`);
   if (diagnostics.ptyProcesses.details.length > 0) {
     lines.push('  Details:');
-    diagnostics.ptyProcesses.details.forEach(proc => {
-      lines.push(`    PID ${proc.pid}: ${proc.command.substring(0, 60)} (${proc.state}, ${formatMemorySize(proc.memoryRSS)})`);
+    diagnostics.ptyProcesses.details.forEach((proc) => {
+      lines.push(
+        `    PID ${proc.pid}: ${proc.command.substring(0, 60)} (${proc.state}, ${formatMemorySize(proc.memoryRSS)})`
+      );
     });
   }
   lines.push('');
@@ -1124,8 +1168,14 @@ export function formatExtendedDiagnostics(diagnostics: ExtendedDiagnostics): str
     if (diagnostics.ptyDeviceInfo.systemLimit !== null) {
       lines.push(`  System Limit: ${diagnostics.ptyDeviceInfo.systemLimit}`);
     }
-    if (diagnostics.ptyDeviceInfo.currentCount !== null && diagnostics.ptyDeviceInfo.systemLimit !== null) {
-      const usage = (diagnostics.ptyDeviceInfo.currentCount / diagnostics.ptyDeviceInfo.systemLimit * 100).toFixed(1);
+    if (
+      diagnostics.ptyDeviceInfo.currentCount !== null &&
+      diagnostics.ptyDeviceInfo.systemLimit !== null
+    ) {
+      const usage = (
+        (diagnostics.ptyDeviceInfo.currentCount / diagnostics.ptyDeviceInfo.systemLimit) *
+        100
+      ).toFixed(1);
       lines.push(`  Usage: ${usage}%`);
 
       // Add warning if usage is high
@@ -1145,8 +1195,8 @@ export function formatExtendedDiagnostics(diagnostics: ExtendedDiagnostics): str
 
   // Memory
   lines.push('Memory:');
-  const totalGB = (diagnostics.totalMemory / (1024 ** 3)).toFixed(2);
-  const freeGB = (diagnostics.freeMemory / (1024 ** 3)).toFixed(2);
+  const totalGB = (diagnostics.totalMemory / 1024 ** 3).toFixed(2);
+  const freeGB = (diagnostics.freeMemory / 1024 ** 3).toFixed(2);
   const usedPercent = ((1 - diagnostics.freeMemory / diagnostics.totalMemory) * 100).toFixed(1);
   lines.push(`  System Total: ${totalGB} GB`);
   lines.push(`  System Free: ${freeGB} GB`);
@@ -1158,10 +1208,18 @@ export function formatExtendedDiagnostics(diagnostics: ExtendedDiagnostics): str
   // Node.js Process
   lines.push('Node.js Process:');
   lines.push(`  Uptime: ${diagnostics.nodeProcess.uptime.toFixed(2)}s`);
-  lines.push(`  Heap Used: ${(diagnostics.nodeProcess.memoryUsage.heapUsed / 1024 / 1024).toFixed(2)} MB`);
-  lines.push(`  Heap Total: ${(diagnostics.nodeProcess.memoryUsage.heapTotal / 1024 / 1024).toFixed(2)} MB`);
-  lines.push(`  External: ${(diagnostics.nodeProcess.memoryUsage.external / 1024 / 1024).toFixed(2)} MB`);
-  lines.push(`  Array Buffers: ${(diagnostics.nodeProcess.memoryUsage.arrayBuffers / 1024 / 1024).toFixed(2)} MB`);
+  lines.push(
+    `  Heap Used: ${(diagnostics.nodeProcess.memoryUsage.heapUsed / 1024 / 1024).toFixed(2)} MB`
+  );
+  lines.push(
+    `  Heap Total: ${(diagnostics.nodeProcess.memoryUsage.heapTotal / 1024 / 1024).toFixed(2)} MB`
+  );
+  lines.push(
+    `  External: ${(diagnostics.nodeProcess.memoryUsage.external / 1024 / 1024).toFixed(2)} MB`
+  );
+  lines.push(
+    `  Array Buffers: ${(diagnostics.nodeProcess.memoryUsage.arrayBuffers / 1024 / 1024).toFixed(2)} MB`
+  );
 
   if (diagnostics.nodeProcess.resourceUsage) {
     const ru = diagnostics.nodeProcess.resourceUsage;
@@ -1193,7 +1251,7 @@ export function formatExtendedDiagnostics(diagnostics: ExtendedDiagnostics): str
   // Warnings
   if (diagnostics.warnings.length > 0) {
     lines.push('⚠️  WARNINGS:');
-    diagnostics.warnings.forEach(warning => {
+    diagnostics.warnings.forEach((warning) => {
       lines.push(`  - ${warning}`);
     });
     lines.push('');

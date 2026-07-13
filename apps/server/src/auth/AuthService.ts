@@ -26,7 +26,7 @@ export class AuthService {
 
   constructor() {
     this.jwtSecret = process.env.JWT_SECRET || 'vibetree-dev-secret-change-in-production';
-    
+
     // Clean up expired tokens periodically
     setInterval(() => this.cleanupExpiredTokens(), 60000); // Every minute
     setInterval(() => this.cleanupExpiredUserSessions(), 60000); // Every minute
@@ -35,11 +35,11 @@ export class AuthService {
   async generateQRCode(port: number): Promise<{ qrCode: string; token: string; url: string }> {
     const token = uuidv4();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
-    
+
     // Get local IP address
     const localIP = this.getLocalIPAddress();
     const url = `ws://${localIP}:${port}/connect?token=${token}`;
-    
+
     // Store session token
     this.sessionTokens.set(token, {
       id: token,
@@ -47,10 +47,10 @@ export class AuthService {
       createdAt: new Date(),
       expiresAt
     });
-    
+
     // Generate QR code
     const qrCode = await QRCode.toDataURL(url);
-    
+
     return { qrCode, token, url };
   }
 
@@ -59,20 +59,23 @@ export class AuthService {
     if (!sessionToken) {
       return false;
     }
-    
+
     if (sessionToken.expiresAt < new Date()) {
       this.sessionTokens.delete(token);
       return false;
     }
-    
+
     return true;
   }
 
-  async pairDevice(token: string, deviceInfo: { name: string; type: 'web' | 'mobile' }): Promise<string> {
+  async pairDevice(
+    token: string,
+    deviceInfo: { name: string; type: 'web' | 'mobile' }
+  ): Promise<string> {
     if (!this.validateToken(token)) {
       throw new Error('Invalid or expired token');
     }
-    
+
     const deviceId = uuidv4();
     const device: DeviceInfo = {
       id: deviceId,
@@ -80,33 +83,29 @@ export class AuthService {
       type: deviceInfo.type,
       lastSeen: new Date()
     };
-    
+
     this.devices.set(deviceId, device);
-    
+
     // Update session token with device ID
     const sessionToken = this.sessionTokens.get(token)!;
     sessionToken.deviceId = deviceId;
-    
+
     // Generate JWT for the device
-    const jwtToken = jwt.sign(
-      { deviceId, type: device.type },
-      this.jwtSecret,
-      { expiresIn: '7d' }
-    );
-    
+    const jwtToken = jwt.sign({ deviceId, type: device.type }, this.jwtSecret, { expiresIn: '7d' });
+
     return jwtToken;
   }
 
   verifyJWT(token: string): { deviceId: string; type: string } | null {
     try {
       const decoded = jwt.verify(token, this.jwtSecret) as any;
-      
+
       // Update last seen
       const device = this.devices.get(decoded.deviceId);
       if (device) {
         device.lastSeen = new Date();
       }
-      
+
       return { deviceId: decoded.deviceId, type: decoded.type };
     } catch {
       return null;
@@ -157,17 +156,20 @@ export class AuthService {
   validateCredentials(username: string, password: string): boolean {
     const expectedUsername = process.env.USERNAME;
     const expectedPassword = process.env.PASSWORD;
-    
+
     if (!expectedUsername || !expectedPassword) {
       return false;
     }
-    
+
     return username === expectedUsername && password === expectedPassword;
   }
 
-  login(username: string, password: string): { success: boolean; sessionToken?: string; error?: string } {
+  login(
+    username: string,
+    password: string
+  ): { success: boolean; sessionToken?: string; error?: string } {
     const authRequired = process.env.AUTH_REQUIRED === 'true';
-    
+
     if (!authRequired) {
       // If auth is not required, generate a session token anyway for consistency
       const sessionToken = this.generateSessionToken();
@@ -190,32 +192,32 @@ export class AuthService {
 
   validateSessionToken(sessionToken: string): boolean {
     const authRequired = process.env.AUTH_REQUIRED === 'true';
-    
+
     if (!authRequired) {
       return true; // Allow all requests when auth is disabled
     }
-    
+
     return this.userSessions.has(sessionToken);
   }
 
   getAuthConfig(): { authRequired: boolean; authConfigured: boolean } {
     const authRequired = process.env.AUTH_REQUIRED === 'true';
     const authConfigured = !!(process.env.USERNAME && process.env.PASSWORD);
-    
+
     return { authRequired, authConfigured };
   }
 
   // Middleware function for protecting routes
   requireAuth = (req: any, res: any, next: any) => {
     const authRequired = process.env.AUTH_REQUIRED === 'true';
-    
+
     if (!authRequired) {
       return next(); // Skip auth when disabled
     }
 
     // Check for session token in Authorization header or query parameter
     let sessionToken: string | undefined;
-    
+
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       sessionToken = authHeader.substring(7);

@@ -25,11 +25,7 @@ export interface TestRepoResult {
  * @returns Path(s) to the created repository
  */
 export function createTestGitRepo(options: CreateTestRepoOptions = {}): TestRepoResult {
-  const {
-    nameSuffix = 'repo',
-    createWorktree = false,
-    worktreeBranch = 'test-branch'
-  } = options;
+  const { nameSuffix = 'repo', createWorktree = false, worktreeBranch = 'test-branch' } = options;
 
   const timestamp = Date.now();
   const repoPath = path.join(os.tmpdir(), `dummy-${nameSuffix}-${timestamp}`);

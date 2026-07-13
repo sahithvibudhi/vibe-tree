@@ -35,19 +35,19 @@ export function GitDiffView({ worktreePath, theme = 'light' }: GitDiffViewProps)
     try {
       setLoading(true);
       setError(null);
-      
+
       const status: GitStatus[] = await adapter.getGitStatus(worktreePath);
-      
+
       // Convert GitStatus to GitFile format
-      const gitFiles: GitFile[] = status.map(file => ({
+      const gitFiles: GitFile[] = status.map((file) => ({
         path: file.path,
         status: file.status,
         staged: file.status[0] !== ' ' && file.status[0] !== '?',
         modified: file.status[1] !== ' ' && file.status[1] !== '?'
       }));
-      
+
       setFiles(gitFiles);
-      
+
       if (gitFiles.length > 0 && !selectedFile) {
         setSelectedFile(gitFiles[0].path);
       }
@@ -59,27 +59,30 @@ export function GitDiffView({ worktreePath, theme = 'light' }: GitDiffViewProps)
     }
   }, [worktreePath, selectedFile, getAdapter]);
 
-  const loadDiff = useCallback(async (filePath: string, staged: boolean = false) => {
-    const adapter = getAdapter();
-    if (!adapter) return;
+  const loadDiff = useCallback(
+    async (filePath: string, staged: boolean = false) => {
+      const adapter = getAdapter();
+      if (!adapter) return;
 
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const diffTextResult = staged 
-        ? await adapter.getGitDiffStaged(worktreePath, filePath)
-        : await adapter.getGitDiff(worktreePath, filePath);
-      
-      // Handle undefined/null results safely
-      setDiffText(diffTextResult ? diffTextResult.trim() : '');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load diff');
-      setDiffText('');
-    } finally {
-      setLoading(false);
-    }
-  }, [worktreePath, getAdapter]);
+      try {
+        setLoading(true);
+        setError(null);
+
+        const diffTextResult = staged
+          ? await adapter.getGitDiffStaged(worktreePath, filePath)
+          : await adapter.getGitDiff(worktreePath, filePath);
+
+        // Handle undefined/null results safely
+        setDiffText(diffTextResult ? diffTextResult.trim() : '');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load diff');
+        setDiffText('');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [worktreePath, getAdapter]
+  );
 
   useEffect(() => {
     if (worktreePath) {
@@ -89,11 +92,11 @@ export function GitDiffView({ worktreePath, theme = 'light' }: GitDiffViewProps)
 
   useEffect(() => {
     if (selectedFile) {
-      const file = files.find(f => f.path === selectedFile);
+      const file = files.find((f) => f.path === selectedFile);
       if (file) {
         const shouldLoadStaged = viewMode === 'staged' && file.staged;
         const shouldLoadUnstaged = viewMode === 'unstaged' && file.modified;
-        
+
         if (shouldLoadStaged || shouldLoadUnstaged) {
           loadDiff(selectedFile, viewMode === 'staged');
         } else {
@@ -105,17 +108,24 @@ export function GitDiffView({ worktreePath, theme = 'light' }: GitDiffViewProps)
 
   const getStatusIcon = (status: string) => {
     switch (status[0]) {
-      case 'M': return <span className="text-blue-500">M</span>;
-      case 'A': return <span className="text-green-500">A</span>;
-      case 'D': return <span className="text-red-500">D</span>;
-      case 'R': return <span className="text-yellow-500">R</span>;
-      case 'C': return <span className="text-cyan-500">C</span>;
-      case '?': return <span className="text-gray-500">?</span>;
-      default: return <span className="text-gray-400">{status[0] || ' '}</span>;
+      case 'M':
+        return <span className="text-blue-500">M</span>;
+      case 'A':
+        return <span className="text-green-500">A</span>;
+      case 'D':
+        return <span className="text-red-500">D</span>;
+      case 'R':
+        return <span className="text-yellow-500">R</span>;
+      case 'C':
+        return <span className="text-cyan-500">C</span>;
+      case '?':
+        return <span className="text-gray-500">?</span>;
+      default:
+        return <span className="text-gray-400">{status[0] || ' '}</span>;
     }
   };
 
-  const filteredFiles = files.filter(file => {
+  const filteredFiles = files.filter((file) => {
     if (viewMode === 'staged') return file.staged;
     if (viewMode === 'unstaged') return file.modified;
     return true;
@@ -135,8 +145,8 @@ export function GitDiffView({ worktreePath, theme = 'light' }: GitDiffViewProps)
           <div className="flex border rounded-md">
             <button
               className={`px-3 py-1 text-sm rounded-l-md transition-colors ${
-                viewMode === 'unstaged' 
-                  ? 'bg-primary text-primary-foreground' 
+                viewMode === 'unstaged'
+                  ? 'bg-primary text-primary-foreground'
                   : 'bg-background hover:bg-muted'
               }`}
               onClick={() => setViewMode('unstaged')}
@@ -145,8 +155,8 @@ export function GitDiffView({ worktreePath, theme = 'light' }: GitDiffViewProps)
             </button>
             <button
               className={`px-3 py-1 text-sm rounded-r-md border-l transition-colors ${
-                viewMode === 'staged' 
-                  ? 'bg-primary text-primary-foreground' 
+                viewMode === 'staged'
+                  ? 'bg-primary text-primary-foreground'
                   : 'bg-background hover:bg-muted'
               }`}
               onClick={() => setViewMode('staged')}
@@ -169,7 +179,8 @@ export function GitDiffView({ worktreePath, theme = 'light' }: GitDiffViewProps)
         <div className="w-80 border-r flex flex-col min-w-0">
           <div className="p-3 border-b bg-muted/50">
             <h4 className="text-sm font-medium">
-              {viewMode === 'staged' ? 'Staged Changes' : 'Unstaged Changes'} ({filteredFiles.length})
+              {viewMode === 'staged' ? 'Staged Changes' : 'Unstaged Changes'} (
+              {filteredFiles.length})
             </h4>
           </div>
           <div className="flex-1 overflow-auto">
@@ -208,7 +219,7 @@ export function GitDiffView({ worktreePath, theme = 'light' }: GitDiffViewProps)
               <div className="text-center">
                 <p className="text-sm text-destructive mb-2">Error loading diff</p>
                 <p className="text-xs text-muted-foreground">{error}</p>
-                <button 
+                <button
                   onClick={loadGitStatus}
                   className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
                 >
@@ -236,13 +247,13 @@ export function GitDiffView({ worktreePath, theme = 'light' }: GitDiffViewProps)
               <div className="p-4 w-full overflow-hidden">
                 <DiffView
                   data={{
-                    oldFile: { 
-                      fileName: selectedFile || '', 
-                      content: null 
+                    oldFile: {
+                      fileName: selectedFile || '',
+                      content: null
                     },
-                    newFile: { 
-                      fileName: selectedFile || '', 
-                      content: null 
+                    newFile: {
+                      fileName: selectedFile || '',
+                      content: null
                     },
                     hunks: [diffText]
                   }}

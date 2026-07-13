@@ -28,8 +28,8 @@ test.describe('Terminal Settings', () => {
         ...process.env,
         NODE_ENV: 'test',
         TEST_MODE: 'true',
-        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
-      },
+        DISABLE_QUIT_DIALOG: 'true' // Prevent blocking on quit dialog
+      }
     });
 
     // Get the first window that opens
@@ -39,7 +39,9 @@ test.describe('Terminal Settings', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Verify the app launches with project selector
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({
+      timeout: 10000
+    });
 
     // Click the "Open Project Folder" button
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
@@ -62,7 +64,9 @@ test.describe('Terminal Settings', () => {
     await page.waitForTimeout(3000);
 
     // Click the worktree button to open the terminal
-    const worktreeButton = page.locator('button[data-worktree-branch="main"], button[data-worktree-branch="master"]').first();
+    const worktreeButton = page
+      .locator('button[data-worktree-branch="main"], button[data-worktree-branch="master"]')
+      .first();
     await expect(worktreeButton).toBeVisible({ timeout: 10000 });
     await worktreeButton.click();
 
@@ -83,9 +87,11 @@ test.describe('Terminal Settings', () => {
   test('should open terminal settings from menu and persist font changes', async () => {
     // Check if window.electronAPI exists
     const hasAPI = await page.evaluate(() => {
-      return typeof window.electronAPI !== 'undefined' &&
-             typeof window.electronAPI.menu !== 'undefined' &&
-             typeof window.electronAPI.menu.onOpenTerminalSettings !== 'undefined';
+      return (
+        typeof window.electronAPI !== 'undefined' &&
+        typeof window.electronAPI.menu !== 'undefined' &&
+        typeof window.electronAPI.menu.onOpenTerminalSettings !== 'undefined'
+      );
     });
     console.log('electronAPI.menu.onOpenTerminalSettings available:', hasAPI);
 
@@ -118,7 +124,10 @@ test.describe('Terminal Settings', () => {
     await page.waitForTimeout(1000);
 
     // Check if dialog is visible now
-    const dialogVisible = await page.locator('[role="dialog"]').isVisible().catch(() => false);
+    const dialogVisible = await page
+      .locator('[role="dialog"]')
+      .isVisible()
+      .catch(() => false);
     console.log('Dialog visible after IPC:', dialogVisible);
 
     if (!dialogVisible) {
@@ -126,8 +135,10 @@ test.describe('Terminal Settings', () => {
       const anyDialogContent = await page.evaluate(() => {
         const allElements = document.querySelectorAll('*');
         for (const el of allElements) {
-          if (el.textContent?.includes('Terminal Settings') &&
-              el.textContent?.includes('Font Family')) {
+          if (
+            el.textContent?.includes('Terminal Settings') &&
+            el.textContent?.includes('Font Family')
+          ) {
             return true;
           }
         }
@@ -141,7 +152,9 @@ test.describe('Terminal Settings', () => {
     }
 
     // Wait for dialog to be ready
-    await page.waitForSelector('[role="dialog"], h2:has-text("Terminal Settings")', { timeout: 5000 });
+    await page.waitForSelector('[role="dialog"], h2:has-text("Terminal Settings")', {
+      timeout: 5000
+    });
 
     // Verify the dialog title
     const dialogTitle = await page.textContent('h2:has-text("Terminal Settings")');
@@ -264,7 +277,7 @@ test.describe('Terminal Settings', () => {
     // Verify the terminal has the new font size applied
     // This would require checking the actual terminal element's computed styles
     const terminalElement = await page.locator('.xterm').first();
-    const fontSize = await terminalElement.evaluate(el => {
+    const fontSize = await terminalElement.evaluate((el) => {
       const computedStyle = window.getComputedStyle(el);
       return computedStyle.fontSize;
     });

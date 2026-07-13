@@ -12,7 +12,7 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!projectPath.trim()) {
       setError('Please enter a project path');
       return;
@@ -30,7 +30,6 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
     }
   };
 
-
   return (
     <div className="flex-1 flex items-center justify-center p-8">
       <div className="w-full max-w-md space-y-6">
@@ -43,7 +42,6 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
             Enter the path to your git repository to start working with Claude in parallel worktrees
           </p>
         </div>
-
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -59,9 +57,7 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
               className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
               disabled={isLoading}
             />
-            {error && (
-              <p className="text-sm text-red-500">{error}</p>
-            )}
+            {error && <p className="text-sm text-red-500">{error}</p>}
           </div>
 
           <button

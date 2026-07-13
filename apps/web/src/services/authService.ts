@@ -6,13 +6,13 @@ import { AuthStorage } from '@vibetree/auth';
 export function getAuthHeaders(): Record<string, string> {
   const sessionToken = AuthStorage.getSessionToken();
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json'
   };
-  
+
   if (sessionToken) {
     headers['Authorization'] = `Bearer ${sessionToken}`;
   }
-  
+
   return headers;
 }
 
@@ -20,11 +20,11 @@ export function getAuthHeaders(): Record<string, string> {
  * Authenticated fetch wrapper that automatically includes auth headers
  */
 export async function authenticatedFetch(
-  input: RequestInfo | URL, 
+  input: RequestInfo | URL,
   init?: RequestInit
 ): Promise<Response> {
   const authHeaders = getAuthHeaders();
-  
+
   // Merge auth headers with any existing headers
   const headers = new Headers(init?.headers);
   Object.entries(authHeaders).forEach(([key, value]) => {
@@ -33,7 +33,7 @@ export async function authenticatedFetch(
 
   return fetch(input, {
     ...init,
-    headers,
+    headers
   });
 }
 
@@ -42,11 +42,11 @@ export async function authenticatedFetch(
  */
 export function getAuthenticatedWebSocketUrl(baseUrl: string): string {
   const sessionToken = AuthStorage.getSessionToken();
-  
+
   if (sessionToken) {
     const separator = baseUrl.includes('?') ? '&' : '?';
     return `${baseUrl}${separator}session_token=${encodeURIComponent(sessionToken)}`;
   }
-  
+
   return baseUrl;
 }

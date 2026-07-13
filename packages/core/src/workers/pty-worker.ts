@@ -53,7 +53,13 @@ interface GetForegroundProcessMessage {
   type: 'getForegroundProcess';
 }
 
-type WorkerMessage = StartMessage | WriteMessage | ResizeMessage | TerminateMessage | DiagnosticsMessage | GetForegroundProcessMessage;
+type WorkerMessage =
+  | StartMessage
+  | WriteMessage
+  | ResizeMessage
+  | TerminateMessage
+  | DiagnosticsMessage
+  | GetForegroundProcessMessage;
 
 interface OutputEvent {
   type: 'output';
@@ -92,7 +98,8 @@ interface ForegroundProcessEvent {
   };
 }
 
-type WorkerEvent = OutputEvent | ExitEvent | ErrorEvent | ReadyEvent | DiagnosticsEvent | ForegroundProcessEvent;
+type WorkerEvent =
+  OutputEvent | ExitEvent | ErrorEvent | ReadyEvent | DiagnosticsEvent | ForegroundProcessEvent;
 
 class PtyWorker {
   private ptyProcess: IPty | null = null;
@@ -177,7 +184,9 @@ class PtyWorker {
         process.exit(0);
       });
 
-      console.log(`[pty-worker] Started PTY in ${message.worktreePath} (PID: ${this.ptyProcess.pid})`);
+      console.log(
+        `[pty-worker] Started PTY in ${message.worktreePath} (PID: ${this.ptyProcess.pid})`
+      );
     } catch (error) {
       this.sendMessage({
         type: 'error',
@@ -273,7 +282,9 @@ class PtyWorker {
     if (process.platform === 'darwin' || process.platform === 'linux') {
       try {
         // Get child process PID of the shell
-        const childPidOutput = execSync(`pgrep -P ${shellPid} 2>/dev/null`, { encoding: 'utf-8' }).trim();
+        const childPidOutput = execSync(`pgrep -P ${shellPid} 2>/dev/null`, {
+          encoding: 'utf-8'
+        }).trim();
 
         if (!childPidOutput) {
           return { pid: null, command: null };
@@ -287,7 +298,9 @@ class PtyWorker {
         }
 
         // Get the command name for this PID
-        const command = execSync(`ps -o comm= -p ${childPid} 2>/dev/null`, { encoding: 'utf-8' }).trim();
+        const command = execSync(`ps -o comm= -p ${childPid} 2>/dev/null`, {
+          encoding: 'utf-8'
+        }).trim();
 
         return { pid: childPid, command: command || null };
       } catch {
@@ -316,7 +329,9 @@ class PtyWorker {
     if (process.platform === 'darwin' || process.platform === 'linux') {
       try {
         // Count PTY master devices (/dev/ptmx)
-        const masterOutput = execSync(`lsof -p ${pid} 2>/dev/null | grep "/dev/ptmx" | wc -l`, { encoding: 'utf-8' });
+        const masterOutput = execSync(`lsof -p ${pid} 2>/dev/null | grep "/dev/ptmx" | wc -l`, {
+          encoding: 'utf-8'
+        });
         ptyMasterFds = parseInt(masterOutput.trim(), 10) || 0;
       } catch (error) {
         ptyMasterFds = 0;
@@ -324,7 +339,9 @@ class PtyWorker {
 
       try {
         // Count PTY slave devices (ttys/ttyp)
-        const slaveOutput = execSync(`lsof -p ${pid} 2>/dev/null | grep -E "ttys|ttyp" | wc -l`, { encoding: 'utf-8' });
+        const slaveOutput = execSync(`lsof -p ${pid} 2>/dev/null | grep -E "ttys|ttyp" | wc -l`, {
+          encoding: 'utf-8'
+        });
         ptySlaveFds = parseInt(slaveOutput.trim(), 10) || 0;
       } catch (error) {
         ptySlaveFds = 0;
@@ -332,7 +349,10 @@ class PtyWorker {
 
       try {
         // Count total PTY-related file descriptors
-        const totalOutput = execSync(`lsof -p ${pid} 2>/dev/null | grep -E "/dev/tty|/dev/ptmx" | wc -l`, { encoding: 'utf-8' });
+        const totalOutput = execSync(
+          `lsof -p ${pid} 2>/dev/null | grep -E "/dev/tty|/dev/ptmx" | wc -l`,
+          { encoding: 'utf-8' }
+        );
         totalPtyFds = parseInt(totalOutput.trim(), 10) || 0;
       } catch (error) {
         totalPtyFds = 0;

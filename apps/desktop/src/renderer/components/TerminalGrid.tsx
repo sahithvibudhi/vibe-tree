@@ -154,173 +154,182 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
   }, [worktreePath]);
 
   // Handle terminal split
-  const handleSplit = useCallback((terminalId: string, direction: 'horizontal' | 'vertical') => {
-    const grid = worktreeGridCache.get(worktreePath);
-    if (!grid) return;
+  const handleSplit = useCallback(
+    (terminalId: string, direction: 'horizontal' | 'vertical') => {
+      const grid = worktreeGridCache.get(worktreePath);
+      if (!grid) return;
 
+      // Find the terminal node to split
+      const result = findNodeAndParent(grid.root, terminalId);
+      if (!result) return;
 
-    // Find the terminal node to split
-    const result = findNodeAndParent(grid.root, terminalId);
-    if (!result) return;
+      const { node, parent } = result;
+      if (node.type !== 'terminal') return;
 
-    const { node, parent } = result;
-    if (node.type !== 'terminal') return;
-
-    // Create a new terminal instance
-    const newTerminalId = `${worktreePath}-${Date.now()}`;
-    const portalNode = createHtmlPortalNode();
-    const newTerminal: TerminalInstance = {
-      id: newTerminalId,
-      worktreePath,
-      portalNode
-    };
-
-    // Create new terminal leaf
-    const newTerminalLeaf: TerminalLeaf = {
-      type: 'terminal',
-      id: newTerminalId,
-      terminal: newTerminal
-    };
-
-    // Create split container with the original and new terminal
-    const splitContainer: SplitContainer = {
-      type: 'split',
-      id: `split-${Date.now()}`,
-      direction,
-      children: [node, newTerminalLeaf],
-      splitRatio: 0.5
-    };
-
-    // Replace the terminal node with the split container
-    if (!parent) {
-      // This is the root node
-      grid.root = splitContainer;
-    } else {
-      // Replace in parent's children
-      const childIndex = parent.children.indexOf(node);
-      if (childIndex !== -1) {
-        parent.children[childIndex] = splitContainer;
-      }
-    }
-
-    // Force a new grid reference to ensure React detects the change
-    worktreeGridCache.set(worktreePath, { ...grid });
-
-    // Update state to trigger re-render
-    setWorktreeGrids(new Map(worktreeGridCache));
-
-
-    // Force a resize event after a short delay to ensure DOM is updated
-    setTimeout(() => {
-      window.dispatchEvent(new Event('resize'));
-    }, 50);
-  }, [worktreePath]);
-
-  // Helper function to close terminal from grid
-  const closeTerminalFromGrid = useCallback((grid: WorktreeGrid, terminalId: string) => {
-    // Find the terminal node and its parent
-    const result = findNodeAndParent(grid.root, terminalId);
-    if (!result) return;
-
-    const { node, parent } = result;
-    if (!parent) {
-      // Can't close the root if it's the only terminal
-      return;
-    }
-
-    // Find the sibling node
-    const siblingIndex = parent.children[0] === node ? 1 : 0;
-    const sibling = parent.children[siblingIndex];
-
-    // Find parent's parent to replace parent with sibling
-    if (grid.root === parent) {
-      // Parent is root, replace root with sibling
-      grid.root = sibling;
-    } else {
-      // Find parent's parent and replace
-      const findParentOfParent = (n: GridNode, target: SplitContainer): SplitContainer | null => {
-        if (n.type === 'split') {
-          if (n.children.includes(target)) {
-            return n;
-          }
-          for (const child of n.children) {
-            const result = findParentOfParent(child, target);
-            if (result) return result;
-          }
-        }
-        return null;
+      // Create a new terminal instance
+      const newTerminalId = `${worktreePath}-${Date.now()}`;
+      const portalNode = createHtmlPortalNode();
+      const newTerminal: TerminalInstance = {
+        id: newTerminalId,
+        worktreePath,
+        portalNode
       };
 
-      const parentOfParent = findParentOfParent(grid.root, parent);
-      if (parentOfParent) {
-        const parentIndex = parentOfParent.children.indexOf(parent);
-        if (parentIndex !== -1) {
-          parentOfParent.children[parentIndex] = sibling;
+      // Create new terminal leaf
+      const newTerminalLeaf: TerminalLeaf = {
+        type: 'terminal',
+        id: newTerminalId,
+        terminal: newTerminal
+      };
+
+      // Create split container with the original and new terminal
+      const splitContainer: SplitContainer = {
+        type: 'split',
+        id: `split-${Date.now()}`,
+        direction,
+        children: [node, newTerminalLeaf],
+        splitRatio: 0.5
+      };
+
+      // Replace the terminal node with the split container
+      if (!parent) {
+        // This is the root node
+        grid.root = splitContainer;
+      } else {
+        // Replace in parent's children
+        const childIndex = parent.children.indexOf(node);
+        if (childIndex !== -1) {
+          parent.children[childIndex] = splitContainer;
         }
       }
-    }
 
-    // Force a new grid reference to ensure React detects the change
-    worktreeGridCache.set(worktreePath, { ...grid });
+      // Force a new grid reference to ensure React detects the change
+      worktreeGridCache.set(worktreePath, { ...grid });
 
-    // Update state to trigger re-render
-    setWorktreeGrids(new Map(worktreeGridCache));
-  }, [worktreePath]);
+      // Update state to trigger re-render
+      setWorktreeGrids(new Map(worktreeGridCache));
+
+      // Force a resize event after a short delay to ensure DOM is updated
+      setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+      }, 50);
+    },
+    [worktreePath]
+  );
+
+  // Helper function to close terminal from grid
+  const closeTerminalFromGrid = useCallback(
+    (grid: WorktreeGrid, terminalId: string) => {
+      // Find the terminal node and its parent
+      const result = findNodeAndParent(grid.root, terminalId);
+      if (!result) return;
+
+      const { node, parent } = result;
+      if (!parent) {
+        // Can't close the root if it's the only terminal
+        return;
+      }
+
+      // Find the sibling node
+      const siblingIndex = parent.children[0] === node ? 1 : 0;
+      const sibling = parent.children[siblingIndex];
+
+      // Find parent's parent to replace parent with sibling
+      if (grid.root === parent) {
+        // Parent is root, replace root with sibling
+        grid.root = sibling;
+      } else {
+        // Find parent's parent and replace
+        const findParentOfParent = (n: GridNode, target: SplitContainer): SplitContainer | null => {
+          if (n.type === 'split') {
+            if (n.children.includes(target)) {
+              return n;
+            }
+            for (const child of n.children) {
+              const result = findParentOfParent(child, target);
+              if (result) return result;
+            }
+          }
+          return null;
+        };
+
+        const parentOfParent = findParentOfParent(grid.root, parent);
+        if (parentOfParent) {
+          const parentIndex = parentOfParent.children.indexOf(parent);
+          if (parentIndex !== -1) {
+            parentOfParent.children[parentIndex] = sibling;
+          }
+        }
+      }
+
+      // Force a new grid reference to ensure React detects the change
+      worktreeGridCache.set(worktreePath, { ...grid });
+
+      // Update state to trigger re-render
+      setWorktreeGrids(new Map(worktreeGridCache));
+    },
+    [worktreePath]
+  );
 
   // Handle terminal close - terminates PTY process immediately with SIGKILL
-  const handleClose = useCallback((terminalId: string) => {
-    const grid = worktreeGridCache.get(worktreePath);
-    if (!grid) return;
+  const handleClose = useCallback(
+    (terminalId: string) => {
+      const grid = worktreeGridCache.get(worktreePath);
+      if (!grid) return;
 
-    // Don't allow closing if it's the last terminal
-    const totalTerminals = countTerminals(grid.root);
-    if (totalTerminals <= 1) {
-      console.log('Cannot close the last terminal');
-      return;
-    }
+      // Don't allow closing if it's the last terminal
+      const totalTerminals = countTerminals(grid.root);
+      if (totalTerminals <= 1) {
+        console.log('Cannot close the last terminal');
+        return;
+      }
 
-    // Don't allow closing if already being closed
-    if (terminalsBeingClosed.current.has(terminalId)) {
-      console.log('Terminal is already being closed:', terminalId);
-      return;
-    }
+      // Don't allow closing if already being closed
+      if (terminalsBeingClosed.current.has(terminalId)) {
+        console.log('Terminal is already being closed:', terminalId);
+        return;
+      }
 
-    console.log('Initiating close for terminal:', terminalId);
-    terminalsBeingClosed.current.add(terminalId);
+      console.log('Initiating close for terminal:', terminalId);
+      terminalsBeingClosed.current.add(terminalId);
 
-    // Clean up PTY process - UI will be updated when cleanup succeeds
-    const processId = terminalProcessIds.current.get(terminalId);
-    if (processId && terminalControllerRef.current) {
-      terminalControllerRef.current.handleTerminalClose({
-        terminalId,
-        processId
-      }).catch(async (error) => {
-        console.error('PTY cleanup error for terminal:', terminalId, error);
+      // Clean up PTY process - UI will be updated when cleanup succeeds
+      const processId = terminalProcessIds.current.get(terminalId);
+      if (processId && terminalControllerRef.current) {
+        terminalControllerRef.current
+          .handleTerminalClose({
+            terminalId,
+            processId
+          })
+          .catch(async (error) => {
+            console.error('PTY cleanup error for terminal:', terminalId, error);
 
-        // Show error dialog to user with detailed backtrace and wait for them to acknowledge
-        let errorDetails = '';
-        if (error instanceof Error) {
-          errorDetails = error.stack || error.message;
-        } else {
-          errorDetails = String(error);
-        }
+            // Show error dialog to user with detailed backtrace and wait for them to acknowledge
+            let errorDetails = '';
+            if (error instanceof Error) {
+              errorDetails = error.stack || error.message;
+            } else {
+              errorDetails = String(error);
+            }
 
-        await window.electronAPI.dialog.showError(
-          'Terminal Close Error',
-          `Failed to close terminal cleanly:\n\n${errorDetails}\n\nThe terminal will be removed from the UI.`
-        );
+            await window.electronAPI.dialog.showError(
+              'Terminal Close Error',
+              `Failed to close terminal cleanly:\n\n${errorDetails}\n\nThe terminal will be removed from the UI.`
+            );
 
-        // After user acknowledges the error, proceed with cleanup
-        terminalsBeingClosed.current.delete(terminalId);
-        terminalProcessIds.current.delete(terminalId);
+            // After user acknowledges the error, proceed with cleanup
+            terminalsBeingClosed.current.delete(terminalId);
+            terminalProcessIds.current.delete(terminalId);
+            closeTerminalFromGrid(grid, terminalId);
+          });
+      } else {
+        // No process ID, close immediately
         closeTerminalFromGrid(grid, terminalId);
-      });
-    } else {
-      // No process ID, close immediately
-      closeTerminalFromGrid(grid, terminalId);
-      terminalsBeingClosed.current.delete(terminalId);
-    }
-  }, [worktreePath, closeTerminalFromGrid]);
+        terminalsBeingClosed.current.delete(terminalId);
+      }
+    },
+    [worktreePath, closeTerminalFromGrid]
+  );
 
   // Callback to track process IDs from terminals
   const handleTerminalProcessId = useCallback((terminalId: string, processId: string) => {
@@ -344,7 +353,7 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
   // Get all terminals from all worktrees for rendering InPortals
   const allTerminals = useMemo(() => {
     const terminals: TerminalInstance[] = [];
-    worktreeGrids.forEach(grid => {
+    worktreeGrids.forEach((grid) => {
       terminals.push(...collectTerminals(grid.root));
     });
     return terminals;
@@ -375,27 +384,35 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
       >
         <div
           className={`relative ${isHorizontal ? 'min-h-0 flex-shrink-0' : 'min-w-0 flex-shrink-0'} overflow-hidden`}
-          style={isHorizontal ? {
-            height: `${splitRatio * 100}%`,
-            maxHeight: `${splitRatio * 100}%`,
-            borderBottom: '1px solid var(--border)'
-          } : {
-            width: `${splitRatio * 100}%`,
-            maxWidth: `${splitRatio * 100}%`,
-            borderRight: '1px solid var(--border)'
-          }}
+          style={
+            isHorizontal
+              ? {
+                  height: `${splitRatio * 100}%`,
+                  maxHeight: `${splitRatio * 100}%`,
+                  borderBottom: '1px solid var(--border)'
+                }
+              : {
+                  width: `${splitRatio * 100}%`,
+                  maxWidth: `${splitRatio * 100}%`,
+                  borderRight: '1px solid var(--border)'
+                }
+          }
         >
           {renderGridNode(node.children[0])}
         </div>
         <div
           className={`relative ${isHorizontal ? 'min-h-0 flex-grow' : 'min-w-0 flex-grow'} overflow-hidden`}
-          style={isHorizontal ? {
-            height: `${(1 - splitRatio) * 100}%`,
-            maxHeight: `${(1 - splitRatio) * 100}%`
-          } : {
-            width: `${(1 - splitRatio) * 100}%`,
-            maxWidth: `${(1 - splitRatio) * 100}%`
-          }}
+          style={
+            isHorizontal
+              ? {
+                  height: `${(1 - splitRatio) * 100}%`,
+                  maxHeight: `${(1 - splitRatio) * 100}%`
+                }
+              : {
+                  width: `${(1 - splitRatio) * 100}%`,
+                  maxWidth: `${(1 - splitRatio) * 100}%`
+                }
+          }
         >
           {renderGridNode(node.children[1])}
         </div>
@@ -410,9 +427,10 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
     // Create a MutationObserver to watch for DOM changes
     const observer = new MutationObserver((mutations) => {
       // Check if any terminals were added or removed
-      const hasStructuralChange = mutations.some(mutation =>
-        mutation.type === 'childList' &&
-        (mutation.addedNodes.length > 0 || mutation.removedNodes.length > 0)
+      const hasStructuralChange = mutations.some(
+        (mutation) =>
+          mutation.type === 'childList' &&
+          (mutation.addedNodes.length > 0 || mutation.removedNodes.length > 0)
       );
 
       if (hasStructuralChange) {
@@ -433,10 +451,13 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
   }, []);
 
   return (
-    <div ref={containerRef} className="terminal-manager-root flex-1 h-full relative overflow-hidden">
+    <div
+      ref={containerRef}
+      className="terminal-manager-root flex-1 h-full relative overflow-hidden"
+    >
       {/* Render all terminals into their portals (this happens once per terminal) */}
       {allTerminals.map((terminal) => {
-        const isCurrentTerminal = currentTerminals.some(t => t.id === terminal.id);
+        const isCurrentTerminal = currentTerminals.some((t) => t.id === terminal.id);
         const canCloseTerminal = isCurrentTerminal && currentTerminals.length > 1;
 
         return (
