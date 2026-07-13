@@ -75,7 +75,7 @@ test.describe('Worktree Switch Double Character Bug', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Verify the app launches with project selector
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({
       timeout: 10000
     });
 

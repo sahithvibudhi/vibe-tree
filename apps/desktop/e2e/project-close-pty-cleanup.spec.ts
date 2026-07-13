@@ -46,7 +46,7 @@ test.describe('Project Close PTY Cleanup', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Open the project
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({
       timeout: 10000
     });
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
@@ -123,7 +123,7 @@ test.describe('Project Close PTY Cleanup', () => {
     await confirmButton.click();
 
     // Verify the project selector is shown again (dialog should close and project removed)
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({
       timeout: 10000
     });
 

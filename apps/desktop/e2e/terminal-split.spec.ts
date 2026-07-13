@@ -9,7 +9,7 @@ import path from 'path';
  */
 async function navigateToWorktree(electronApp: ElectronApplication, page: Page, repoPath: string) {
   // Verify the app launches with project selector
-  await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+  await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({ timeout: 10000 });
 
   // Click the "Open Project Folder" button
   const openButton = page.locator('button', { hasText: 'Open Project Folder' });

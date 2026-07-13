@@ -81,6 +81,9 @@ function createWindow() {
 app.whenReady().then(async () => {
   terminalSettingsManager.initialize();
   appSettingsManager.initialize();
+  // The first-run onboarding dialog is modal and would block e2e clicks;
+  // suppress it in the test entry so specs exercise the app directly
+  appSettingsManager.updateSettings({ hasSeenOnboarding: true });
   await embeddedServer.start();
 
   createWindow();

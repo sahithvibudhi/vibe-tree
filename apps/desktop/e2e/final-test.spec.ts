@@ -39,10 +39,10 @@ test.describe('VibeTree Desktop App', () => {
 
   test('should launch and display project selector', async () => {
     // Verify the main heading is present
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible();
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible();
 
     // Verify the description text is present
-    await expect(page.locator('text=Choose a git repository to start collaborating')).toBeVisible();
+    await expect(page.locator('text=Choose a git repository to start')).toBeVisible();
 
     // Verify the "Open Project Folder" button is present and enabled
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });

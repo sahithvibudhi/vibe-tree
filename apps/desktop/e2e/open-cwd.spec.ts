@@ -99,7 +99,7 @@ test.describe('Open Current Working Directory', () => {
     );
 
     // The app should have navigated away from the select project screen
-    const selectProjectText = await page.locator('text="Select a Project"').count();
+    const selectProjectText = await page.locator('text="Open a project"').count();
     expect(selectProjectText).toBe(0);
   });
 
@@ -141,7 +141,7 @@ test.describe('Open Current Working Directory', () => {
     );
 
     // The app should have navigated away from the select project screen
-    const selectProjectText = await page.locator('text="Select a Project"').count();
+    const selectProjectText = await page.locator('text="Open a project"').count();
     expect(selectProjectText).toBe(0);
   });
 
