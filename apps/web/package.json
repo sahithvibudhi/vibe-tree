@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@git-diff-view/react": "^0.0.30",
@@ -36,6 +37,7 @@
     "typescript": "^5.3.3",
     "vite": "^7.0.6",
     "vite-plugin-pwa": "^0.17.4",
-    "workbox-window": "^7.0.0"
+    "workbox-window": "^7.0.0",
+    "@playwright/test": "^1.55.0"
   }
 }

@@ -236,6 +236,8 @@ function App() {
         </div>
       </header>
 
+      <OnboardingHint />
+
       {/* Project Tabs and Content */}
       <Tabs
         value={activeProjectId || ''}

@@ -150,6 +150,8 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
             onClick={() => setShowNewBranchDialog(true)}
             disabled={!connected}
             className="p-1 hover:bg-accent rounded disabled:opacity-50"
+            aria-label="Create worktree"
+            data-testid="create-worktree"
           >
             <Plus className="h-4 w-4" />
           </button>

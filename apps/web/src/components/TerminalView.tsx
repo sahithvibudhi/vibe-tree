@@ -147,29 +147,23 @@ export function TerminalView({ worktreePath }: TerminalViewProps) {
             allCachedSessions: Array.from(terminalStateCache.keys())
           });
 
-          // Handle terminal state restoration like desktop app
           if (!result.isNew) {
-            // Existing shell - restore cached state to fresh terminal
-            console.log('🔄 Existing shell session - restoring state');
-            // Prefer the local snapshot; fall back to the server-side
-            // scrollback buffer, which survives page reloads
+            // Prefer the local serialized snapshot; fall back to the
+            // server-side scrollback buffer, which survives page reloads.
+            // The xterm instance mounts asynchronously after setSessionId,
+            // so retry until it is ready instead of silently skipping.
             const cachedState = terminalStateCache.get(actualSessionId) ?? result.buffer;
-            if (cachedState && terminalRef.current) {
-              // Clear the fresh terminal first
-              terminalRef.current.clear();
-              // Restore the cached content after a delay to ensure terminal is ready
-              setTimeout(() => {
-                if (terminalRef.current && cachedState) {
+            if (cachedState) {
+              const tryRestore = (attemptsLeft: number) => {
+                if (terminalRef.current) {
+                  terminalRef.current.clear();
                   terminalRef.current.write(cachedState);
-                  console.log('✅ State restored for session:', actualSessionId);
+                } else if (attemptsLeft > 0) {
+                  setTimeout(() => tryRestore(attemptsLeft - 1), 100);
                 }
-              }, 100);
-            } else {
-              console.log('⚠️ No cached state found for session:', actualSessionId);
+              };
+              tryRestore(30);
             }
-          } else {
-            // New shell - terminal is already clean
-            console.log('🧹 New shell session - terminal ready');
           }
         } else {
           console.error('Failed to start shell session:', result.error);

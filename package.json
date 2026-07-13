@@ -14,7 +14,7 @@
     "dev:core": "pnpm --filter @vibetree/core dev",
     "dev:ui": "pnpm --filter @vibetree/ui dev",
     "build": "turbo run build",
-    "build:deps": "pnpm --filter @vibetree/core build && pnpm --filter @vibetree/ui build",
+    "build:deps": "pnpm --filter @vibetree/core build && pnpm --filter @vibetree/ui build && pnpm --filter @vibetree/auth build && pnpm --filter @vibetree/server-core build",
     "build:web": "pnpm build:deps && pnpm --filter @vibetree/web build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",

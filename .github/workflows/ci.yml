@@ -204,6 +204,50 @@ jobs:
       - name: Build desktop app
         run: pnpm --filter @vibetree/desktop build
 
+  web-e2e-tests:
+    name: Web E2E Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8.14.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build dependencies
+        run: pnpm build:deps
+
+      - name: Build server
+        run: pnpm --filter @vibetree/server build
+
+      - name: Install Playwright browser
+        run: pnpm --filter @vibetree/web exec playwright install --with-deps chromium
+
+      - name: Run web e2e tests
+        run: pnpm --filter @vibetree/web test:e2e
+        env:
+          CI: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-playwright-results
+          path: apps/web/test-results/
+          retention-days: 7
+
   e2e-tests:
     name: E2E Tests
     runs-on: ubuntu-latest
