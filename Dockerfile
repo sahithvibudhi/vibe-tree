@@ -19,10 +19,11 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Create directories and copy package.json files
-RUN mkdir -p packages/core packages/ui packages/auth apps/server apps/web
+RUN mkdir -p packages/core packages/ui packages/auth packages/server-core apps/server apps/web
 COPY packages/core/package.json ./packages/core/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/auth/package.json ./packages/auth/
+COPY packages/server-core/package.json ./packages/server-core/
 COPY apps/server/package.json ./apps/server/
 COPY apps/web/package.json ./apps/web/
 
@@ -34,6 +35,7 @@ RUN pnpm install --prod --no-frozen-lockfile
 COPY packages/core/dist ./packages/core/dist
 COPY packages/ui/dist ./packages/ui/dist
 COPY packages/auth/dist ./packages/auth/dist
+COPY packages/server-core/dist ./packages/server-core/dist
 COPY apps/server/dist ./apps/server/dist
 COPY apps/web/dist ./apps/web/dist
 
