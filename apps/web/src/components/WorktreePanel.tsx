@@ -53,7 +53,9 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
     setLoading(true);
     try {
       const result = await adapter.addWorktree(project.path, newBranchName);
-      console.log('✅ Created worktree:', result);
+      if (result.hook && !result.hook.ok) {
+        console.warn('post-create hook failed:', result.hook);
+      }
 
       setShowNewBranchDialog(false);
       setNewBranchName('');

@@ -277,10 +277,22 @@ export function WorktreePanel({
 
     try {
       const result = await backend.git.addWorktree(projectPath, newBranchName);
-      toast({
-        title: 'Success',
-        description: `Created worktree for branch ${result.branch}`
-      });
+      if (result.hook && !result.hook.ok) {
+        toast({
+          title: 'Worktree created, post-create hook failed',
+          description: result.hook.timedOut
+            ? 'The .vibetree/hooks/post-create script timed out.'
+            : `The .vibetree/hooks/post-create script exited with code ${result.hook.exitCode}.`,
+          variant: 'destructive'
+        });
+      } else {
+        toast({
+          title: 'Success',
+          description: result.hook
+            ? `Created worktree for branch ${result.branch} (post-create hook ran)`
+            : `Created worktree for branch ${result.branch}`
+        });
+      }
       setShowNewBranchDialog(false);
       setNewBranchName('');
       loadWorktrees();
@@ -333,6 +345,7 @@ export function WorktreePanel({
     // Initialize deletion steps
     const steps = [
       { message: 'Killing terminal processes...', status: 'pending' as const },
+      { message: 'Running pre-remove hook...', status: 'pending' as const },
       { message: 'Removing worktree directory...', status: 'pending' as const },
       { message: 'Deleting git branch...', status: 'pending' as const }
     ];
@@ -360,9 +373,11 @@ export function WorktreePanel({
       // This prevents stale terminals from appearing when worktree is recreated
       cleanupWorktreeTerminals(worktreeToDelete.path);
 
-      // Step 2: Remove worktree and delete branch
+      // Step 2-4: pre-remove hook, worktree removal, and branch deletion all
+      // happen inside removeWorktree; step statuses are set from its result
       updateDeletionStep(1, { status: 'in-progress' });
       updateDeletionStep(2, { status: 'in-progress' });
+      updateDeletionStep(3, { status: 'in-progress' });
 
       try {
         const result = await backend.git.removeWorktree(
@@ -371,22 +386,41 @@ export function WorktreePanel({
           branchName
         );
 
-        updateDeletionStep(1, { status: 'success' });
-
-        if (result.warning) {
-          updateDeletionStep(2, {
+        if (!result.hook) {
+          updateDeletionStep(1, { status: 'success', message: 'No pre-remove hook configured' });
+        } else if (result.hook.ok) {
+          updateDeletionStep(1, { status: 'success', message: 'Pre-remove hook completed' });
+        } else {
+          // A failing hook warns but never blocks the deletion
+          updateDeletionStep(1, {
             status: 'error',
-            error: result.warning
+            error: result.hook.timedOut
+              ? 'Pre-remove hook timed out (deletion continued)'
+              : `Pre-remove hook exited with code ${result.hook.exitCode} (deletion continued)`
+          });
+        }
+
+        updateDeletionStep(2, { status: 'success' });
+
+        const branchWarning =
+          result.warning && result.warning.includes('failed to delete branch')
+            ? result.warning
+            : undefined;
+        if (branchWarning) {
+          updateDeletionStep(3, {
+            status: 'error',
+            error: branchWarning
           });
         } else {
-          updateDeletionStep(2, { status: 'success' });
+          updateDeletionStep(3, { status: 'success' });
         }
       } catch (error) {
-        updateDeletionStep(1, {
+        updateDeletionStep(1, { status: 'error' });
+        updateDeletionStep(2, {
           status: 'error',
           error: error instanceof Error ? error.message : 'Failed to remove worktree'
         });
-        updateDeletionStep(2, { status: 'error' });
+        updateDeletionStep(3, { status: 'error' });
       }
 
       // Switch to another worktree if the deleted one was selected

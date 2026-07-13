@@ -8,6 +8,7 @@ import {
   ProjectValidationResult
 } from '../types';
 import { parseWorktrees, parseGitStatus } from './git-parser';
+import { runWorktreeHookIfPresent } from './worktree-hooks';
 
 /**
  * Execute a git command and return the output
@@ -147,7 +148,16 @@ export async function addWorktree(
 
   await executeGitCommand(['worktree', 'add', '-b', branchName, worktreePath], projectPath);
 
-  return { path: worktreePath, branch: branchName };
+  // Per-project post-create hook (.vibetree/hooks/post-create): dependency
+  // installs, .env copies, etc. A failing hook is reported, not fatal - the
+  // worktree already exists
+  const hook = await runWorktreeHookIfPresent('post-create', {
+    projectPath,
+    worktreePath,
+    branch: branchName
+  });
+
+  return { path: worktreePath, branch: branchName, hook };
 }
 
 /**
@@ -162,6 +172,19 @@ export async function removeWorktree(
   worktreePath: string,
   branchName: string
 ): Promise<WorktreeRemoveResult> {
+  // Per-project pre-remove hook (.vibetree/hooks/pre-remove): stop dev
+  // servers, back up state, etc. Failure warns but never blocks removal -
+  // the user asked to delete and a broken script should not hold that hostage
+  const hook = await runWorktreeHookIfPresent('pre-remove', {
+    projectPath,
+    worktreePath,
+    branch: branchName
+  });
+  const hookWarning =
+    hook && !hook.ok
+      ? `pre-remove hook ${hook.timedOut ? 'timed out' : `exited with code ${hook.exitCode}`}`
+      : undefined;
+
   try {
     // First remove the worktree
     await executeGitCommand(['worktree', 'remove', worktreePath, '--force'], projectPath);
@@ -169,13 +192,15 @@ export async function removeWorktree(
     try {
       // Then try to delete the branch
       await executeGitCommand(['branch', '-D', branchName], projectPath);
-      return { success: true };
+      return { success: true, warning: hookWarning, hook };
     } catch (branchError) {
       // If branch deletion fails, still consider it success since worktree was removed
       console.warn('Failed to delete branch but worktree was removed:', branchError);
+      const warning = `Worktree removed but failed to delete branch: ${branchError}`;
       return {
         success: true,
-        warning: `Worktree removed but failed to delete branch: ${branchError}`
+        warning: hookWarning ? `${warning}; ${hookWarning}` : warning,
+        hook
       };
     }
   } catch (error) {

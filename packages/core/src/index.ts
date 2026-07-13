@@ -18,6 +18,7 @@ export * from './utils/network';
 export * from './utils/shell-escape';
 export * from './utils/system-diagnostics';
 export * from './utils/process';
+export * from './utils/worktree-hooks';
 
 // Version info
 export const VERSION = '0.0.1';
