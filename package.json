@@ -21,9 +21,11 @@
     "test": "turbo run test",
     "test:run": "turbo run test:run",
     "clean": "turbo run clean",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "package:desktop": "pnpm --filter @vibetree/desktop package",
-    "fix:electron": "./fix-electron.sh",
-    "deploy": "./docker-deploy.sh",
+    "fix:electron": "./scripts/fix-electron.sh",
+    "deploy": "./scripts/docker-deploy.sh",
     "docker:build": "docker build -t vibetree-webapp .",
     "docker:run": "docker run -p 3000:3000 -p 3002:3002 --name vibetree-container vibetree-webapp",
     "docker:stop": "docker stop vibetree-container && docker rm vibetree-container",
@@ -48,6 +50,7 @@
   "devDependencies": {
     "concurrently": "^8.2.2",
     "husky": "^9.1.7",
+    "prettier": "^3",
     "turbo": "^1.11.2"
   },
   "packageManager": "pnpm@8.14.0",

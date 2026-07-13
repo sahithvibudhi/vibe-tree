@@ -47,17 +47,13 @@ yarn.lock
 *.sw?
 
 # Electron
-packages/desktop/dist/
-packages/desktop/release/
-
-# PWA
-packages/web/dist/
-packages/web/dist-ssr/
-packages/web/*.local
+apps/desktop/release/
 
 # Server
-packages/server/dist/
-packages/server/.env
+apps/server/.env
+
+# Runtime logs
+logs/
 
 **/playwright-report/**
 **/test-results/**

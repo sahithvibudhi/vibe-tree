@@ -1,0 +1,11 @@
+dist/
+build/
+release/
+coverage/
+node_modules/
+.turbo/
+pnpm-lock.yaml
+CHANGELOG.md
+*.min.*
+apps/desktop/dev-dist/
+apps/web/dev-dist/
