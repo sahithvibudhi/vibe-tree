@@ -1,6 +1,7 @@
 import { app, BrowserWindow, nativeTheme, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
+import { ShellSessionManager } from '@vibetree/core';
 import { embeddedServer } from './embedded-server';
 import { terminalSettingsManager } from './terminal-settings';
 import { appSettingsManager } from './app-settings';
@@ -85,6 +86,12 @@ app.whenReady().then(async () => {
   // suppress it in the test entry so specs exercise the app directly
   appSettingsManager.updateSettings({ hasSeenOnboarding: true });
   await embeddedServer.start();
+
+  // Failure-injection seam for e2e: shell/git traffic runs over WebSocket
+  // now, so specs cannot mock IPC handlers; they patch the session manager
+  // through this global instead
+  (global as { __vibetreeSessionManager?: ShellSessionManager }).__vibetreeSessionManager =
+    ShellSessionManager.getInstance();
 
   createWindow();
   createMenu(mainWindow);

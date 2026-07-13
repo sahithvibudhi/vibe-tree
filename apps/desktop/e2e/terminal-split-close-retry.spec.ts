@@ -214,22 +214,17 @@ test.describe('Terminal Split Close Retry', () => {
     let terminalCount = await page.locator('.claude-terminal-root').count();
     expect(terminalCount).toBe(2);
 
-    // Mock the shell terminate handler to fail with a specific error message
-    await electronApp.evaluate(({ ipcMain }) => {
-      // Store the original handler
-      const originalHandler = ipcMain.listeners('shell:terminate')[0];
-
-      // Remove the original handler
-      ipcMain.removeHandler('shell:terminate');
-
-      // Add a handler that will fail with a specific error message
-      ipcMain.handle('shell:terminate', async () => {
-        // Return success: false with a specific error message
-        return { success: false, error: 'Process is locked and cannot be terminated (EPERM)' };
+    // Make session termination fail with a specific error. Terminal traffic
+    // runs over WebSocket to the embedded server, so the failure is injected
+    // by patching the session manager exposed by the test entry point.
+    await electronApp.evaluate(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const manager = (global as any).__vibetreeSessionManager;
+      (global as any).__originalTerminate = manager.terminateSession;
+      manager.terminateSession = async () => ({
+        success: false,
+        error: 'Process is locked and cannot be terminated (EPERM)'
       });
-
-      // Store the original handler so we can restore it later
-      (global as any).__originalTerminateHandler = originalHandler;
     });
 
     // Clear previous console messages
@@ -244,11 +239,12 @@ test.describe('Terminal Split Close Retry', () => {
     // Wait for error handling to complete
     await page.waitForTimeout(3000);
 
-    // Restore the original handler
-    await electronApp.evaluate(({ ipcMain }) => {
-      ipcMain.removeHandler('shell:terminate');
-      if ((global as any).__originalTerminateHandler) {
-        ipcMain.handle('shell:terminate', (global as any).__originalTerminateHandler);
+    // Restore the original terminate implementation
+    await electronApp.evaluate(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const manager = (global as any).__vibetreeSessionManager;
+      if ((global as any).__originalTerminate) {
+        manager.terminateSession = (global as any).__originalTerminate;
       }
     });
 
