@@ -5,6 +5,7 @@ import { TerminalManager } from './components/TerminalManager';
 import { GitDiffView } from './components/GitDiffView';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { ProjectSelector } from './components/ProjectSelector';
+import { OnboardingHint } from './components/OnboardingHint';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@vibetree/ui';
 import { useAppStore } from './store';
 import { useWebSocket } from './hooks/useWebSocket';
@@ -190,6 +191,8 @@ function App() {
             <ConnectionStatus />
           </div>
         </header>
+
+        <OnboardingHint />
 
         {/* Project Selector */}
         <ProjectSelector onSelectProject={handleSelectProject} />

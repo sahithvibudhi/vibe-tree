@@ -9,6 +9,7 @@ import { ProjectProvider, useProjects } from './contexts/ProjectContext';
 import { Plus, X } from 'lucide-react';
 import { GlobalTerminalSettings } from './components/GlobalTerminalSettings';
 import { GlobalSettings } from './components/GlobalSettings';
+import { OnboardingDialog } from './components/OnboardingDialog';
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,26 @@ import {
 function AppContent() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [projectToClose, setProjectToClose] = useState<{ id: string; name: string } | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const { projects, activeProjectId, addProject, removeProject, setActiveProject } = useProjects();
+
+  useEffect(() => {
+    window.electronAPI.appSettings
+      .get()
+      .then((settings) => {
+        if (!settings.hasSeenOnboarding) {
+          setShowOnboarding(true);
+        }
+      })
+      .catch(() => {
+        // Settings unavailable (e.g. in tests): skip onboarding
+      });
+  }, []);
+
+  const completeOnboarding = () => {
+    setShowOnboarding(false);
+    window.electronAPI.appSettings.update({ hasSeenOnboarding: true }).catch(() => {});
+  };
 
   useEffect(() => {
     // Get initial theme from localStorage or system
@@ -149,6 +169,12 @@ function AppContent() {
       <Toaster />
       <GlobalTerminalSettings />
       <GlobalSettings />
+
+      <OnboardingDialog
+        open={showOnboarding}
+        onComplete={completeOnboarding}
+        onOpenProject={handleOpenProjectDialog}
+      />
 
       <Dialog open={projectToClose !== null} onOpenChange={(open) => !open && cancelCloseProject()}>
         <DialogContent>

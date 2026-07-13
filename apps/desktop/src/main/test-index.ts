@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { embeddedServer } from './embedded-server';
 import { terminalSettingsManager } from './terminal-settings';
+import { appSettingsManager } from './app-settings';
 import './ide-detector';
 import { registerIpcHandlers } from './ipc-handlers';
 import { createMenu } from './menu';
@@ -79,6 +80,7 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   terminalSettingsManager.initialize();
+  appSettingsManager.initialize();
   await embeddedServer.start();
 
   createWindow();

@@ -1,5 +1,6 @@
 import { ipcMain, dialog, nativeTheme, shell, BrowserWindow } from 'electron';
 import { terminalSettingsManager } from './terminal-settings';
+import { appSettingsManager } from './app-settings';
 import { recentProjectsManager } from './recent-projects';
 import { schedulerHistoryManager } from './scheduler-history';
 import { notificationSettingsManager } from './notification-settings';
@@ -92,6 +93,15 @@ export function registerIpcHandlers(mainWindow: BrowserWindow | null) {
     recentProjectsManager.clearRecentProjects();
     // Rebuild menu to reflect the updated recent projects list
     createMenu(mainWindow);
+  });
+
+  // App settings (onboarding flag, etc.)
+  ipcMain.handle('app-settings:get', () => {
+    return appSettingsManager.getSettings();
+  });
+
+  ipcMain.handle('app-settings:update', (_, updates) => {
+    return appSettingsManager.updateSettings(updates);
   });
 
   // Terminal settings handlers
