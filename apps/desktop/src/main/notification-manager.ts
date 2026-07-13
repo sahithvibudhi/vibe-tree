@@ -245,7 +245,6 @@ class NotificationManager {
   /**
    * Handle state transition and potentially show notification
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private transitionTo(
     session: SessionNotificationState,
     processId: string,
