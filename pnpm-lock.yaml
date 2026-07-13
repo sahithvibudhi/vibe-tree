@@ -361,7 +361,7 @@ importers:
         specifier: ^0.25.9
         version: 0.25.9
       node-pty:
-        specifier: ^1.1.0-beta9
+        specifier: ^1.1.0-beta34
         version: 1.1.0-beta9
       typescript:
         specifier: ^5.3.3
@@ -4587,6 +4587,7 @@ packages:
 
   /base64-js@1.5.1:
     resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
+    requiresBuild: true
     dev: true
 
   /bidi-js@1.0.3:
@@ -6666,6 +6667,7 @@ packages:
 
   /ieee754@1.2.1:
     resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==}
+    requiresBuild: true
     dev: true
 
   /ignore-by-default@1.0.1:

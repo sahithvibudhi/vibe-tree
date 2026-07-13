@@ -101,6 +101,14 @@ jobs:
           node-version: 22.12.0
           cache: 'pnpm'
 
+      # The node-gyp bundled with pnpm 8 does not recognize the Visual Studio
+      # version on current windows-latest images, so native modules (node-pty)
+      # fail to build. Point install scripts at an up-to-date node-gyp.
+      - name: Use current node-gyp
+        run: |
+          npm install -g node-gyp@latest
+          "npm_config_node_gyp=$(npm root -g)\node-gyp\bin\node-gyp.js" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
