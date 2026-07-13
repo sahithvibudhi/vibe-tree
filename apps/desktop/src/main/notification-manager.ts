@@ -181,7 +181,7 @@ class NotificationManager {
 
   /**
    * Process terminal output for a session
-   * This is called from shell-manager for every output chunk
+   * This is called from the embedded server output hook for every chunk
    * NOTE: We ALWAYS track state, even if notifications are disabled
    * This allows us to know the current state when user enables notifications
    */

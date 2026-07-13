@@ -1,7 +1,7 @@
 import { app, BrowserWindow, nativeTheme, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
-import { shellProcessManager } from './shell-manager';
+import { embeddedServer } from './embedded-server';
 import { terminalSettingsManager } from './terminal-settings';
 import './ide-detector';
 import { registerIpcHandlers } from './ipc-handlers';
@@ -53,7 +53,8 @@ function createWindow() {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      backgroundThrottling: false // Prevent timer throttling when app is in background (needed for scheduler)
+      // Prevent timer throttling when app is in background (needed for scheduler)
+      backgroundThrottling: false
     }
   });
 
@@ -63,8 +64,6 @@ function createWindow() {
   console.log('Renderer file exists:', fs.existsSync(rendererPath));
 
   mainWindow.loadFile(rendererPath);
-
-  // Don't open DevTools in tests as it can interfere with content detection
 
   mainWindow.on('close', (event) => {
     if (!isQuitting && !DISABLE_QUIT_DIALOG) {
@@ -78,24 +77,21 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
-  // Initialize terminal settings and shell manager BEFORE creating window
+app.whenReady().then(async () => {
   terminalSettingsManager.initialize();
-  shellProcessManager.initialize();
+  await embeddedServer.start();
 
   createWindow();
   createMenu(mainWindow);
   registerIpcHandlers(mainWindow);
 });
 
-// Handle before-quit event to show confirmation
 app.on('before-quit', async (event) => {
   if (!isQuitting && !DISABLE_QUIT_DIALOG) {
     event.preventDefault();
     showQuitConfirmation();
   } else {
-    // Cleanup shell processes before quitting
-    await shellProcessManager.cleanup();
+    await embeddedServer.cleanup();
   }
 });
 

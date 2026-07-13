@@ -1,15 +1,13 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "module": "ESNext",
-    "lib": ["ES2022", "DOM"],
+    "module": "commonjs",
+    "lib": ["ES2022"],
     "declaration": true,
-    "declarationMap": true,
-    "emitDeclarationOnly": false,
     "outDir": "./dist",
     "rootDir": "./src",
     "moduleResolution": "node"
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }

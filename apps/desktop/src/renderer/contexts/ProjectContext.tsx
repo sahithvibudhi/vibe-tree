@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import { backend } from '../services/backend';
 
 interface Worktree {
   path: string;
@@ -136,7 +137,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
 
       // Terminate sessions for each path
       Promise.all(
-        pathsToTerminate.map((path) => window.electronAPI.shell.terminateForWorktree(path))
+        pathsToTerminate.map((path) => backend.shell.terminateForWorktree(path))
       )
         .then((results) => {
           const totalTerminated = results.reduce((sum, r) => sum + r.count, 0);

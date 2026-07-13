@@ -1,4 +1,4 @@
-import { WebSocketAdapter } from './WebSocketAdapter';
+import { WebSocketAdapter } from '@vibetree/core';
 
 // Global singleton WebSocket adapter
 let globalAdapter: WebSocketAdapter | null = null;

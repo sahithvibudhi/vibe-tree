@@ -1,4 +1,4 @@
-import { BaseAdapter } from '@vibetree/core';
+import { BaseAdapter } from './CommunicationAdapter';
 import type {
   Worktree,
   GitStatus,
@@ -8,12 +8,20 @@ import type {
   WorktreeAddResult,
   WorktreeRemoveResult,
   IDE
-} from '@vibetree/core';
+} from '../types';
 
+type EventHandler = (data: any) => void;
+
+/**
+ * WebSocket implementation of the communication adapter. Used by the web
+ * client against a remote server and by the desktop renderer against the
+ * server embedded in the Electron main process, so both platforms exercise
+ * the same protocol and session semantics.
+ */
 export class WebSocketAdapter extends BaseAdapter {
   private ws: WebSocket | null = null;
   private messageHandlers: Map<string, (data: any) => void> = new Map();
-  private eventHandlers: Map<string, Set<(data: any) => void>> = new Map();
+  private eventHandlers: Map<string, Set<EventHandler>> = new Map();
   private messageId = 0;
   private connectionPromise: Promise<void> | null = null;
   private onDisconnect?: () => void;
@@ -33,33 +41,27 @@ export class WebSocketAdapter extends BaseAdapter {
     if (this.connectionPromise) return this.connectionPromise;
 
     this.connectionPromise = new Promise((resolve, reject) => {
-      const url = this.jwt ? `${this.wsUrl}?jwt=${this.jwt}` : this.wsUrl;
+      const url = this.jwt ? `${this.wsUrl}${this.wsUrl.includes('?') ? '&' : '?'}jwt=${this.jwt}` : this.wsUrl;
       this.ws = new WebSocket(url);
 
       this.ws.onopen = () => {
-        console.log('✅ WebSocket connected successfully to:', url);
         resolve();
       };
 
-      this.ws.onerror = (error) => {
-        console.error('💔 WebSocket error occurred:', error);
-        console.error('💔 WebSocket URL was:', url);
-        console.error('💔 WebSocket readyState:', this.ws?.readyState);
-        reject(new Error(`WebSocket connection failed: ${error}`));
+      this.ws.onerror = () => {
+        reject(new Error(`WebSocket connection failed: ${this.wsUrl}`));
       };
 
       this.ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
 
-          // Handle response messages
           if (message.id && this.messageHandlers.has(message.id)) {
             const handler = this.messageHandlers.get(message.id)!;
             this.messageHandlers.delete(message.id);
             handler(message.payload);
           }
 
-          // Handle event messages
           if (message.type && this.eventHandlers.has(message.type)) {
             const handlers = this.eventHandlers.get(message.type)!;
             handlers.forEach((handler) => {
@@ -72,10 +74,7 @@ export class WebSocketAdapter extends BaseAdapter {
       };
 
       this.ws.onclose = () => {
-        console.log('💔 WebSocket disconnected');
         this.connectionPromise = null;
-
-        // Notify about disconnect (will add callback for this)
         this.onDisconnect?.();
       };
     });
@@ -90,7 +89,7 @@ export class WebSocketAdapter extends BaseAdapter {
       const id = (++this.messageId).toString();
 
       this.messageHandlers.set(id, (data) => {
-        if (data.error) {
+        if (data && data.error && data.success === undefined) {
           reject(new Error(data.error));
         } else {
           resolve(data);
@@ -100,7 +99,6 @@ export class WebSocketAdapter extends BaseAdapter {
       const message = { type, payload, id };
       this.ws!.send(JSON.stringify(message));
 
-      // Timeout after 30 seconds
       setTimeout(() => {
         if (this.messageHandlers.has(id)) {
           this.messageHandlers.delete(id);
@@ -110,14 +108,13 @@ export class WebSocketAdapter extends BaseAdapter {
     });
   }
 
-  private addEventListener(event: string, handler: (data: any) => void): () => void {
+  private addEventListener(event: string, handler: EventHandler): () => void {
     if (!this.eventHandlers.has(event)) {
       this.eventHandlers.set(event, new Set());
     }
 
     this.eventHandlers.get(event)!.add(handler);
 
-    // Return unsubscribe function
     return () => {
       const handlers = this.eventHandlers.get(event);
       if (handlers) {
@@ -133,9 +130,10 @@ export class WebSocketAdapter extends BaseAdapter {
     worktreePath: string,
     cols?: number,
     rows?: number,
-    forceNew?: boolean
+    forceNew?: boolean,
+    terminalId?: string
   ): Promise<ShellStartResult> {
-    return this.sendMessage('shell:start', { worktreePath, cols, rows, forceNew });
+    return this.sendMessage('shell:start', { worktreePath, cols, rows, forceNew, terminalId });
   }
 
   async writeToShell(processId: string, data: string): Promise<ShellWriteResult> {
@@ -146,9 +144,26 @@ export class WebSocketAdapter extends BaseAdapter {
     return this.sendMessage('shell:resize', { sessionId: processId, cols, rows });
   }
 
-  async getShellStatus(_processId: string): Promise<{ running: boolean }> {
-    // WebSocket doesn't have a direct status check, assume running if we have a session
-    return { running: true };
+  async getShellStatus(processId: string): Promise<{ running: boolean }> {
+    return this.sendMessage('shell:status', { sessionId: processId });
+  }
+
+  async getShellBuffer(processId: string): Promise<{ success: boolean; buffer: string | null }> {
+    return this.sendMessage('shell:get-buffer', { sessionId: processId });
+  }
+
+  async terminateShell(processId: string): Promise<{ success: boolean; error?: string }> {
+    return this.sendMessage('shell:terminate', { sessionId: processId });
+  }
+
+  async terminateShellsForWorktree(
+    worktreePath: string
+  ): Promise<{ success: boolean; count: number }> {
+    return this.sendMessage('shell:terminate-for-worktree', { worktreePath });
+  }
+
+  async getWorktreeSessions(): Promise<Record<string, number>> {
+    return this.sendMessage('shell:get-worktree-sessions', {});
   }
 
   onShellOutput(processId: string, callback: (data: string) => void): () => void {
@@ -165,6 +180,10 @@ export class WebSocketAdapter extends BaseAdapter {
         callback(payload.code);
       }
     });
+  }
+
+  onSessionsChanged(callback: (sessions: Record<string, number>) => void): () => void {
+    return this.addEventListener('shell:sessions-changed', callback);
   }
 
   async listWorktrees(projectPath: string): Promise<Worktree[]> {
@@ -201,7 +220,6 @@ export class WebSocketAdapter extends BaseAdapter {
   }
 
   async detectIDEs(): Promise<IDE[]> {
-    // Web client doesn't have access to local IDEs
     return [];
   }
 
@@ -209,18 +227,14 @@ export class WebSocketAdapter extends BaseAdapter {
     _ideName: string,
     _projectPath: string
   ): Promise<{ success: boolean; error?: string }> {
-    // Web client can't open local IDEs
-    return { success: false, error: 'Cannot open IDE from web client' };
+    return { success: false, error: 'Cannot open IDE from this client' };
   }
 
   async selectDirectory(): Promise<string | undefined> {
-    // Web client can't access local file system
-    // Would need to implement a server-side directory browser
-    throw new Error('Directory selection not available in web client');
+    throw new Error('Directory selection not available over WebSocket');
   }
 
   async getTheme(): Promise<'light' | 'dark'> {
-    // Use browser's color scheme preference
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
 

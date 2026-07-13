@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { createHtmlPortalNode, InPortal, OutPortal, HtmlPortalNode } from 'react-reverse-portal';
 import { ClaudeTerminal } from './ClaudeTerminal';
+import { backend } from '../services/backend';
 
 interface TerminalManagerProps {
   worktreePath: string;
@@ -124,7 +125,7 @@ export function TerminalManager({ worktreePath, projectId, theme }: TerminalMana
       if (processId) {
         console.log('Terminating PTY for terminal:', terminalId, 'processId:', processId);
         try {
-          await window.electronAPI.shell.terminate(processId);
+          await backend.shell.terminate(processId);
         } catch (error) {
           console.error('Error terminating PTY:', error);
         }

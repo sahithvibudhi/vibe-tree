@@ -18,6 +18,7 @@ import { escapeShellPath } from '@vibetree/core';
 import '@xterm/xterm/css/xterm.css';
 import type { TerminalSettings } from '../types/terminal-settings';
 import { SchedulerDialog, type SchedulerConfig } from './SchedulerDialog';
+import { backend } from '../services/backend';
 
 interface ClaudeTerminalProps {
   worktreePath: string;
@@ -245,7 +246,7 @@ export function ClaudeTerminal({
           if (charIndex < command.length) {
             const char = command[charIndex];
             // Send to PTY
-            window.electronAPI.shell.write(processIdRef.current, char);
+            backend.shell.write(processIdRef.current, char);
             charIndex++;
             setTimeout(typeNextChar, 10); // 10ms between characters
           } else {
@@ -254,7 +255,7 @@ export function ClaudeTerminal({
             // but also don't exceed 1 second for long intervals
             const enterKeyDelay = Math.min(delayMs / 2, 1000);
             setTimeout(() => {
-              window.electronAPI.shell.write(processIdRef.current, '\r');
+              backend.shell.write(processIdRef.current, '\r');
               commandInProgressRef.current = false;
               resolve(true);
             }, enterKeyDelay);
@@ -620,7 +621,7 @@ export function ClaudeTerminal({
           fitAddon.fit();
           // Resize the PTY to match terminal dimensions
           if (processIdRef.current) {
-            window.electronAPI.shell.resize(processIdRef.current, term.cols, term.rows);
+            backend.shell.resize(processIdRef.current, term.cols, term.rows);
           }
         } catch (err) {
           console.error('Error during resize fit:', err);
@@ -698,7 +699,7 @@ export function ClaudeTerminal({
         const cols = terminal.cols;
         const rows = terminal.rows;
 
-        const result = await window.electronAPI.shell.start(
+        const result = await backend.shell.start(
           worktreePath,
           cols,
           rows,
@@ -733,14 +734,15 @@ export function ClaudeTerminal({
 
         // Handle terminal state
         if (result.isNew) {
-          // Clear terminal for new shells
           terminal.clear();
         } else {
-          // Restore cached state for existing shells
-          const cachedState = terminalStateCache.get(result.processId!);
+          // Prefer the local serialized snapshot (preserves colors and cursor
+          // across tab switches); fall back to the server-side scrollback
+          // buffer, which survives window reloads
+          const cachedState = terminalStateCache.get(result.processId!) ?? result.buffer;
           terminal.clear();
 
-          // Use setTimeout to ensure terminal is ready
+          // Deferred so the terminal has finished mounting
           setTimeout(() => {
             if (cachedState) {
               terminal.write(cachedState);
@@ -763,15 +765,15 @@ export function ClaudeTerminal({
                 terminalRef.current.offsetHeight > 0
               ) {
                 fitAddonRef.current!.fit();
-                window.electronAPI.shell.resize(result.processId!, terminal.cols, terminal.rows);
+                backend.shell.resize(result.processId!, terminal.cols, terminal.rows);
               } else {
                 // Use default dimensions if container not ready
-                window.electronAPI.shell.resize(result.processId!, 80, 24);
+                backend.shell.resize(result.processId!, 80, 24);
               }
             } catch (err) {
               console.error('Error during PTY resize fit:', err);
               // Still try to resize with default cols/rows
-              window.electronAPI.shell.resize(result.processId!, 80, 24);
+              backend.shell.resize(result.processId!, 80, 24);
             }
           }, 100);
         }
@@ -779,7 +781,7 @@ export function ClaudeTerminal({
         // Handle terminal input - pass to PTY and mark user input for notifications
         const disposable = terminal.onData((data) => {
           if (processIdRef.current) {
-            window.electronAPI.shell.write(processIdRef.current, data);
+            backend.shell.write(processIdRef.current, data);
             // Only mark user input when user presses ENTER (sends prompt to Claude)
             // This prevents resetting notification flag on every keystroke
             // which would cause duplicate notifications while typing
@@ -790,7 +792,7 @@ export function ClaudeTerminal({
         });
 
         // Set up output listener
-        const removeOutputListener = window.electronAPI.shell.onOutput(
+        const removeOutputListener = backend.shell.onOutput(
           result.processId!,
           (data) => {
             terminal.write(data);
@@ -800,7 +802,7 @@ export function ClaudeTerminal({
         );
 
         // Set up exit listener
-        const removeExitListener = window.electronAPI.shell.onExit(result.processId!, (code) => {
+        const removeExitListener = backend.shell.onExit(result.processId!, (code) => {
           terminal.writeln(`\r\n[Shell exited with code ${code}]`);
           const exitedProcessId = processIdRef.current;
           processIdRef.current = '';
@@ -907,7 +909,7 @@ export function ClaudeTerminal({
           fitAddonRef.current.fit();
           // Also resize the PTY to match the new terminal dimensions
           if (processIdRef.current) {
-            window.electronAPI.shell.resize(processIdRef.current, terminal.cols, terminal.rows);
+            backend.shell.resize(processIdRef.current, terminal.cols, terminal.rows);
           }
         }
       } catch (err) {
@@ -926,7 +928,7 @@ export function ClaudeTerminal({
             fitAddonRef.current.fit();
             // Also resize the PTY to match the new terminal dimensions
             if (processIdRef.current) {
-              window.electronAPI.shell.resize(processIdRef.current, terminal.cols, terminal.rows);
+              backend.shell.resize(processIdRef.current, terminal.cols, terminal.rows);
             }
           }
         } catch (err) {
@@ -1033,7 +1035,7 @@ export function ClaudeTerminal({
     if (paths.length > 0) {
       // Insert the paths at current cursor position
       const pathString = paths.join(' ');
-      window.electronAPI.shell.write(processIdRef.current, pathString);
+      backend.shell.write(processIdRef.current, pathString);
     }
   }, []);
 

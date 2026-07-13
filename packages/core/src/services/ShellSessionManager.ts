@@ -5,15 +5,15 @@ import {
   getPtyOptions,
   writeToPty,
   resizePty,
-  killPty,
-  killPtyGraceful,
   killPtyForce,
   onPtyData,
   onPtyExit,
   type IPty
 } from '../utils/shell';
+import { OutputBuffer } from './OutputBuffer';
+import { getForegroundProcessForPid, type ForegroundProcessInfo } from '../utils/process';
 
-interface ShellSession {
+export interface ManagedShellSession {
   id: string;
   pty: IPty;
   worktreePath: string;
@@ -21,9 +21,8 @@ interface ShellSession {
   lastActivity: Date;
   listeners: Map<string, (data: string) => void>;
   exitListeners: Map<string, (code: number) => void>;
-  dataDisposable?: { dispose: () => void }; // Store the PTY data listener disposable
-  outputBuffer: string[]; // Buffer to store terminal output for replay
-  maxBufferSize: number; // Maximum buffer size in characters
+  dataDisposable?: { dispose: () => void };
+  outputBuffer: OutputBuffer;
 }
 
 interface SpawnError {
@@ -33,27 +32,25 @@ interface SpawnError {
   errorCode?: string;
 }
 
+const DEFAULT_IDLE_TIMEOUT_MS = 24 * 60 * 60 * 1000;
+
 /**
- * Unified shell session manager for all platforms
- * Manages PTY sessions with shared state across desktop, server, and web
+ * Unified shell session manager for all platforms.
+ * Sessions outlive their listeners: a client disconnecting (window reload,
+ * network blip) detaches its listeners but keeps the PTY and its output
+ * buffer alive, so reconnecting clients can replay recent scrollback.
  */
 export class ShellSessionManager {
   private static instance: ShellSessionManager;
-  private sessions: Map<string, ShellSession> = new Map();
-  private sessionTimeoutMs = 30 * 60 * 1000; // 30 minutes
+  private sessions: Map<string, ManagedShellSession> = new Map();
+  private idleTimeoutMs: number = DEFAULT_IDLE_TIMEOUT_MS;
   private cleanupInterval: NodeJS.Timeout | null = null;
-  private spawnErrors: SpawnError[] = []; // Track recent spawn errors
-  private maxSpawnErrors = 10; // Keep last 10 errors
-  private totalPtyInstancesCreated = 0; // Track total PTY instances created during app lifetime
+  private spawnErrors: SpawnError[] = [];
+  private maxSpawnErrors = 10;
+  private totalPtyInstancesCreated = 0;
 
-  private constructor() {
-    // Cleanup timer disabled - keep sessions alive for Claude feedback
-    // this.cleanupInterval = setInterval(() => this.cleanupInactiveSessions(), 60000);
-  }
+  private constructor() {}
 
-  /**
-   * Get singleton instance
-   */
   static getInstance(): ShellSessionManager {
     if (!ShellSessionManager.instance) {
       ShellSessionManager.instance = new ShellSessionManager();
@@ -62,15 +59,29 @@ export class ShellSessionManager {
   }
 
   /**
-   * Track a spawn error for diagnostics
+   * Reap sessions with no activity for idleTimeoutMs. Off by default so
+   * embedders decide the policy; pass 0 to disable again.
    */
+  startIdleCleanup(idleTimeoutMs: number = DEFAULT_IDLE_TIMEOUT_MS): void {
+    this.stopIdleCleanup();
+    if (idleTimeoutMs <= 0) return;
+    this.idleTimeoutMs = idleTimeoutMs;
+    this.cleanupInterval = setInterval(() => this.cleanupInactiveSessions(), 60000);
+    // Do not hold the process open just for the reaper
+    this.cleanupInterval.unref?.();
+  }
+
+  stopIdleCleanup(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+  }
+
   private trackSpawnError(worktreePath: string, errorMessage: string, error: unknown): void {
-    // Extract error code if available (e.g., EMFILE, ENFILE, EAGAIN)
     let errorCode: string | undefined;
     if (error instanceof Error) {
-      // Check if error has a code property (common in Node.js errors)
-      const nodeError = error as NodeJS.ErrnoException;
-      errorCode = nodeError.code;
+      errorCode = (error as NodeJS.ErrnoException).code;
     }
 
     this.spawnErrors.push({
@@ -80,29 +91,23 @@ export class ShellSessionManager {
       errorCode
     });
 
-    // Keep only the last N errors
     if (this.spawnErrors.length > this.maxSpawnErrors) {
       this.spawnErrors.shift();
     }
   }
 
-  /**
-   * Get recent spawn errors
-   */
   getSpawnErrors(): SpawnError[] {
     return [...this.spawnErrors];
   }
 
-  /**
-   * Get total number of PTY instances created during app lifetime
-   */
   getTotalPtyInstancesCreated(): number {
     return this.totalPtyInstancesCreated;
   }
 
   /**
-   * Generate deterministic session ID from worktree path and terminal ID
-   * This ensures same session is reused for same terminal in same worktree
+   * Session IDs are deterministic per worktree + terminal so that a
+   * reconnecting client resumes the same session instead of spawning
+   * a duplicate shell.
    */
   private generateSessionId(
     worktreePath: string,
@@ -110,29 +115,23 @@ export class ShellSessionManager {
     forceNew: boolean = false
   ): string {
     if (forceNew) {
-      // Generate a unique ID for independent sessions
       return crypto.randomBytes(8).toString('hex');
     }
-    // Include terminal ID in the hash to ensure each terminal has its own session
     const key = terminalId ? `${worktreePath}:${terminalId}` : worktreePath;
     return crypto.createHash('sha256').update(key).digest('hex').substring(0, 16);
   }
 
-  /**
-   * Start or get existing shell session
-   */
   async startSession(
     worktreePath: string,
     cols = 80,
     rows = 30,
-    spawnFunction?: (shell: string, args: string[], options: any) => IPty,
+    spawnFunction?: (shell: string, args: string[], options: unknown) => IPty,
     forceNew: boolean = false,
     terminalId?: string,
     setLocaleVariables: boolean = true
   ): Promise<ShellStartResult> {
     const sessionId = this.generateSessionId(worktreePath, terminalId, forceNew);
 
-    // Return existing session if available (unless forceNew is true)
     if (!forceNew) {
       const existingSession = this.sessions.get(sessionId);
       if (existingSession) {
@@ -145,7 +144,6 @@ export class ShellSessionManager {
       }
     }
 
-    // Create new session
     try {
       if (!spawnFunction) {
         throw new Error('Spawn function must be provided for new sessions');
@@ -153,16 +151,13 @@ export class ShellSessionManager {
 
       const shell = getDefaultShell();
       const options = getPtyOptions(worktreePath, cols, rows, setLocaleVariables);
-      // Launch as login shell to ensure proper PATH initialization
-      // For zsh/bash, use -l flag. For other shells, keep empty args
+      // Login shell so the user's PATH (nvm, homebrew, etc.) is available to AI CLIs
       const shellArgs = shell.includes('zsh') || shell.includes('bash') ? ['-l'] : [];
 
       const ptyProcess = spawnFunction(shell, shellArgs, options);
-
-      // Increment total PTY instances counter
       this.totalPtyInstancesCreated++;
 
-      const session: ShellSession = {
+      const session: ManagedShellSession = {
         id: sessionId,
         pty: ptyProcess,
         worktreePath,
@@ -170,15 +165,19 @@ export class ShellSessionManager {
         lastActivity: new Date(),
         listeners: new Map(),
         exitListeners: new Map(),
-        outputBuffer: [],
-        maxBufferSize: 100000 // Approximately 100KB of text
+        outputBuffer: new OutputBuffer()
       };
 
-      // Handle PTY exit
+      // Buffer from the very first byte, even while no client is attached,
+      // so output produced during a disconnect is not lost
+      session.dataDisposable = onPtyData(ptyProcess, (data) => {
+        session.outputBuffer.append(data);
+        session.listeners.forEach((listener) => listener(data));
+      });
+
       onPtyExit(ptyProcess, (exitCode) => {
-        // Notify all exit listeners
         session.exitListeners.forEach((listener) => listener(exitCode));
-        // Remove session
+        session.dataDisposable?.dispose();
         this.sessions.delete(sessionId);
       });
 
@@ -194,8 +193,6 @@ export class ShellSessionManager {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to start shell';
       console.error(`Failed to start PTY session: ${errorMessage}`);
-
-      // Track spawn error for diagnostics
       this.trackSpawnError(worktreePath, errorMessage, error);
 
       return {
@@ -205,9 +202,6 @@ export class ShellSessionManager {
     }
   }
 
-  /**
-   * Write data to shell session
-   */
   async writeToSession(sessionId: string, data: string): Promise<ShellWriteResult> {
     const session = this.sessions.get(sessionId);
     if (!session) {
@@ -226,9 +220,6 @@ export class ShellSessionManager {
     }
   }
 
-  /**
-   * Resize shell session
-   */
   async resizeSession(sessionId: string, cols: number, rows: number): Promise<ShellResizeResult> {
     const session = this.sessions.get(sessionId);
     if (!session) {
@@ -247,9 +238,6 @@ export class ShellSessionManager {
     }
   }
 
-  /**
-   * Add output listener for session
-   */
   addOutputListener(
     sessionId: string,
     listenerId: string,
@@ -259,34 +247,13 @@ export class ShellSessionManager {
     const session = this.sessions.get(sessionId);
     if (!session) return false;
 
-    // Remove old listener if exists
     this.removeOutputListener(sessionId, listenerId);
-
-    // Add new listener
     session.listeners.set(listenerId, callback);
 
-    // Subscribe to PTY data if this is the first listener
-    if (session.listeners.size === 1) {
-      // Dispose of any existing data listener first (shouldn't happen but be safe)
-      if (session.dataDisposable) {
-        session.dataDisposable.dispose();
-      }
-
-      session.dataDisposable = onPtyData(session.pty, (data) => {
-        // Store in buffer for replay
-        this.addToBuffer(session, data);
-
-        // Send to all listeners
-        session.listeners.forEach((listener) => listener(data));
-      });
-    }
-
-    // Replay buffer for new listener (unless skipReplay is true)
-    if (!skipReplay && session.outputBuffer.length > 0) {
-      // Combine all buffer chunks and send as one to avoid flicker
-      const replayData = session.outputBuffer.join('');
+    if (!skipReplay && !session.outputBuffer.isEmpty) {
+      const replayData = session.outputBuffer.snapshot();
       if (replayData) {
-        // Use setTimeout to ensure the terminal is ready
+        // Deferred so the client's terminal has time to mount
         setTimeout(() => callback(replayData), 50);
       }
     }
@@ -296,47 +263,23 @@ export class ShellSessionManager {
   }
 
   /**
-   * Add data to session buffer, maintaining size limit
+   * Get the buffered output for a session, for request/response style
+   * scrollback restore (avoids the replay race for clients that subscribe
+   * to output events after fetching the buffer).
    */
-  private addToBuffer(session: ShellSession, data: string): void {
-    session.outputBuffer.push(data);
-
-    // Trim buffer if it exceeds max size
-    let totalSize = session.outputBuffer.reduce((sum, chunk) => sum + chunk.length, 0);
-    while (totalSize > session.maxBufferSize && session.outputBuffer.length > 1) {
-      const removed = session.outputBuffer.shift();
-      if (removed) {
-        totalSize -= removed.length;
-      }
-    }
+  getBuffer(sessionId: string): string | null {
+    const session = this.sessions.get(sessionId);
+    if (!session) return null;
+    return session.outputBuffer.snapshot();
   }
 
-  /**
-   * Remove output listener
-   */
   removeOutputListener(sessionId: string, listenerId: string): boolean {
     const session = this.sessions.get(sessionId);
     if (!session) return false;
-
-    const removed = session.listeners.delete(listenerId);
-
-    // If this was the last listener, dispose of the PTY data listener
-    if (removed && session.listeners.size === 0 && session.dataDisposable) {
-      session.dataDisposable.dispose();
-      session.dataDisposable = undefined;
-    }
-
-    return removed;
+    return session.listeners.delete(listenerId);
   }
 
-  /**
-   * Add exit listener for session
-   */
-  addExitListener(
-    sessionId: string,
-    listenerId: string,
-    callback: (code: number) => void
-  ): boolean {
+  addExitListener(sessionId: string, listenerId: string, callback: (code: number) => void): boolean {
     const session = this.sessions.get(sessionId);
     if (!session) return false;
 
@@ -344,9 +287,6 @@ export class ShellSessionManager {
     return true;
   }
 
-  /**
-   * Remove exit listener
-   */
   removeExitListener(sessionId: string, listenerId: string): boolean {
     const session = this.sessions.get(sessionId);
     if (!session) return false;
@@ -354,10 +294,7 @@ export class ShellSessionManager {
     return session.exitListeners.delete(listenerId);
   }
 
-  /**
-   * Get session by ID
-   */
-  getSession(sessionId: string): ShellSession | undefined {
+  getSession(sessionId: string): ManagedShellSession | undefined {
     const session = this.sessions.get(sessionId);
     if (session) {
       session.lastActivity = new Date();
@@ -365,25 +302,33 @@ export class ShellSessionManager {
     return session;
   }
 
-  /**
-   * Get all sessions
-   */
-  getAllSessions(): ShellSession[] {
+  getAllSessions(): ManagedShellSession[] {
     return Array.from(this.sessions.values());
   }
 
-  /**
-   * Check if session exists
-   */
   hasSession(sessionId: string): boolean {
     return this.sessions.has(sessionId);
   }
 
+  async getForegroundProcess(sessionId: string): Promise<ForegroundProcessInfo> {
+    const session = this.sessions.get(sessionId);
+    if (!session?.pty.pid) {
+      return { pid: null, command: null };
+    }
+    return getForegroundProcessForPid(session.pty.pid);
+  }
+
   /**
-   * Terminate session - uses SIGKILL to ensure process and children are killed immediately
-   * @param sessionId - Session ID to terminate
-   * @returns Object with success status
+   * Count of sessions per worktree path, used for UI indicators.
    */
+  getWorktreeSessionCounts(): Record<string, number> {
+    const counts = new Map<string, number>();
+    for (const session of this.sessions.values()) {
+      counts.set(session.worktreePath, (counts.get(session.worktreePath) || 0) + 1);
+    }
+    return Object.fromEntries(counts);
+  }
+
   async terminateSession(sessionId: string): Promise<{ success: boolean; error?: string }> {
     const session = this.sessions.get(sessionId);
     if (!session) {
@@ -394,20 +339,17 @@ export class ShellSessionManager {
       const pid = session.pty.pid;
       console.log(`Terminating session ${sessionId} (PID: ${pid})`);
 
-      // Dispose of data listener if it exists
       if (session.dataDisposable) {
         session.dataDisposable.dispose();
       }
 
-      // Clear listeners
       session.listeners.clear();
       session.exitListeners.clear();
 
-      // Force kill immediately - SIGTERM doesn't reliably kill child processes
+      // SIGKILL because SIGTERM does not reliably kill shell child processes;
       // killPtyForce waits for the exit event before resolving
       await killPtyForce(session.pty);
 
-      // Remove from sessions after process has exited
       this.sessions.delete(sessionId);
       console.log(`Successfully terminated session ${sessionId} (PID: ${pid})`);
       return { success: true };
@@ -419,59 +361,40 @@ export class ShellSessionManager {
     }
   }
 
-  /**
-   * Terminate all sessions for a worktree path
-   * Returns the number of sessions terminated
-   */
   async terminateSessionsForWorktree(worktreePath: string): Promise<number> {
-    let terminated = 0;
     const sessionsToTerminate: string[] = [];
 
-    // Find all sessions for this worktree
     for (const [sessionId, session] of this.sessions) {
       if (session.worktreePath === worktreePath) {
         sessionsToTerminate.push(sessionId);
       }
     }
 
-    // Terminate each session in parallel for faster cleanup
-    const terminatePromises = sessionsToTerminate.map(async (sessionId) => {
-      const result = await this.terminateSession(sessionId);
-      return result.success ? 1 : 0;
-    });
-
-    const results = await Promise.all(terminatePromises);
-    terminated = results.reduce((sum: number, count: number) => sum + count, 0);
+    const results = await Promise.all(
+      sessionsToTerminate.map(async (sessionId) => {
+        const result = await this.terminateSession(sessionId);
+        return result.success ? 1 : 0;
+      })
+    );
+    const terminated = results.reduce((sum: number, count: number) => sum + count, 0);
 
     console.log(`Terminated ${terminated} session(s) for worktree: ${worktreePath}`);
     return terminated;
   }
 
-  /**
-   * Clean up inactive sessions
-   */
   private cleanupInactiveSessions(): void {
     const now = new Date();
     for (const [sessionId, session] of this.sessions) {
       const inactiveTime = now.getTime() - session.lastActivity.getTime();
-      if (inactiveTime > this.sessionTimeoutMs) {
+      if (inactiveTime > this.idleTimeoutMs) {
         console.log(`Cleaning up inactive session: ${sessionId}`);
         this.terminateSession(sessionId);
       }
     }
   }
 
-  /**
-   * Cleanup all sessions (for app shutdown)
-   */
   async cleanup(): Promise<void> {
-    // Stop cleanup timer
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-      this.cleanupInterval = null;
-    }
-
-    // Terminate all sessions in parallel
+    this.stopIdleCleanup();
     const sessionIds = Array.from(this.sessions.keys());
     await Promise.all(sessionIds.map((sessionId) => this.terminateSession(sessionId)));
   }

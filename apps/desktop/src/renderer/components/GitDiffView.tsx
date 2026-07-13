@@ -4,6 +4,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { RefreshCw, FileText } from 'lucide-react';
 import { DiffView, DiffModeEnum } from '@git-diff-view/react';
 import '@git-diff-view/react/styles/diff-view.css';
+import { backend } from '../services/backend';
 
 interface GitFile {
   path: string;
@@ -29,7 +30,7 @@ export function GitDiffView({ worktreePath, theme = 'light' }: GitDiffViewProps)
     try {
       setLoading(true);
       setError(null);
-      const status = await window.electronAPI.git.status(worktreePath);
+      const status = await backend.git.status(worktreePath);
       setFiles(status);
       if (status.length > 0 && !selectedFile) {
         setSelectedFile(status[0].path);
@@ -48,8 +49,8 @@ export function GitDiffView({ worktreePath, theme = 'light' }: GitDiffViewProps)
         setLoading(true);
         setError(null);
         const diffTextResult = staged
-          ? await window.electronAPI.git.diffStaged(worktreePath, filePath)
-          : await window.electronAPI.git.diff(worktreePath, filePath);
+          ? await backend.git.diffStaged(worktreePath, filePath)
+          : await backend.git.diff(worktreePath, filePath);
 
         setDiffText(diffTextResult.trim());
       } catch (err) {

@@ -17,6 +17,7 @@ import { DeletionReportingDialog } from './DeletionReportingDialog';
 import type { TerminalSettings } from '../types/terminal-settings';
 import { activeSchedulersByWorktree, SCHEDULER_STATE_CHANGED_EVENT } from './ClaudeTerminal';
 import { cleanupWorktreeTerminals } from './TerminalGrid';
+import { backend } from '../services/backend';
 
 interface Worktree {
   path: string;
@@ -67,7 +68,9 @@ export function WorktreePanel({
   const loadWorktrees = useCallback(async () => {
     setRefreshing(true);
     try {
-      const trees = await window.electronAPI.git.listWorktrees(projectPath);
+      const result = await backend.git.listWorktrees(projectPath);
+      // Detached HEAD worktrees have no branch; the panel shows them by path
+      const trees = result.map((t) => ({ path: t.path, head: t.head, branch: t.branch ?? '' }));
       setWorktrees(trees);
       onWorktreesChange?.(trees);
     } catch (error) {
@@ -96,7 +99,7 @@ export function WorktreePanel({
         try {
           // Create one worktree using the same method as the regular add button
           const branchName = `stress-test-${String(index).padStart(4, '0')}`;
-          const wtResult = await window.electronAPI.git.addWorktree(projectPath, branchName);
+          const wtResult = await backend.git.addWorktree(projectPath, branchName);
 
           consecutiveFailures = 0; // Reset on success
 
@@ -104,7 +107,7 @@ export function WorktreePanel({
           onSelectWorktree(wtResult.path);
 
           // Open terminal for this worktree immediately
-          const shellResult = await window.electronAPI.shell.start(wtResult.path, 80, 30, true);
+          const shellResult = await backend.shell.start(wtResult.path, 80, 30, true);
 
           if (!shellResult.success) {
             console.error(`Failed to open terminal for worktree ${index}:`, shellResult.error);
@@ -189,10 +192,10 @@ export function WorktreePanel({
   // Listen for terminal session changes
   useEffect(() => {
     // Load initial session counts
-    window.electronAPI.shell.getWorktreeSessions().then(setWorktreeSessionCounts);
+    backend.shell.getWorktreeSessions().then(setWorktreeSessionCounts);
 
     // Subscribe to session changes
-    const unsubscribe = window.electronAPI.shell.onSessionsChanged((sessions) => {
+    const unsubscribe = backend.shell.onSessionsChanged((sessions) => {
       setWorktreeSessionCounts(sessions);
     });
 
@@ -273,7 +276,7 @@ export function WorktreePanel({
     if (!newBranchName.trim()) return;
 
     try {
-      const result = await window.electronAPI.git.addWorktree(projectPath, newBranchName);
+      const result = await backend.git.addWorktree(projectPath, newBranchName);
       toast({
         title: 'Success',
         description: `Created worktree for branch ${result.branch}`
@@ -341,7 +344,7 @@ export function WorktreePanel({
       // Step 1: Kill all terminal processes for this worktree
       updateDeletionStep(0, { status: 'in-progress' });
       try {
-        const result = await window.electronAPI.shell.terminateForWorktree(worktreeToDelete.path);
+        const result = await backend.shell.terminateForWorktree(worktreeToDelete.path);
         updateDeletionStep(0, {
           status: 'success',
           message: `Killed ${result.count} terminal process(es)`
@@ -362,7 +365,7 @@ export function WorktreePanel({
       updateDeletionStep(2, { status: 'in-progress' });
 
       try {
-        const result = await window.electronAPI.git.removeWorktree(
+        const result = await backend.git.removeWorktree(
           projectPath,
           worktreeToDelete.path,
           branchName

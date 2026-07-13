@@ -151,7 +151,9 @@ export function TerminalView({ worktreePath }: TerminalViewProps) {
           if (!result.isNew) {
             // Existing shell - restore cached state to fresh terminal
             console.log('🔄 Existing shell session - restoring state');
-            const cachedState = terminalStateCache.get(actualSessionId);
+            // Prefer the local snapshot; fall back to the server-side
+            // scrollback buffer, which survives page reloads
+            const cachedState = terminalStateCache.get(actualSessionId) ?? result.buffer;
             if (cachedState && terminalRef.current) {
               // Clear the fresh terminal first
               terminalRef.current.clear();

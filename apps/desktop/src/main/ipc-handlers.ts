@@ -1,12 +1,4 @@
 import { ipcMain, dialog, nativeTheme, shell, BrowserWindow } from 'electron';
-import {
-  listWorktrees,
-  getGitStatus,
-  getGitDiff,
-  getGitDiffStaged,
-  addWorktree,
-  removeWorktree
-} from '@vibetree/core';
 import { terminalSettingsManager } from './terminal-settings';
 import { recentProjectsManager } from './recent-projects';
 import { schedulerHistoryManager } from './scheduler-history';
@@ -19,34 +11,6 @@ import * as os from 'os';
 import * as path from 'path';
 
 export function registerIpcHandlers(mainWindow: BrowserWindow | null) {
-  // Git worktree operations
-  ipcMain.handle('git:worktree-list', async (_, projectPath: string) => {
-    return listWorktrees(projectPath);
-  });
-
-  ipcMain.handle('git:status', async (_, worktreePath: string) => {
-    return getGitStatus(worktreePath);
-  });
-
-  ipcMain.handle('git:diff', async (_, worktreePath: string, filePath?: string) => {
-    return getGitDiff(worktreePath, filePath);
-  });
-
-  ipcMain.handle('git:diff-staged', async (_, worktreePath: string, filePath?: string) => {
-    return getGitDiffStaged(worktreePath, filePath);
-  });
-
-  ipcMain.handle('git:worktree-add', async (_, projectPath: string, branchName: string) => {
-    return addWorktree(projectPath, branchName);
-  });
-
-  ipcMain.handle(
-    'git:worktree-remove',
-    async (_, projectPath: string, worktreePath: string, branchName: string) => {
-      return removeWorktree(projectPath, worktreePath, branchName);
-    }
-  );
-
   // Theme handling
   ipcMain.handle('theme:get', () => {
     return nativeTheme.shouldUseDarkColors ? 'dark' : 'light';

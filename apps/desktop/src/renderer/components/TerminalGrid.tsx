@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { createHtmlPortalNode, InPortal, OutPortal, HtmlPortalNode } from 'react-reverse-portal';
 import { ClaudeTerminal } from './ClaudeTerminal';
 import { TerminalController } from '../services/TerminalController';
+import { backend } from '../services/backend';
 
 interface TerminalManagerProps {
   worktreePath: string;
@@ -102,7 +103,7 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
   // Initialize terminal controller
   const terminalControllerRef = useRef<TerminalController>();
   if (!terminalControllerRef.current) {
-    terminalControllerRef.current = new TerminalController(window.electronAPI.shell, {
+    terminalControllerRef.current = new TerminalController(backend.shell, {
       onCleanupSuccess: (terminalId) => {
         console.log(`[TerminalGrid] PTY cleanup successful for terminal: ${terminalId}`);
         terminalProcessIds.current.delete(terminalId);

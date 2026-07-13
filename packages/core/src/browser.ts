@@ -5,6 +5,7 @@ export * from './types';
 
 // Export adapter interfaces (these are just interfaces/classes with no Node.js deps)
 export { CommunicationAdapter, BaseAdapter } from './adapters/CommunicationAdapter';
+export { WebSocketAdapter } from './adapters/WebSocketAdapter';
 
 // Export the IPty interface type only (no node-pty implementation)
 export type { IPty } from './utils/shell';

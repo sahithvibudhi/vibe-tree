@@ -1,6 +1,4 @@
-import { Express } from 'express';
-import { ShellManager } from '../services/ShellManager';
-import { AuthService } from '../auth/AuthService';
+import type { Express } from 'express';
 import {
   listWorktrees,
   getGitStatus,
@@ -9,32 +7,30 @@ import {
   removeWorktree,
   validateProjects
 } from '@vibetree/core';
+import { ShellManager } from '../services/ShellManager';
+import { AuthService } from '../auth/AuthService';
+import type { ServerConfig } from '../config';
 
 interface Services {
   shellManager: ShellManager;
   authService: AuthService;
+  config: ServerConfig;
 }
 
 export function setupRestRoutes(app: Express, services: Services) {
-  const { shellManager, authService } = services;
+  const { shellManager, authService, config } = services;
 
-  // Get server configuration
   app.get('/api/config', (req, res) => {
     res.json({
-      projectPath: process.env.PROJECT_PATH || process.cwd(),
+      projectPath: config.projectPath,
       version: '0.0.1'
     });
   });
 
-  // Authentication endpoints
-
-  // Get authentication configuration
   app.get('/api/auth/config', (req, res) => {
-    const config = authService.getAuthConfig();
-    res.json(config);
+    res.json(authService.getAuthConfig());
   });
 
-  // Login endpoint
   app.post('/api/auth/login', (req, res) => {
     const { username, password } = req.body;
 
@@ -51,9 +47,7 @@ export function setupRestRoutes(app: Express, services: Services) {
     }
   });
 
-  // Logout endpoint
   app.post('/api/auth/logout', (req, res) => {
-    // Get session token from Authorization header or query parameter
     let sessionToken: string | undefined;
 
     const authHeader = req.headers.authorization;
@@ -78,24 +72,19 @@ export function setupRestRoutes(app: Express, services: Services) {
     }
   });
 
-  // Generate QR code for device pairing
   app.get('/api/auth/qr', async (req, res) => {
     try {
-      const port = parseInt(process.env.PORT || '3001');
-      const result = await authService.generateQRCode(port);
+      const result = await authService.generateQRCode(config.port);
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: 'Failed to generate QR code' });
     }
   });
 
-  // List connected devices (protected)
   app.get('/api/devices', authService.requireAuth, (req, res) => {
-    const devices = authService.getConnectedDevices();
-    res.json(devices);
+    res.json(authService.getConnectedDevices());
   });
 
-  // Disconnect a device (protected)
   app.delete('/api/devices/:deviceId', authService.requireAuth, (req, res) => {
     const success = authService.disconnectDevice(req.params.deviceId);
     if (success) {
@@ -105,7 +94,6 @@ export function setupRestRoutes(app: Express, services: Services) {
     }
   });
 
-  // List active shell sessions (protected)
   app.get('/api/shells', authService.requireAuth, (req, res) => {
     const sessions = shellManager.getAllSessions();
     res.json(
@@ -118,7 +106,6 @@ export function setupRestRoutes(app: Express, services: Services) {
     );
   });
 
-  // Terminate a shell session (protected)
   app.delete('/api/shells/:sessionId', authService.requireAuth, async (req, res) => {
     const result = await shellManager.terminateSession(req.params.sessionId);
     if (result.success) {
@@ -128,11 +115,9 @@ export function setupRestRoutes(app: Express, services: Services) {
     }
   });
 
-  // Git operations (for non-WebSocket clients) - Protected
   app.post('/api/git/worktrees', authService.requireAuth, async (req, res) => {
     try {
-      const worktrees = await listWorktrees(req.body.projectPath);
-      res.json(worktrees);
+      res.json(await listWorktrees(req.body.projectPath));
     } catch (error) {
       res.status(500).json({ error: (error as Error).message });
     }
@@ -140,8 +125,7 @@ export function setupRestRoutes(app: Express, services: Services) {
 
   app.post('/api/git/status', authService.requireAuth, async (req, res) => {
     try {
-      const status = await getGitStatus(req.body.worktreePath);
-      res.json(status);
+      res.json(await getGitStatus(req.body.worktreePath));
     } catch (error) {
       res.status(500).json({ error: (error as Error).message });
     }
@@ -158,8 +142,7 @@ export function setupRestRoutes(app: Express, services: Services) {
 
   app.post('/api/git/worktree/add', authService.requireAuth, async (req, res) => {
     try {
-      const result = await addWorktree(req.body.projectPath, req.body.branchName);
-      res.json(result);
+      res.json(await addWorktree(req.body.projectPath, req.body.branchName));
     } catch (error) {
       res.status(500).json({ error: (error as Error).message });
     }
@@ -167,18 +150,14 @@ export function setupRestRoutes(app: Express, services: Services) {
 
   app.delete('/api/git/worktree', authService.requireAuth, async (req, res) => {
     try {
-      const result = await removeWorktree(
-        req.body.projectPath,
-        req.body.worktreePath,
-        req.body.branchName
+      res.json(
+        await removeWorktree(req.body.projectPath, req.body.worktreePath, req.body.branchName)
       );
-      res.json(result);
     } catch (error) {
       res.status(500).json({ error: (error as Error).message });
     }
   });
 
-  // Validate multiple project paths (protected)
   app.post('/api/projects/validate', authService.requireAuth, async (req, res) => {
     try {
       const { projectPaths } = req.body;
@@ -195,31 +174,15 @@ export function setupRestRoutes(app: Express, services: Services) {
         return res.status(400).json({ error: 'Maximum 10 projects can be validated at once' });
       }
 
-      const results = await validateProjects(projectPaths);
-      res.json(results);
+      res.json(await validateProjects(projectPaths));
     } catch (error) {
       res.status(500).json({ error: (error as Error).message });
     }
   });
 
-  // Auto-load projects from environment variable
   app.get('/api/projects/auto-load', async (req, res) => {
     try {
-      const defaultProjectsEnv = process.env.DEFAULT_PROJECTS;
-
-      if (!defaultProjectsEnv || defaultProjectsEnv.trim() === '') {
-        return res.json({
-          projectPaths: [],
-          validationResults: [],
-          defaultProjectPath: null
-        });
-      }
-
-      // Parse comma-separated project paths
-      const projectPaths = defaultProjectsEnv
-        .split(',')
-        .map((path) => path.trim())
-        .filter((path) => path.length > 0);
+      const projectPaths = config.defaultProjects;
 
       if (projectPaths.length === 0) {
         return res.json({
@@ -235,10 +198,7 @@ export function setupRestRoutes(app: Express, services: Services) {
           .json({ error: 'Maximum 10 projects can be configured in DEFAULT_PROJECTS' });
       }
 
-      // Validate all projects
       const validationResults = await validateProjects(projectPaths);
-
-      // First valid project becomes the default
       const defaultProjectPath = validationResults.find((result) => result.valid)?.path || null;
 
       res.json({

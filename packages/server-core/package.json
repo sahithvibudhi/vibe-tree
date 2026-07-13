@@ -1,0 +1,35 @@
+{
+  "name": "@vibetree/server-core",
+  "version": "0.0.1",
+  "description": "VibeTree Server Core - embeddable HTTP/WebSocket backend shared by the standalone server and the desktop app",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@vibetree/core": "workspace:*",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "qrcode": "^1.5.3",
+    "uuid": "^9.0.1",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20.11.5",
+    "@types/qrcode": "^1.5.5",
+    "@types/uuid": "^9.0.7",
+    "@types/ws": "^8.5.10",
+    "typescript": "^5.3.3",
+    "vitest": "^3.2.4"
+  }
+}
