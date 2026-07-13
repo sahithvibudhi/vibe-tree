@@ -105,6 +105,8 @@ export function ClaudeTerminal({
   const removeListenersRef = useRef<Array<() => void>>([]);
   const [detectedIDEs, setDetectedIDEs] = useState<Array<{ name: string; command: string }>>([]);
   const [searchVisible, setSearchVisible] = useState(false);
+  const searchVisibleRef = useRef(false);
+  searchVisibleRef.current = searchVisible;
   const [searchQuery, setSearchQuery] = useState('');
   const [terminalSettings, setTerminalSettings] = useState<TerminalSettings | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -593,16 +595,17 @@ export function ClaudeTerminal({
         });
     });
 
-    // Handle keyboard shortcuts for search
+    // Handle keyboard shortcuts for search. This effect runs once, so read
+    // the latest visibility through a ref instead of the stale closure value
     const keyDisposable = term.onKey((e) => {
       const { domEvent } = e;
       // Ctrl+F or Cmd+F to toggle search
       if ((domEvent.ctrlKey || domEvent.metaKey) && domEvent.key === 'f') {
         domEvent.preventDefault();
-        setSearchVisible(!searchVisible);
+        setSearchVisible((visible) => !visible);
       }
       // Escape to close search
-      if (domEvent.key === 'Escape' && searchVisible) {
+      if (domEvent.key === 'Escape' && searchVisibleRef.current) {
         setSearchVisible(false);
         setSearchQuery('');
         term.focus();

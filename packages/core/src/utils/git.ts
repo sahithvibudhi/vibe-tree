@@ -15,10 +15,19 @@ import { parseWorktrees, parseGitStatus } from './git-parser';
  * @param cwd - Working directory for the command
  * @returns Promise with command output
  */
-export function executeGitCommand(args: string[], cwd: string): Promise<string> {
+// Locations to try when 'git' is not on PATH (GUI-launched apps on macOS
+// often inherit a minimal PATH)
+const GIT_FALLBACK_PATHS = [
+  '/usr/bin/git',
+  '/usr/local/bin/git',
+  '/opt/homebrew/bin/git',
+  'C:\\Program Files\\Git\\cmd\\git.exe'
+];
+
+let resolvedGitCommand: string | null = null;
+
+function runGit(gitCommand: string, args: string[], cwd: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    // Try 'git' first, fallback to absolute path if not found
-    const gitCommand = process.env.PATH?.includes('/usr/bin') ? 'git' : '/usr/bin/git';
     const child = spawn(gitCommand, args, {
       cwd,
       env: { ...process.env, PATH: process.env.PATH || '/usr/bin:/bin:/usr/local/bin' }
@@ -35,6 +44,10 @@ export function executeGitCommand(args: string[], cwd: string): Promise<string> 
       stderr += data.toString();
     });
 
+    child.on('error', (error) => {
+      reject(error);
+    });
+
     child.on('close', (code) => {
       if (code === 0) {
         resolve(stdout);
@@ -43,6 +56,33 @@ export function executeGitCommand(args: string[], cwd: string): Promise<string> 
       }
     });
   });
+}
+
+export async function executeGitCommand(args: string[], cwd: string): Promise<string> {
+  const candidates = resolvedGitCommand
+    ? [resolvedGitCommand]
+    : ['git', ...GIT_FALLBACK_PATHS];
+
+  let lastError: unknown;
+  for (const candidate of candidates) {
+    try {
+      const output = await runGit(candidate, args, cwd);
+      resolvedGitCommand = candidate;
+      return output;
+    } catch (error) {
+      lastError = error;
+      const code = (error as NodeJS.ErrnoException).code;
+      // Only fall through to the next location when the binary is missing;
+      // a real git failure (bad args, not a repo) must surface immediately
+      if (code !== 'ENOENT') {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('git executable not found. Install git or add it to PATH.');
 }
 
 /**
