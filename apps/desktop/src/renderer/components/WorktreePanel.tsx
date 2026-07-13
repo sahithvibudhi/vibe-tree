@@ -596,7 +596,7 @@ export function WorktreePanel({
                   <strong>Path:</strong> {worktreeToDelete.path}
                 </p>
                 <p className="text-sm text-destructive mt-2">
-                  ⚠️ Both the worktree directory and git branch will be permanently deleted.
+                   Both the worktree directory and git branch will be permanently deleted.
                 </p>
               </div>
             )}

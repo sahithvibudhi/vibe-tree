@@ -65,7 +65,7 @@ function AppContent() {
       link.rel = 'stylesheet';
       link.href = './styles/debug-layout.css';
       document.head.appendChild(link);
-      console.log('🎨 Debug layout mode enabled - Component borders visible');
+      console.log('Debug layout mode enabled - Component borders visible');
     }
   }, []);
 

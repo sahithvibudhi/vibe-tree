@@ -70,8 +70,8 @@ export function TerminalView({ worktreePath }: TerminalViewProps) {
       setSessionId(existingSessionId);
 
       // Restore terminal state for existing session (like desktop app)
-      console.log('🔄 Reconnecting to existing session - restoring state');
-      console.log('📊 Session cache status:', {
+      console.log('Reconnecting to existing session - restoring state');
+      console.log('Session cache status:', {
         sessionId: existingSessionId,
         hasCachedState: terminalStateCache.has(existingSessionId),
         cacheSize: terminalStateCache.size,
@@ -84,11 +84,11 @@ export function TerminalView({ worktreePath }: TerminalViewProps) {
           if (terminalRef.current && cachedState) {
             terminalRef.current.clear();
             terminalRef.current.write(cachedState);
-            console.log('✅ State restored for existing session:', existingSessionId);
+            console.log('State restored for existing session:', existingSessionId);
           }
         }, 100);
       } else {
-        console.log('⚠️ No cached state for existing session:', existingSessionId);
+        console.log('No cached state for existing session:', existingSessionId);
       }
 
       return;
@@ -125,7 +125,7 @@ export function TerminalView({ worktreePath }: TerminalViewProps) {
           // Check if this is a different session ID than what we had cached
           const cachedSessionId = terminalSessions.get(selectedWorktree);
           if (cachedSessionId && cachedSessionId !== actualSessionId) {
-            console.warn(`🔄 Session ID changed for ${selectedWorktree}:`, {
+            console.warn(` Session ID changed for ${selectedWorktree}:`, {
               oldSessionId: cachedSessionId,
               newSessionId: actualSessionId,
               reason: 'Likely session timeout and cleanup'
@@ -140,7 +140,7 @@ export function TerminalView({ worktreePath }: TerminalViewProps) {
           console.log(
             `Shell started: ${actualSessionId}, isNew: ${result.isNew}, worktree: ${selectedWorktree}`
           );
-          console.log('📊 Terminal cache status:', {
+          console.log('Terminal cache status:', {
             sessionId: actualSessionId,
             hasCachedState: terminalStateCache.has(actualSessionId),
             cacheSize: terminalStateCache.size,
@@ -264,7 +264,7 @@ export function TerminalView({ worktreePath }: TerminalViewProps) {
             const serializedState = terminalInstance.serialize();
             if (serializedState) {
               terminalStateCache.set(sessionId, serializedState);
-              console.log('💾 Periodic save for session:', sessionId);
+              console.log('Periodic save for session:', sessionId);
             }
           }
         } catch (error) {
@@ -282,7 +282,7 @@ export function TerminalView({ worktreePath }: TerminalViewProps) {
             const serializedState = terminalInstance.serialize();
             if (serializedState) {
               terminalStateCache.set(sessionId, serializedState);
-              console.log('💾 Final save on unmount for session:', sessionId);
+              console.log('Final save on unmount for session:', sessionId);
             }
           }
         } catch (error) {

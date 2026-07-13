@@ -477,7 +477,7 @@ export function formatDiagnostics(diagnostics: SystemDiagnostics): string {
 
   if (diagnostics.warnings.length > 0) {
     lines.push('');
-    lines.push('⚠️  WARNINGS:');
+    lines.push('  WARNINGS:');
     diagnostics.warnings.forEach((warning) => {
       lines.push(`  - ${warning}`);
     });
@@ -1141,7 +1141,7 @@ export function formatExtendedDiagnostics(diagnostics: ExtendedDiagnostics): str
   if (ptyMasterFds > expectedMaxFds) {
     const leaked = ptyMasterFds - activeSessions;
     lines.push(
-      `  ⚠️  Potential PTY Leak: ${leaked} excess master FDs (${ptyMasterFds} FDs - ${activeSessions} sessions)`
+      `    Potential PTY Leak: ${leaked} excess master FDs (${ptyMasterFds} FDs - ${activeSessions} sessions)`
     );
   }
   lines.push('');
@@ -1180,7 +1180,7 @@ export function formatExtendedDiagnostics(diagnostics: ExtendedDiagnostics): str
 
       // Add warning if usage is high
       if (diagnostics.ptyDeviceInfo.currentCount / diagnostics.ptyDeviceInfo.systemLimit > 0.8) {
-        lines.push(`  ⚠️  WARNING: PTY device usage is high (${usage}%)`);
+        lines.push(`    WARNING: PTY device usage is high (${usage}%)`);
       }
     }
     lines.push('');
@@ -1250,7 +1250,7 @@ export function formatExtendedDiagnostics(diagnostics: ExtendedDiagnostics): str
 
   // Warnings
   if (diagnostics.warnings.length > 0) {
-    lines.push('⚠️  WARNINGS:');
+    lines.push('  WARNINGS:');
     diagnostics.warnings.forEach((warning) => {
       lines.push(`  - ${warning}`);
     });

@@ -26,7 +26,7 @@ async function discoverServerPort(): Promise<number> {
 
       if (response.ok) {
         cachedServerPort = port;
-        console.log(`✓ Discovered server port: ${port}`);
+        console.log(` Discovered server port: ${port}`);
         return port;
       }
     } catch (error) {
@@ -38,11 +38,11 @@ async function discoverServerPort(): Promise<number> {
   const envPort = import.meta.env.VITE_SERVER_PORT;
   if (envPort) {
     const port = parseInt(envPort);
-    console.log(`📝 Using environment server port: ${port}`);
+    console.log(` Using environment server port: ${port}`);
     return port;
   }
 
-  console.warn('⚠️ Could not discover server port, using fallback 8000');
+  console.warn('Could not discover server port, using fallback 8000');
   return 8000;
 }
 
@@ -53,7 +53,7 @@ export async function getServerWebSocketUrl(): Promise<string> {
   // Check if explicitly set via environment variable
   const explicitWsUrl = import.meta.env.VITE_WS_URL;
   if (explicitWsUrl) {
-    console.log(`📝 Using explicit WebSocket URL: ${explicitWsUrl}`);
+    console.log(` Using explicit WebSocket URL: ${explicitWsUrl}`);
     return explicitWsUrl;
   }
 
@@ -72,7 +72,7 @@ export async function getServerWebSocketUrl(): Promise<string> {
     wsUrl = `${protocol}//${window.location.hostname}:${port}`;
   }
 
-  console.log(`🔌 Constructed WebSocket URL: ${wsUrl}`);
+  console.log(` Constructed WebSocket URL: ${wsUrl}`);
   return wsUrl;
 }
 
@@ -84,7 +84,7 @@ export async function getServerHttpUrl(): Promise<string> {
   const explicitWsUrl = import.meta.env.VITE_WS_URL;
   if (explicitWsUrl) {
     const httpUrl = explicitWsUrl.replace('ws://', 'http://').replace('wss://', 'https://');
-    console.log(`📝 Using explicit HTTP URL: ${httpUrl}`);
+    console.log(` Using explicit HTTP URL: ${httpUrl}`);
     return httpUrl;
   }
 
@@ -103,7 +103,7 @@ export async function getServerHttpUrl(): Promise<string> {
     httpUrl = `${protocol}//${window.location.hostname}:${port}`;
   }
 
-  console.log(`🌐 Constructed HTTP URL: ${httpUrl}`);
+  console.log(` Constructed HTTP URL: ${httpUrl}`);
   return httpUrl;
 }
 

@@ -19,7 +19,7 @@ export function useWebSocket() {
 
   const connect = useCallback(async () => {
     if (isConnected()) {
-      console.log('🔌 Already connected to global adapter');
+      console.log('Already connected to global adapter');
       return;
     }
 
@@ -33,7 +33,7 @@ export function useWebSocket() {
       // Add authentication if available
       const wsUrl = getAuthenticatedWebSocketUrl(baseWsUrl);
 
-      console.log('🔌 Attempting WebSocket connection to:', wsUrl);
+      console.log('Attempting WebSocket connection to:', wsUrl);
 
       await connectGlobalAdapter(wsUrl);
 
@@ -44,8 +44,8 @@ export function useWebSocket() {
       setConnecting(false);
       const errorMessage = error instanceof Error ? error.message : 'Failed to connect';
       setError(errorMessage);
-      console.error('💔 WebSocket connection failed with error:', error);
-      console.error('💔 Error details:', {
+      console.error('WebSocket connection failed with error:', error);
+      console.error('Error details:', {
         message: errorMessage,
         type: typeof error,
         stack: error instanceof Error ? error.stack : undefined
@@ -54,7 +54,7 @@ export function useWebSocket() {
   }, [setConnected, setConnecting, setError]);
 
   const disconnect = useCallback(() => {
-    console.log('🔌 Disconnecting global WebSocket adapter');
+    console.log('Disconnecting global WebSocket adapter');
     disconnectGlobalAdapter();
     setConnected(false);
     setAdapterVersion((prev) => prev + 1); // Force re-render
@@ -62,20 +62,20 @@ export function useWebSocket() {
 
   const getAdapter = useCallback(() => {
     const adapter = getGlobalAdapter();
-    console.log('🔍 getAdapter called, globalAdapter:', adapter);
+    console.log('getAdapter called, globalAdapter:', adapter);
     return adapter;
   }, [adapterVersion]); // Re-run when adapter changes
 
   // Subscribe to global adapter state changes
   useEffect(() => {
     const unsubscribeConnected = onGlobalAdapterConnected(() => {
-      console.log('🔌 Global adapter connected callback');
+      console.log('Global adapter connected callback');
       setConnected(true);
       setAdapterVersion((prev) => prev + 1);
     });
 
     const unsubscribeDisconnected = onGlobalAdapterDisconnected(() => {
-      console.log('💔 Global adapter disconnected callback');
+      console.log('Global adapter disconnected callback');
       setConnected(false);
       setAdapterVersion((prev) => prev + 1);
     });

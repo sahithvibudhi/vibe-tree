@@ -3,21 +3,19 @@
 
 # VibeTree
 
-**Vibe code with AI in parallel git worktrees**
+**Run every AI coding agent in its own git worktree, in parallel.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Release](https://img.shields.io/github/v/release/sahithvibudhi/vibe-tree)](https://github.com/sahithvibudhi/vibe-tree/releases)
+[![CI](https://github.com/sahithvibudhi/vibe-tree/actions/workflows/ci.yml/badge.svg)](https://github.com/sahithvibudhi/vibe-tree/actions/workflows/ci.yml)
+
+Works with Claude Code, OpenAI Codex CLI, Gemini CLI, Aider, opencode, and any other terminal program.
+
 </div>
 
 ---
 
-> [!IMPORTANT]
-> 🚧 **Active Development Notice**: We're currently working on adding cloud support and multi-platform capabilities.
-> For a stable desktop-only version, please use the [`release-v0.1`](https://github.com/sahithvibudhi/vibe-tree/tree/release-v0.1) branch.
-
----
-
-VibeTree is a cross-platform application that enhances your development workflow by enabling parallel development with AI assistance across multiple git worktrees. Work on features simultaneously without context switching. Access from desktop, browser, or mobile devices.
+VibeTree is mission control for parallel AI coding agents. Every task gets its own git worktree: an isolated checkout with its own branch and a persistent terminal. Run one agent per worktree, watch them all at once, review each branch's diff, and throw away failed experiments with one click. Use it as a desktop app, or run the server and drive your agents from any browser, including your phone.
 
 ## Screenshot
 
@@ -27,148 +25,139 @@ VibeTree is a cross-platform application that enhances your development workflow
 
 ![VibeTree Demo](assets/demo.gif)
 
-## Installation
+<!-- TODO: refresh screenshot showing parallel terminals running claude + aider side by side -->
 
-### Quick Start
+## Why worktrees
+
+- Parallel agents do not stomp on each other: each works in its own checkout on its own branch
+- Every conversation maps to one reviewable diff; review and merge per branch
+- Failed experiment? Delete the worktree and its branch is gone with it
+
+## Quick start
+
+### Desktop app
+
+Download the latest dmg, exe, or AppImage from the [Releases page](https://github.com/sahithvibudhi/vibe-tree/releases), or run from source:
 
 ```bash
-# Development Mode
 pnpm install
-pnpm dev:all  # Run both web and server
-
-# Docker Deployment (Production)
-npm run deploy  # One-command deployment
-
-# Or run services separately:
-pnpm dev:server  # Socket server on random 3XXX port
-pnpm dev:web     # Web app on :3000
-pnpm dev:desktop # Desktop app
+pnpm dev:desktop
 ```
 
-### Desktop App
+### Server + web (browser and phone)
 
-Download the latest release for your platform from the [Releases page](https://github.com/sahithvibudhi/vibe-tree/releases):
+```bash
+pnpm install
+pnpm dev:all        # server + web dev servers; scan the QR code with your phone
+```
 
-- **macOS**: Download `.dmg` file (supports both Intel and Apple Silicon)
-- **Windows**: Download `.exe` installer
-- **Linux**: Download `.AppImage` or `.deb` file
+Single-process production deployment (one server serves the UI and the API):
 
-**Build custom versions** (macOS): `./build-custom-mac-version.sh [VARIATION_NAME]` to create a custom build with the variation name included in both the app file name and displayed app name (e.g., `./build-custom-mac-version.sh Nov2` creates VibeTreeNov2.app which displays as "VibeTreeNov2" when opened)
+```bash
+pnpm build
+pnpm start:server   # http://localhost:3002
+```
 
-#### Testing with Auto-Open Project
-
-`bin/launch-with-project /path/to/project [--name "CustomName"]` - Launch app with auto-opened project. Optional `--name` sets window title for easy identification.
-
-### Web/Mobile Access
-
-1. Start services: `pnpm dev:all`
-2. Access locally: http://localhost:3000
-3. For mobile/network access:
-   - Scan the QR code shown in terminal
-   - Or navigate to the network URL (e.g., http://192.168.1.x:3000)
-
-### 🐳 Docker Deployment
-
-Deploy VibeTree on any VM or cloud instance with one command:
+Or with Docker:
 
 ```bash
 npm run deploy
 ```
 
-This automatically builds and runs VibeTree in a Docker container. Perfect for deployment on EC2, Digital Ocean, or any Docker-enabled environment. See [DOCKER.md](DOCKER.md) for detailed instructions.
-
-**Access VibeTree:**
-
-- **Web Interface**: http://localhost:3000
-- **API Server**: http://localhost:3002
-- **Health Check**: http://localhost:3002/health
-
-#### Cloud Deployment
-
-Deploy on AWS EC2, Digital Ocean, or any cloud VM:
-
-```bash
-# On your cloud instance
-git clone <your-repo>
-cd vibe-tree
-npm run deploy
-```
-
-Configure security groups to allow ports 3000 and 3002, then access via `http://your-vm-ip:3000`.
-
-**Safari/iOS Requirements:**
-
-- Both services must be running (web on random 3XXX port, server on random 3XXX port)
-- Allow firewall connections on both ports if prompted
-
-#### LAN Dev Mode (no pairing)
-
-When opening from a phone on your Wi‑Fi, the web UI loads over LAN and the web app automatically discovers and connects to the socket server via WebSocket. In development, enable LAN WebSocket access without pairing:
-
-```bash
-# Allow LAN connections to the WebSocket server in dev (no auth)
-ALLOW_INSECURE_NETWORK=1 HOST=0.0.0.0 pnpm dev:server
-pnpm dev:web
-```
-
-Then open the printed Network URL (e.g., http://192.168.1.x:3000) on your phone. If you still see "Not connected", you can explicitly point the web app at the socket server by creating `apps/web/.env`:
-
-```ini
-VITE_WS_URL=ws://192.168.1.x:XXXX  # Replace XXXX with actual server port
-```
-
-### Environment Variables
-
-Create `.env` files as needed:
-
-```bash
-# apps/web/.env (optional)
-VITE_WS_URL=ws://192.168.1.100:XXXX     # For custom socket server (replace XXXX with actual port)
-VITE_PROJECT_PATH=/path/to/project       # Override project path
-
-# apps/server/.env (optional)
-PORT=3002                              # Socket server port (optional, uses random port by default)
-HOST=0.0.0.0                          # Bind to all interfaces
-PROJECT_PATH=/path/to/project          # Default project path
-# In dev, allow unauthenticated LAN WebSocket connections (use only on trusted networks)
-# Any of these enables it:
-# ALLOW_INSECURE_NETWORK=1
-# ALLOW_INSECURE_LAN=1
-# ALLOW_NETWORK_DEV=1
-DEFAULT_PROJECTS=/path1,/path2         # Auto-load projects (first becomes default)
-# Authentication (for webapp login)
-USERNAME=your_username                  # Set username for authentication
-PASSWORD=your_password                  # Set password for authentication
-AUTH_REQUIRED=true                     # Enable authentication
-
-# Docker-specific variables
-PROJECT_PATH=/workspace                 # Project directory inside container
-WEB_PORT=3000                          # Web frontend port
-NODE_ENV=production                    # Runtime environment
-```
+The web app is an installable PWA: open it on your phone, add it to your home screen, and check on your agents from anywhere on your network.
 
 ## Features
 
-- **Parallel Development** - Work on multiple features simultaneously without stashing or switching branches
-- **Persistent Terminal Sessions** - Each worktree maintains its own terminal session with full state preservation
-- **Claude CLI Integration** - Seamlessly work with Claude in each terminal
-- **IDE Integration** - Open any worktree directly in VS Code or Cursor
-- **Multi-Project Support** - Work with multiple repositories in tabbed interface
-- **Cross-Platform Access** - Desktop app, web browser, and mobile support
-- **Docker Deployment** - One-command deployment for cloud VMs and production environments
-- **Dark/Light Mode** - Automatic OS theme detection with manual toggle
-- **macOS Native** - Proper traffic light window controls integration
+| Feature | Description |
+| --- | --- |
+| Parallel worktrees | One isolated checkout, branch, and terminal per task |
+| Any AI CLI | It is a real terminal: claude, codex, gemini, aider, or plain shells |
+| Persistent sessions | Terminals keep running and their scrollback survives reloads and reconnects |
+| Lifecycle hooks | Run your own scripts when worktrees are created or removed |
+| Git diff view | Review unstaged and staged changes per worktree |
+| Command scheduler | Queue a command to run in a terminal after a delay, once or repeatedly |
+| Desktop notifications | Get notified when your agent finishes or asks a question (desktop) |
+| IDE integration | Open any worktree in VS Code or Cursor (desktop) |
+| Remote access | Web UI over HTTP/WebSocket with QR pairing for phones |
+| Dark/light mode | Follows your system, with manual override |
+
+## Worktree hooks
+
+Automate per-worktree setup and teardown by adding executable scripts to your repository, using the same trust model as git hooks:
+
+```bash
+mkdir -p .vibetree/hooks
+
+cat > .vibetree/hooks/post-create <<'EOF'
+#!/bin/sh
+# Runs in the new worktree after it is created
+cp "$VIBETREE_PROJECT_PATH/.env" .env 2>/dev/null || true
+npm install
+EOF
+
+cat > .vibetree/hooks/pre-remove <<'EOF'
+#!/bin/sh
+# Runs in the worktree before it is removed; failure warns but never blocks
+docker compose down 2>/dev/null || true
+EOF
+
+chmod +x .vibetree/hooks/post-create .vibetree/hooks/pre-remove
+```
+
+Hooks receive `VIBETREE_HOOK`, `VIBETREE_PROJECT_PATH`, `VIBETREE_WORKTREE_PATH`, and `VIBETREE_BRANCH`. Output is captured and surfaced in the UI; a 120 second timeout kills hung scripts.
+
+## Security
+
+- The desktop app embeds its server on 127.0.0.1 with a per-launch token; nothing is exposed to the network.
+- The standalone server binds 0.0.0.0 by default so phones can reach it. Authentication is off by default; to require a login, set:
+
+```bash
+AUTH_REQUIRED=true
+VIBETREE_USERNAME=you
+VIBETREE_PASSWORD=a-strong-password
+```
+
+The server warns at startup when it is network-reachable without auth. See `apps/server/.env.example` for all options, including LAN development mode.
+
+## Architecture
+
+A pnpm + Turborepo monorepo. Desktop and web share one backend: the same server core is embedded by the Electron app and run standalone for the web.
+
+```
+apps/
+  desktop/       Electron app (embeds the server on loopback)
+  web/           React PWA (talks to the server over WebSocket)
+  server/        Standalone server CLI (QR pairing, static web serving)
+packages/
+  core/          Git and PTY session logic, shared types, WebSocket adapter
+  server-core/   Express + WebSocket server, auth, REST API
+  ui/            Shared terminal component
+  auth/          Login page and auth context for the web app
+```
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for details, and [DOCKER.md](DOCKER.md) for cloud deployment.
+
+## Development
+
+```bash
+pnpm install
+pnpm dev:desktop   # desktop app
+pnpm dev:all       # server + web
+pnpm test:run      # unit tests
+pnpm --filter @vibetree/desktop test:e2e   # desktop e2e (Playwright)
+pnpm --filter @vibetree/web test:e2e       # web e2e (Playwright)
+pnpm typecheck && pnpm lint
+```
+
+`bin/launch-with-project /path/to/project [--name "CustomName"]` launches the desktop app with a project pre-opened.
 
 ## Roadmap
 
-- [x] Mobile access - Access from your phone via web browser
-- [ ] Claude notifications - Get notified when Claude finishes tasks or needs user input
-- [ ] PWA offline support - Work offline on mobile devices
-
-## Contributing
-
-Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+- Disk-persisted session buffers that survive server restarts
+- An "agent needs input" dashboard across all worktrees
+- Password setup from the web UI (the auth seam is in place)
+- Homebrew, winget, and npx distribution
 
 ## License
 
-MIT License - see the LICENSE file for details.
+MIT. See [LICENSE](LICENSE).

@@ -34,7 +34,7 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
   };
 
   const handleSelectWorktree = (path: string) => {
-    console.log('🎯 WorktreePanel: Selecting worktree:', {
+    console.log('WorktreePanel: Selecting worktree:', {
       projectId,
       path,
       currentSelection: project?.selectedWorktree
@@ -67,7 +67,7 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
       // Select the newly created worktree
       setSelectedWorktree(projectId, result.path);
     } catch (error) {
-      console.error('❌ Failed to create worktree:', error);
+      console.error('Failed to create worktree:', error);
       // TODO: Add toast notification for error
     } finally {
       setLoading(false);
@@ -76,7 +76,7 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
 
   // Auto-load worktrees when component mounts or project changes
   useEffect(() => {
-    console.log('🔄 WorktreePanel useEffect triggered:', {
+    console.log('WorktreePanel useEffect triggered:', {
       projectId,
       connected,
       loading,
@@ -87,7 +87,7 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
     });
 
     if (!project || !connected || loading || !adapter) {
-      console.log('❌ Early return from useEffect:', {
+      console.log('Early return from useEffect:', {
         hasProject: !!project,
         connected,
         loading,
@@ -98,19 +98,19 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
 
     // Inline refresh logic with stable dependencies
     const loadWorktrees = async () => {
-      console.log('🚀 Starting worktree load for:', project.path);
+      console.log('Starting worktree load for:', project.path);
       setLoading(true);
 
       try {
         const trees = await adapter.listWorktrees(project.path);
-        console.log('✅ Worktrees loaded:', trees);
+        console.log('Worktrees loaded:', trees);
         updateProjectWorktrees(projectId, trees);
-        console.log('✅ Project worktrees updated');
+        console.log('Project worktrees updated');
       } catch (error) {
-        console.error('❌ Failed to load worktrees:', error);
+        console.error('Failed to load worktrees:', error);
       } finally {
         setLoading(false);
-        console.log('🏁 Loading finished');
+        console.log('Loading finished');
       }
     };
 
@@ -195,7 +195,7 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
                 return branchA.localeCompare(branchB);
               })
               .map((worktree) => {
-                console.log('🌳 Rendering worktree:', {
+                console.log('Rendering worktree:', {
                   branch: worktree.branch,
                   path: worktree.path,
                   isSelected: project.selectedWorktree === worktree.path

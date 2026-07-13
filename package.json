@@ -33,17 +33,23 @@
     "docker:compose": "docker-compose up",
     "docker:compose:build": "docker-compose up --build",
     "docker:compose:down": "docker-compose down",
-    "prepare": "husky"
+    "prepare": "husky",
+    "start:server": "node apps/server/dist/index.js",
+    "start:desktop": "pnpm --filter @vibetree/desktop start"
   },
   "keywords": [
+    "git",
+    "worktree",
+    "terminal",
+    "ai-agents",
+    "claude-code",
+    "codex",
+    "gemini-cli",
+    "aider",
+    "parallel-development",
     "electron",
     "react",
-    "typescript",
-    "git",
-    "ai",
-    "claude",
-    "worktree",
-    "terminal"
+    "pwa"
   ],
   "author": "",
   "license": "MIT",

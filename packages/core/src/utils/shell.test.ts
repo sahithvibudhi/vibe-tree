@@ -242,7 +242,7 @@ describe('shell utils', () => {
       const updatedContent = await waitForFileChange(testFile, initialContent);
 
       expect(initialContent).not.toBe(updatedContent);
-      console.log('✓ Process is running and updating file');
+      console.log('Process is running and updating file');
 
       // Kill the PTY gracefully
       await killPtyGraceful(ptyProcess, 10000);
@@ -253,7 +253,7 @@ describe('shell utils', () => {
       // Verify file stayed stable
       const finalContent = fs.readFileSync(testFile, 'utf-8');
       expect(stableContent).toBe(finalContent);
-      console.log('✓ Process has stopped updating file after kill');
+      console.log('Process has stopped updating file after kill');
     }, 15000);
 
     it('should kill child processes when PTY is killed', async () => {
@@ -281,7 +281,7 @@ describe('shell utils', () => {
       const updatedContent = await waitForFileChange(testFile, initialContent);
 
       expect(initialContent).not.toBe(updatedContent);
-      console.log('✓ Child process is running and updating file');
+      console.log('Child process is running and updating file');
 
       // Kill the PTY gracefully
       await killPtyGraceful(ptyProcess, 10000);
@@ -292,7 +292,7 @@ describe('shell utils', () => {
       // Verify file stayed stable
       const finalContent = fs.readFileSync(testFile, 'utf-8');
       expect(stableContent).toBe(finalContent);
-      console.log('✓ Child process has stopped after PTY kill');
+      console.log('Child process has stopped after PTY kill');
     }, 15000);
 
     it('should force kill stubborn processes', async () => {
@@ -319,7 +319,7 @@ describe('shell utils', () => {
       const updatedContent = await waitForFileChange(testFile, initialContent);
 
       expect(initialContent).not.toBe(updatedContent);
-      console.log('✓ Stubborn process is running');
+      console.log('Stubborn process is running');
 
       // Force kill the PTY
       await killPtyForce(ptyProcess);
@@ -330,7 +330,7 @@ describe('shell utils', () => {
       // Verify file stayed stable
       const finalContent = fs.readFileSync(testFile, 'utf-8');
       expect(stableContent).toBe(finalContent);
-      console.log('✓ Stubborn process has been force killed');
+      console.log('Stubborn process has been force killed');
     }, 15000);
   });
 });
