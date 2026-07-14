@@ -2,6 +2,7 @@ import { useAppStore } from '../store';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useWorktreeStatuses } from '../hooks/useWorktreeStatuses';
 import { useLiveSessions } from '../hooks/useLiveSessions';
+import { SkeletonRows } from './Skeleton';
 import { ChevronLeft, GitBranch, RefreshCw, Plus, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -224,6 +225,8 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
           <div className="p-4 text-center text-muted-foreground">
             <p className="text-sm">Not connected to server</p>
           </div>
+        ) : loading && project.worktrees.length === 0 ? (
+          <SkeletonRows rows={3} />
         ) : project.worktrees.length === 0 ? (
           <div className="p-4 text-center text-muted-foreground">
             <p className="text-sm">No worktrees found</p>

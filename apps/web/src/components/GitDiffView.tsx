@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { RefreshCw, FileText } from 'lucide-react';
 import { ViewSwitch, type ViewTab } from './ViewSwitch';
+import { Skeleton, SkeletonRows } from './Skeleton';
 import { DiffView, DiffModeEnum } from '@git-diff-view/react';
 import '@git-diff-view/react/styles/diff-view.css';
 // import { useAppStore } from '../store';
@@ -189,7 +190,9 @@ export function GitDiffView({ worktreePath, theme = 'light' , viewTab, onViewTab
           </div>
           <div className="flex-1 overflow-auto">
             <div className="p-2 space-y-1">
-              {filteredFiles.length === 0 ? (
+              {loading && filteredFiles.length === 0 ? (
+                <SkeletonRows rows={4} />
+              ) : filteredFiles.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No {viewMode} changes</p>
@@ -240,12 +243,22 @@ export function GitDiffView({ worktreePath, theme = 'light' , viewTab, onViewTab
               </div>
             </div>
           ) : !diffText ? (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No {viewMode} changes for this file</p>
+            loading ? (
+              <div className="flex-1 p-4 space-y-2" data-testid="diff-skeleton">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-4 w-3/4" />
               </div>
-            </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No {viewMode} changes for this file</p>
+                </div>
+              </div>
+            )
           ) : (
             <div className="flex-1 overflow-auto w-full">
               <div className="p-4 w-full overflow-hidden">
