@@ -147,6 +147,40 @@ export function createMenu(mainWindow: BrowserWindow | null) {
       ]
     },
     {
+      label: 'Worktree',
+      submenu: [
+        {
+          label: 'New Worktree...',
+          accelerator: 'CmdOrCtrl+Shift+K',
+          click: () => {
+            mainWindow?.webContents.send('menu:new-worktree');
+          }
+        },
+        {
+          label: 'Toggle Terminal/Changes',
+          accelerator: 'CmdOrCtrl+Shift+E',
+          click: () => {
+            mainWindow?.webContents.send('menu:toggle-view');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Previous Worktree',
+          accelerator: 'CmdOrCtrl+Alt+Up',
+          click: () => {
+            mainWindow?.webContents.send('menu:select-worktree-delta', -1);
+          }
+        },
+        {
+          label: 'Next Worktree',
+          accelerator: 'CmdOrCtrl+Alt+Down',
+          click: () => {
+            mainWindow?.webContents.send('menu:select-worktree-delta', 1);
+          }
+        }
+      ]
+    },
+    {
       label: 'Window',
       submenu: [{ role: 'minimize' }, { role: 'close' }]
     }
@@ -179,8 +213,7 @@ export function createMenu(mainWindow: BrowserWindow | null) {
       ]
     });
 
-    // Window menu - after adding the app menu, Window menu is now at index 4
-    const windowMenu = template[4];
+    const windowMenu = template.find((item) => item.label === 'Window');
     if (windowMenu && windowMenu.submenu && Array.isArray(windowMenu.submenu)) {
       windowMenu.submenu.push({ type: 'separator' }, { role: 'front' });
     }

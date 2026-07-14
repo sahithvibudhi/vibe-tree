@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { TerminalGrid } from './TerminalGrid';
 import { GitDiffView } from './GitDiffView';
@@ -12,6 +12,13 @@ interface RightPaneViewProps {
 
 export function RightPaneView({ worktreePath, projectId, theme }: RightPaneViewProps) {
   const [activeTab, setActiveTab] = useState('terminal');
+
+  // Fired by the Worktree menu accelerator; only the visible pane is mounted
+  useEffect(() => {
+    const toggle = () => setActiveTab((tab) => (tab === 'terminal' ? 'git-diff' : 'terminal'));
+    window.addEventListener('vibetree:toggle-view', toggle);
+    return () => window.removeEventListener('vibetree:toggle-view', toggle);
+  }, []);
 
   return (
     <div className="flex-1 flex flex-col h-full">

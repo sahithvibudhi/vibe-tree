@@ -6,11 +6,15 @@ import { GitDiffView } from './components/GitDiffView';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { ProjectSelector } from './components/ProjectSelector';
 import { OnboardingHint } from './components/OnboardingHint';
+import { Toaster } from './components/Toaster';
+import { ShortcutsHelp } from './components/ShortcutsHelp';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@vibetree/ui';
 import { useAppStore } from './store';
 import { useWebSocket } from './hooks/useWebSocket';
-import { Sun, Moon, Plus, X, CheckCircle } from 'lucide-react';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { Sun, Moon, Plus, X, Keyboard, Volume2, VolumeX } from 'lucide-react';
 import { autoLoadProjects } from './services/projectValidation';
+import { isSoundEnabled, setSoundEnabled } from './services/sound';
 
 function App() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -24,14 +28,23 @@ function App() {
     setSelectedTab,
     theme,
     setTheme,
-    connected
+    connected,
+    addToast
   } = useAppStore();
   const { connect } = useWebSocket();
   const [showProjectSelector, setShowProjectSelector] = useState(false);
   const [autoLoadAttempted, setAutoLoadAttempted] = useState(false);
-  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
   const [hasConnectedOnce, setHasConnectedOnce] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [soundOn, setSoundOn] = useState(isSoundEnabled());
+
+  useKeyboardShortcuts(() => setShowShortcuts(true));
+
+  const toggleSound = () => {
+    const next = !soundOn;
+    setSoundOn(next);
+    setSoundEnabled(next);
+  };
 
   useEffect(() => {
     if (connected) {
@@ -72,26 +85,18 @@ function App() {
                 }
               }
 
-              console.log(`Auto-loaded ${validPaths.length} projects`);
-
-              // Show success notification
-              setSuccessMessage(
-                `Successfully auto-loaded ${validPaths.length} project${validPaths.length === 1 ? '' : 's'}`
+              addToast(
+                `Auto-loaded ${validPaths.length} project${validPaths.length === 1 ? '' : 's'}`,
+                'success'
               );
-              setShowSuccessNotification(true);
-
-              // Auto-hide notification after 3 seconds
-              setTimeout(() => {
-                setShowSuccessNotification(false);
-              }, 3000);
             }
 
-            // Log validation errors for invalid paths
+            // Invalid configured paths are a setup problem the user can fix
             const invalidResults = autoLoadResponse.validationResults.filter(
               (result) => !result.valid
             );
-            if (invalidResults.length > 0) {
-              console.warn('Some projects failed validation:', invalidResults);
+            for (const result of invalidResults) {
+              addToast(`Could not load ${result.path}: ${result.error ?? 'not a git repository'}`, 'error');
             }
           }
         } catch (error) {
@@ -138,6 +143,12 @@ function App() {
     setShowProjectSelector(false);
   };
 
+  const handleSelectProjects = (paths: string[]) => {
+    const ids = addProjects(paths);
+    if (ids.length > 0) setActiveProject(ids[0]);
+    setShowProjectSelector(false);
+  };
+
   const handleCloseProject = (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
     removeProject(projectId);
@@ -174,6 +185,8 @@ function App() {
   if (projects.length === 0 || showProjectSelector) {
     return (
       <div className="h-screen flex flex-col bg-background">
+        <Toaster />
+        <ShortcutsHelp open={showShortcuts} onClose={() => setShowShortcuts(false)} />
         {/* Header */}
         <header className="h-12 border-b flex items-center justify-between px-3 flex-shrink-0">
           <div className="flex items-center gap-2">
@@ -181,6 +194,14 @@ function App() {
           </div>
           <div className="flex items-center gap-1">
             <ConnectionStatus />
+            <button
+              onClick={() => setShowShortcuts(true)}
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+              aria-label="Keyboard shortcuts"
+              title="Keyboard shortcuts"
+            >
+              <Keyboard className="h-4 w-4" />
+            </button>
             <button
               onClick={toggleTheme}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
@@ -194,29 +215,18 @@ function App() {
         <OnboardingHint />
 
         {/* Project Selector */}
-        <ProjectSelector onSelectProject={handleSelectProject} />
+        <ProjectSelector
+          onSelectProject={handleSelectProject}
+          onSelectProjects={handleSelectProjects}
+        />
       </div>
     );
   }
 
   return (
     <div className="h-screen flex flex-col bg-background">
-      {/* Success Notification Banner */}
-      {showSuccessNotification && (
-        <div className="border-b bg-muted/40 px-4 py-1.5">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <CheckCircle className="h-3.5 w-3.5" />
-            <span>{successMessage}</span>
-            <button
-              onClick={() => setShowSuccessNotification(false)}
-              className="ml-auto hover:bg-accent rounded p-1"
-              aria-label="Dismiss"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        </div>
-      )}
+      <Toaster />
+      <ShortcutsHelp open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
       {/* Header */}
       <header className="h-12 border-b flex items-center justify-between px-3 flex-shrink-0">
@@ -225,6 +235,22 @@ function App() {
         </div>
         <div className="flex items-center gap-1">
           <ConnectionStatus />
+          <button
+            onClick={toggleSound}
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+            aria-label={soundOn ? 'Mute agent notifications' : 'Unmute agent notifications'}
+            title={soundOn ? 'Agent sound on' : 'Agent sound off'}
+          >
+            {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+          </button>
+          <button
+            onClick={() => setShowShortcuts(true)}
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+            aria-label="Keyboard shortcuts"
+            title="Keyboard shortcuts"
+          >
+            <Keyboard className="h-4 w-4" />
+          </button>
           <button
             onClick={toggleTheme}
             className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"

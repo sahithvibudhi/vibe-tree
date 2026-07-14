@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppHeader } from './components/AppHeader';
 import { ProjectSelector } from './components/ProjectSelector';
 import { ProjectWorkspace } from './components/ProjectWorkspace';
@@ -23,7 +23,43 @@ function AppContent() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [projectToClose, setProjectToClose] = useState<{ id: string; name: string } | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const { projects, activeProjectId, addProject, removeProject, setActiveProject } = useProjects();
+  const {
+    projects,
+    activeProjectId,
+    addProject,
+    removeProject,
+    setActiveProject,
+    setSelectedWorktree
+  } = useProjects();
+
+  // Menu accelerators land here; dialog and tab state live deeper in the
+  // tree, so they are re-broadcast as DOM events the owning component hears
+  const menuStateRef = useRef({ projects, activeProjectId, setSelectedWorktree });
+  menuStateRef.current = { projects, activeProjectId, setSelectedWorktree };
+
+  useEffect(() => {
+    const menu = window.electronAPI.menu;
+    const unsubscribes = [
+      menu.onNewWorktree?.(() => {
+        window.dispatchEvent(new CustomEvent('vibetree:new-worktree'));
+      }),
+      menu.onToggleView?.(() => {
+        window.dispatchEvent(new CustomEvent('vibetree:toggle-view'));
+      }),
+      menu.onSelectWorktreeDelta?.((delta) => {
+        const { projects, activeProjectId, setSelectedWorktree } = menuStateRef.current;
+        const project = projects.find((p) => p.id === activeProjectId);
+        if (!project || project.worktrees.length === 0) return;
+        const paths = project.worktrees.map((w) => w.path);
+        const currentIndex = project.selectedWorktree
+          ? paths.indexOf(project.selectedWorktree)
+          : -1;
+        const nextIndex = (currentIndex + delta + paths.length) % paths.length;
+        setSelectedWorktree(project.id, paths[nextIndex]);
+      })
+    ];
+    return () => unsubscribes.forEach((unsubscribe) => unsubscribe?.());
+  }, []);
 
   useEffect(() => {
     window.electronAPI.appSettings

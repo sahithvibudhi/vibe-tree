@@ -8,7 +8,7 @@ import {
   DialogTitle
 } from './ui/dialog';
 import { Button } from './ui/button';
-import { GitBranch, TerminalSquare, FolderOpen, Blocks } from 'lucide-react';
+import { GitBranch, TerminalSquare, FolderOpen, Blocks, Keyboard } from 'lucide-react';
 
 interface OnboardingDialogProps {
   open: boolean;
@@ -36,6 +36,11 @@ const steps = [
     icon: TerminalSquare,
     title: 'Run your AI agent',
     body: 'Each worktree opens a persistent terminal. Launch your agent there (for example, type "claude"), split terminals, schedule commands, and review diffs in the Changes tab. Sessions survive reloads and keep running in the background.'
+  },
+  {
+    icon: Keyboard,
+    title: 'Keyboard shortcuts',
+    body: 'Create a worktree with Cmd/Ctrl+Shift+K, toggle Terminal and Changes with Cmd/Ctrl+Shift+E, and jump between worktrees with Cmd/Ctrl+Alt+Up and Down. All of these live in the Worktree menu too.'
   }
 ];
 
