@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import { Worktree } from '@vibetree/core';
 
+export type ToastVariant = 'error' | 'success' | 'info';
+
+export interface Toast {
+  id: number;
+  message: string;
+  variant: ToastVariant;
+}
+
 interface Project {
   id: string;
   path: string;
@@ -25,6 +33,11 @@ interface AppState {
 
   // Theme state
   theme: 'light' | 'dark';
+
+  // Toast state
+  toasts: Toast[];
+  addToast: (message: string, variant?: ToastVariant) => void;
+  dismissToast: (id: number) => void;
 
   // Actions
   setConnected: (connected: boolean) => void;
@@ -53,6 +66,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeProjectId: null,
   terminalSessions: new Map(),
   theme: 'light',
+  toasts: [],
+
+  addToast: (message, variant = 'info') => {
+    const id = Date.now() + Math.random();
+    set((state) => ({ toasts: [...state.toasts, { id, message, variant }] }));
+  },
+
+  dismissToast: (id) => {
+    set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
+  },
 
   // Actions
   setConnected: (connected) => set({ connected }),

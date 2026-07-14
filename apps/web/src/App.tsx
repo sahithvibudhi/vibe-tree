@@ -6,10 +6,11 @@ import { GitDiffView } from './components/GitDiffView';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { ProjectSelector } from './components/ProjectSelector';
 import { OnboardingHint } from './components/OnboardingHint';
+import { Toaster } from './components/Toaster';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@vibetree/ui';
 import { useAppStore } from './store';
 import { useWebSocket } from './hooks/useWebSocket';
-import { Sun, Moon, Plus, X, CheckCircle } from 'lucide-react';
+import { Sun, Moon, Plus, X } from 'lucide-react';
 import { autoLoadProjects } from './services/projectValidation';
 
 function App() {
@@ -24,13 +25,12 @@ function App() {
     setSelectedTab,
     theme,
     setTheme,
-    connected
+    connected,
+    addToast
   } = useAppStore();
   const { connect } = useWebSocket();
   const [showProjectSelector, setShowProjectSelector] = useState(false);
   const [autoLoadAttempted, setAutoLoadAttempted] = useState(false);
-  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
   const [hasConnectedOnce, setHasConnectedOnce] = useState(false);
 
   useEffect(() => {
@@ -72,26 +72,18 @@ function App() {
                 }
               }
 
-              console.log(`Auto-loaded ${validPaths.length} projects`);
-
-              // Show success notification
-              setSuccessMessage(
-                `Successfully auto-loaded ${validPaths.length} project${validPaths.length === 1 ? '' : 's'}`
+              addToast(
+                `Auto-loaded ${validPaths.length} project${validPaths.length === 1 ? '' : 's'}`,
+                'success'
               );
-              setShowSuccessNotification(true);
-
-              // Auto-hide notification after 3 seconds
-              setTimeout(() => {
-                setShowSuccessNotification(false);
-              }, 3000);
             }
 
-            // Log validation errors for invalid paths
+            // Invalid configured paths are a setup problem the user can fix
             const invalidResults = autoLoadResponse.validationResults.filter(
               (result) => !result.valid
             );
-            if (invalidResults.length > 0) {
-              console.warn('Some projects failed validation:', invalidResults);
+            for (const result of invalidResults) {
+              addToast(`Could not load ${result.path}: ${result.error ?? 'not a git repository'}`, 'error');
             }
           }
         } catch (error) {
@@ -174,6 +166,7 @@ function App() {
   if (projects.length === 0 || showProjectSelector) {
     return (
       <div className="h-screen flex flex-col bg-background">
+        <Toaster />
         {/* Header */}
         <header className="h-12 border-b flex items-center justify-between px-3 flex-shrink-0">
           <div className="flex items-center gap-2">
@@ -201,22 +194,7 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col bg-background">
-      {/* Success Notification Banner */}
-      {showSuccessNotification && (
-        <div className="border-b bg-muted/40 px-4 py-1.5">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <CheckCircle className="h-3.5 w-3.5" />
-            <span>{successMessage}</span>
-            <button
-              onClick={() => setShowSuccessNotification(false)}
-              className="ml-auto hover:bg-accent rounded p-1"
-              aria-label="Dismiss"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        </div>
-      )}
+      <Toaster />
 
       {/* Header */}
       <header className="h-12 border-b flex items-center justify-between px-3 flex-shrink-0">

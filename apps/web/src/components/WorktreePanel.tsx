@@ -1,22 +1,47 @@
 import { useAppStore } from '../store';
 import { useWebSocket } from '../hooks/useWebSocket';
-import { ChevronLeft, GitBranch, RefreshCw, Plus } from 'lucide-react';
+import { useWorktreeStatuses } from '../hooks/useWorktreeStatuses';
+import { useLiveSessions } from '../hooks/useLiveSessions';
+import { ChevronLeft, GitBranch, RefreshCw, Plus, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 interface WorktreePanelProps {
   projectId: string;
 }
 
+/**
+ * Mirrors git check-ref-format so invalid names are caught with a readable
+ * message before the server rejects them with a cryptic git error.
+ */
+export function validateBranchName(name: string): string | null {
+  if (/\s/.test(name)) return 'Branch names cannot contain spaces';
+  if (name.startsWith('-') || name.startsWith('.') || name.startsWith('/'))
+    return 'Branch names cannot start with "-", "." or "/"';
+  if (name.endsWith('/') || name.endsWith('.') || name.endsWith('.lock'))
+    return 'Branch names cannot end with "/", "." or ".lock"';
+  if (name.includes('..') || name.includes('//') || name.includes('@{'))
+    return 'Branch names cannot contain "..", "//" or "@{"';
+  // eslint-disable-next-line no-control-regex
+  if (/[~^:?*[\\\x00-\x1f\x7f]/.test(name))
+    return 'Branch names cannot contain ~ ^ : ? * [ \\ or control characters';
+  return null;
+}
+
 export function WorktreePanel({ projectId }: WorktreePanelProps) {
-  const { getProject, updateProjectWorktrees, setSelectedWorktree, connected } = useAppStore();
+  const { getProject, updateProjectWorktrees, setSelectedWorktree, connected, addToast } =
+    useAppStore();
 
   const { getAdapter } = useWebSocket();
   const [loading, setLoading] = useState(false);
   const [showNewBranchDialog, setShowNewBranchDialog] = useState(false);
   const [newBranchName, setNewBranchName] = useState('');
 
+  const branchNameError = newBranchName.trim() ? validateBranchName(newBranchName.trim()) : null;
+
   const project = getProject(projectId);
   const adapter = getAdapter(); // Get adapter once per render
+  const { changeCounts, refreshStatuses } = useWorktreeStatuses(project?.worktrees ?? []);
+  const sessionCounts = useLiveSessions();
 
   const handleRefresh = async () => {
     const adapter = getAdapter();
@@ -26,6 +51,7 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
     try {
       const trees = await adapter.listWorktrees(project.path);
       updateProjectWorktrees(projectId, trees);
+      refreshStatuses();
     } catch (error) {
       console.error('Failed to refresh worktrees:', error);
     } finally {
@@ -48,27 +74,34 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
 
   const handleCreateBranch = async () => {
     const adapter = getAdapter();
-    if (!newBranchName.trim() || !adapter || !connected || !project) return;
+    if (!newBranchName.trim() || branchNameError || !adapter || !connected || !project) return;
 
     setLoading(true);
     try {
-      const result = await adapter.addWorktree(project.path, newBranchName);
+      const result = await adapter.addWorktree(project.path, newBranchName.trim());
       if (result.hook && !result.hook.ok) {
-        console.warn('post-create hook failed:', result.hook);
+        addToast(
+          `post-create hook failed: ${result.hook.timedOut ? 'timed out' : `exit code ${result.hook.exitCode}`}`,
+          'error'
+        );
       }
 
       setShowNewBranchDialog(false);
       setNewBranchName('');
+      addToast(`Worktree ${newBranchName.trim()} created`, 'success');
 
       // Refresh worktrees to show the new one
       const trees = await adapter.listWorktrees(project.path);
       updateProjectWorktrees(projectId, trees);
+      refreshStatuses();
 
       // Select the newly created worktree
       setSelectedWorktree(projectId, result.path);
     } catch (error) {
-      console.error('Failed to create worktree:', error);
-      // TODO: Add toast notification for error
+      addToast(
+        `Failed to create worktree: ${error instanceof Error ? error.message : 'unknown error'}`,
+        'error'
+      );
     } finally {
       setLoading(false);
     }
@@ -207,6 +240,8 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
                   isSelected: project.selectedWorktree === worktree.path
                 });
                 const isSelected = project.selectedWorktree === worktree.path;
+                const changeCount = changeCounts[worktree.path];
+                const liveSessions = sessionCounts[worktree.path] ?? 0;
                 return (
                   <button
                     key={worktree.path}
@@ -224,6 +259,26 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
                       {worktree.branch
                         ? worktree.branch.replace('refs/heads/', '')
                         : `detached (${worktree.head.substring(0, 8)})`}
+                    </span>
+                    <span className="ml-auto flex items-center gap-1.5 flex-shrink-0">
+                      {liveSessions > 0 && (
+                        <span
+                          className="w-1.5 h-1.5 rounded-full bg-green-500"
+                          title={`${liveSessions} live terminal session${liveSessions === 1 ? '' : 's'}`}
+                          data-testid="live-session-dot"
+                        />
+                      )}
+                      {changeCount !== undefined &&
+                        (changeCount > 0 ? (
+                          <span
+                            className="min-w-5 h-4 px-1 inline-flex items-center justify-center rounded-full border text-[10px] font-medium tabular-nums"
+                            title={`${changeCount} changed file${changeCount === 1 ? '' : 's'}`}
+                          >
+                            {changeCount}
+                          </span>
+                        ) : (
+                          <Check className="h-3 w-3 opacity-40" aria-label="Clean worktree" />
+                        ))}
                     </span>
                   </button>
                 );
@@ -259,6 +314,11 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
                 className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
                 autoFocus
               />
+              {branchNameError && (
+                <p className="text-xs text-destructive mt-2" role="alert">
+                  {branchNameError}
+                </p>
+              )}
 
               <div className="flex justify-end gap-2 mt-6">
                 <button
@@ -272,7 +332,7 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
                 </button>
                 <button
                   onClick={handleCreateBranch}
-                  disabled={!newBranchName.trim() || loading}
+                  disabled={!newBranchName.trim() || !!branchNameError || loading}
                   className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50"
                 >
                   {loading ? 'Creating...' : 'Create Branch'}

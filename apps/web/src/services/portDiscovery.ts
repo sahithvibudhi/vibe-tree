@@ -13,7 +13,7 @@ async function discoverServerPort(): Promise<number> {
   }
 
   // Start with default port 3002 and check sequential ports
-  let startPort = 3002;
+  const startPort = 3002;
 
   for (let i = 0; i < 50; i++) {
     // Check 50 sequential ports max

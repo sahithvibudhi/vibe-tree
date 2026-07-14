@@ -5,8 +5,8 @@ let globalAdapter: WebSocketAdapter | null = null;
 let connectionPromise: Promise<void> | null = null;
 
 // Connection state callbacks
-let onConnectedCallbacks: (() => void)[] = [];
-let onDisconnectedCallbacks: (() => void)[] = [];
+const onConnectedCallbacks: (() => void)[] = [];
+const onDisconnectedCallbacks: (() => void)[] = [];
 
 export function getGlobalAdapter(): WebSocketAdapter | null {
   console.log('getGlobalAdapter called, globalAdapter:', globalAdapter);
