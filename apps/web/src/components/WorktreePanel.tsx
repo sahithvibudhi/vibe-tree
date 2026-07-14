@@ -234,12 +234,12 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
 
       {/* Create New Branch Dialog */}
       {showNewBranchDialog && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="bg-popover text-popover-foreground border rounded-lg shadow-2xl w-full max-w-sm">
-            <div className="p-5">
-              <h3 className="text-sm font-semibold">New worktree</h3>
-              <p className="text-xs text-muted-foreground mt-1 mb-4">
-                Creates a branch and an isolated checkout next to your project.
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-background border rounded-lg shadow-lg w-full max-w-md">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold mb-2">Create New Feature Branch</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                This will create a new git worktree for parallel development
               </p>
 
               <input
@@ -256,25 +256,24 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
                     setNewBranchName('');
                   }
                 }}
-                className="w-full h-9 px-3 font-mono border border-input bg-background rounded-md text-[13px] placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/15 focus:border-foreground/30"
+                className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
                 autoFocus
-                spellCheck={false}
               />
 
-              <div className="flex justify-end gap-2 mt-5">
+              <div className="flex justify-end gap-2 mt-6">
                 <button
                   onClick={() => {
                     setShowNewBranchDialog(false);
                     setNewBranchName('');
                   }}
-                  className="h-8 px-3 text-xs font-medium border rounded-md hover:bg-accent transition-colors"
+                  className="px-4 py-2 text-sm border border-border rounded-md hover:bg-accent"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreateBranch}
                   disabled={!newBranchName.trim() || loading}
-                  className="h-8 px-3 text-xs font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50"
                 >
                   {loading ? 'Creating...' : 'Create Branch'}
                 </button>
