@@ -39,6 +39,15 @@ interface AppState {
   addToast: (message: string, variant?: ToastVariant) => void;
   dismissToast: (id: number) => void;
 
+  // Bridges the global keyboard shortcut to the dialog owned by WorktreePanel
+  newWorktreeRequestId: number;
+  requestNewWorktree: () => void;
+
+  // Paths of projects opened before, persisted so the welcome screen can
+  // offer to reopen them
+  recentProjects: string[];
+  removeRecentProject: (path: string) => void;
+
   // Actions
   setConnected: (connected: boolean) => void;
   setConnecting: (connecting: boolean) => void;
@@ -55,6 +64,36 @@ interface AppState {
   addTerminalSession: (worktreePath: string, sessionId: string) => void;
   removeTerminalSession: (worktreePath: string) => void;
   setTheme: (theme: 'light' | 'dark') => void;
+}
+
+const RECENT_PROJECTS_KEY = 'vibetree.recentProjects';
+const RECENT_PROJECTS_MAX = 10;
+
+function loadRecentProjects(): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_PROJECTS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((p) => typeof p === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistRecentProjects(paths: string[]) {
+  try {
+    localStorage.setItem(RECENT_PROJECTS_KEY, JSON.stringify(paths));
+  } catch {
+    // Storage may be unavailable (private mode); recents are best-effort
+  }
+}
+
+function rememberProjects(current: string[], paths: string[]): string[] {
+  const next = [...paths, ...current.filter((p) => !paths.includes(p))].slice(
+    0,
+    RECENT_PROJECTS_MAX
+  );
+  persistRecentProjects(next);
+  return next;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -75,6 +114,18 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   dismissToast: (id) => {
     set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
+  },
+
+  newWorktreeRequestId: 0,
+  requestNewWorktree: () => set({ newWorktreeRequestId: Date.now() }),
+
+  recentProjects: loadRecentProjects(),
+  removeRecentProject: (path) => {
+    set((state) => {
+      const next = state.recentProjects.filter((p) => p !== path);
+      persistRecentProjects(next);
+      return { recentProjects: next };
+    });
   },
 
   // Actions
@@ -105,7 +156,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     set((state) => ({
       projects: [...state.projects, newProject],
-      activeProjectId: id
+      activeProjectId: id,
+      recentProjects: rememberProjects(state.recentProjects, [path])
     }));
     return id;
   },
@@ -141,7 +193,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     if (newProjects.length > 0) {
       set((state) => ({
-        projects: [...state.projects, ...newProjects]
+        projects: [...state.projects, ...newProjects],
+        recentProjects: rememberProjects(
+          state.recentProjects,
+          newProjects.map((p) => p.path)
+        )
       }));
     }
 

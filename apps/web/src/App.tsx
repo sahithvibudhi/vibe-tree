@@ -7,10 +7,12 @@ import { ConnectionStatus } from './components/ConnectionStatus';
 import { ProjectSelector } from './components/ProjectSelector';
 import { OnboardingHint } from './components/OnboardingHint';
 import { Toaster } from './components/Toaster';
+import { ShortcutsHelp } from './components/ShortcutsHelp';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@vibetree/ui';
 import { useAppStore } from './store';
 import { useWebSocket } from './hooks/useWebSocket';
-import { Sun, Moon, Plus, X } from 'lucide-react';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { Sun, Moon, Plus, X, Keyboard } from 'lucide-react';
 import { autoLoadProjects } from './services/projectValidation';
 
 function App() {
@@ -32,6 +34,9 @@ function App() {
   const [showProjectSelector, setShowProjectSelector] = useState(false);
   const [autoLoadAttempted, setAutoLoadAttempted] = useState(false);
   const [hasConnectedOnce, setHasConnectedOnce] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  useKeyboardShortcuts(() => setShowShortcuts(true));
 
   useEffect(() => {
     if (connected) {
@@ -130,6 +135,12 @@ function App() {
     setShowProjectSelector(false);
   };
 
+  const handleSelectProjects = (paths: string[]) => {
+    const ids = addProjects(paths);
+    if (ids.length > 0) setActiveProject(ids[0]);
+    setShowProjectSelector(false);
+  };
+
   const handleCloseProject = (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
     removeProject(projectId);
@@ -167,6 +178,7 @@ function App() {
     return (
       <div className="h-screen flex flex-col bg-background">
         <Toaster />
+        <ShortcutsHelp open={showShortcuts} onClose={() => setShowShortcuts(false)} />
         {/* Header */}
         <header className="h-12 border-b flex items-center justify-between px-3 flex-shrink-0">
           <div className="flex items-center gap-2">
@@ -174,6 +186,14 @@ function App() {
           </div>
           <div className="flex items-center gap-1">
             <ConnectionStatus />
+            <button
+              onClick={() => setShowShortcuts(true)}
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+              aria-label="Keyboard shortcuts"
+              title="Keyboard shortcuts"
+            >
+              <Keyboard className="h-4 w-4" />
+            </button>
             <button
               onClick={toggleTheme}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
@@ -187,7 +207,10 @@ function App() {
         <OnboardingHint />
 
         {/* Project Selector */}
-        <ProjectSelector onSelectProject={handleSelectProject} />
+        <ProjectSelector
+          onSelectProject={handleSelectProject}
+          onSelectProjects={handleSelectProjects}
+        />
       </div>
     );
   }
@@ -195,6 +218,7 @@ function App() {
   return (
     <div className="h-screen flex flex-col bg-background">
       <Toaster />
+      <ShortcutsHelp open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
       {/* Header */}
       <header className="h-12 border-b flex items-center justify-between px-3 flex-shrink-0">
@@ -203,6 +227,14 @@ function App() {
         </div>
         <div className="flex items-center gap-1">
           <ConnectionStatus />
+          <button
+            onClick={() => setShowShortcuts(true)}
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+            aria-label="Keyboard shortcuts"
+            title="Keyboard shortcuts"
+          >
+            <Keyboard className="h-4 w-4" />
+          </button>
           <button
             onClick={toggleTheme}
             className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"

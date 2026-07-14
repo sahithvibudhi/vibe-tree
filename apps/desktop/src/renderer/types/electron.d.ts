@@ -68,6 +68,9 @@ export interface ElectronAPI {
   menu: {
     onOpenTerminalSettings: (callback: () => void) => () => void;
     onOpenSettings: (callback: () => void) => () => void;
+    onNewWorktree: (callback: () => void) => () => void;
+    onToggleView: (callback: () => void) => () => void;
+    onSelectWorktreeDelta: (callback: (delta: number) => void) => () => void;
   };
   utils: {
     getPathForFile: (file: File) => string;

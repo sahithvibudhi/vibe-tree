@@ -170,6 +170,14 @@ export function WorktreePanel({
     loadWorktrees();
   }, [loadWorktrees]);
 
+  // Fired by the Worktree menu accelerator; only the active project's panel
+  // is mounted, so this cannot open dialogs for background projects
+  useEffect(() => {
+    const openDialog = () => setShowNewBranchDialog(true);
+    window.addEventListener('vibetree:new-worktree', openDialog);
+    return () => window.removeEventListener('vibetree:new-worktree', openDialog);
+  }, []);
+
   useEffect(() => {
     if (initialWorktrees && initialWorktrees.length > 0) {
       setWorktrees(initialWorktrees);

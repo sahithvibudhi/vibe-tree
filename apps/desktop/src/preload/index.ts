@@ -85,6 +85,21 @@ const api = {
       const listener = () => callback();
       ipcRenderer.on('menu:open-settings', listener);
       return () => ipcRenderer.removeListener('menu:open-settings', listener);
+    },
+    onNewWorktree: (callback: () => void) => {
+      const listener = () => callback();
+      ipcRenderer.on('menu:new-worktree', listener);
+      return () => ipcRenderer.removeListener('menu:new-worktree', listener);
+    },
+    onToggleView: (callback: () => void) => {
+      const listener = () => callback();
+      ipcRenderer.on('menu:toggle-view', listener);
+      return () => ipcRenderer.removeListener('menu:toggle-view', listener);
+    },
+    onSelectWorktreeDelta: (callback: (delta: number) => void) => {
+      const listener = (_: unknown, delta: number) => callback(delta);
+      ipcRenderer.on('menu:select-worktree-delta', listener);
+      return () => ipcRenderer.removeListener('menu:select-worktree-delta', listener);
     }
   },
   utils: {

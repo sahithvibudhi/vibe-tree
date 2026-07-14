@@ -28,8 +28,15 @@ export function validateBranchName(name: string): string | null {
 }
 
 export function WorktreePanel({ projectId }: WorktreePanelProps) {
-  const { getProject, updateProjectWorktrees, setSelectedWorktree, connected, addToast } =
-    useAppStore();
+  const {
+    getProject,
+    updateProjectWorktrees,
+    setSelectedWorktree,
+    connected,
+    addToast,
+    activeProjectId,
+    newWorktreeRequestId
+  } = useAppStore();
 
   const { getAdapter } = useWebSocket();
   const [loading, setLoading] = useState(false);
@@ -58,6 +65,15 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
       setLoading(false);
     }
   };
+
+  // The Mod+Shift+K shortcut is global but the dialog lives here; only the
+  // panel of the active project should respond
+  useEffect(() => {
+    if (newWorktreeRequestId > 0 && activeProjectId === projectId && connected) {
+      setShowNewBranchDialog(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newWorktreeRequestId]);
 
   const handleSelectWorktree = (path: string) => {
     console.log('WorktreePanel: Selecting worktree:', {
