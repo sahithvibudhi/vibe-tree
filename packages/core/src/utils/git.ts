@@ -1,7 +1,14 @@
 import { spawn } from 'child_process';
 import * as path from 'path';
-import { Worktree, GitStatus, WorktreeAddResult, WorktreeRemoveResult, ProjectValidationResult } from '../types';
+import {
+  Worktree,
+  GitStatus,
+  WorktreeAddResult,
+  WorktreeRemoveResult,
+  ProjectValidationResult
+} from '../types';
 import { parseWorktrees, parseGitStatus } from './git-parser';
+import { runWorktreeHookIfPresent } from './worktree-hooks';
 
 /**
  * Execute a git command and return the output
@@ -9,26 +16,39 @@ import { parseWorktrees, parseGitStatus } from './git-parser';
  * @param cwd - Working directory for the command
  * @returns Promise with command output
  */
-export function executeGitCommand(args: string[], cwd: string): Promise<string> {
+// Locations to try when 'git' is not on PATH (GUI-launched apps on macOS
+// often inherit a minimal PATH)
+const GIT_FALLBACK_PATHS = [
+  '/usr/bin/git',
+  '/usr/local/bin/git',
+  '/opt/homebrew/bin/git',
+  'C:\\Program Files\\Git\\cmd\\git.exe'
+];
+
+let resolvedGitCommand: string | null = null;
+
+function runGit(gitCommand: string, args: string[], cwd: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    // Try 'git' first, fallback to absolute path if not found
-    const gitCommand = process.env.PATH?.includes('/usr/bin') ? 'git' : '/usr/bin/git';
-    const child = spawn(gitCommand, args, { 
+    const child = spawn(gitCommand, args, {
       cwd,
       env: { ...process.env, PATH: process.env.PATH || '/usr/bin:/bin:/usr/local/bin' }
     });
-    
+
     let stdout = '';
     let stderr = '';
-    
+
     child.stdout.on('data', (data) => {
       stdout += data.toString();
     });
-    
+
     child.stderr.on('data', (data) => {
       stderr += data.toString();
     });
-    
+
+    child.on('error', (error) => {
+      reject(error);
+    });
+
     child.on('close', (code) => {
       if (code === 0) {
         resolve(stdout);
@@ -37,6 +57,33 @@ export function executeGitCommand(args: string[], cwd: string): Promise<string> 
       }
     });
   });
+}
+
+export async function executeGitCommand(args: string[], cwd: string): Promise<string> {
+  const candidates = resolvedGitCommand
+    ? [resolvedGitCommand]
+    : ['git', ...GIT_FALLBACK_PATHS];
+
+  let lastError: unknown;
+  for (const candidate of candidates) {
+    try {
+      const output = await runGit(candidate, args, cwd);
+      resolvedGitCommand = candidate;
+      return output;
+    } catch (error) {
+      lastError = error;
+      const code = (error as NodeJS.ErrnoException).code;
+      // Only fall through to the next location when the binary is missing;
+      // a real git failure (bad args, not a repo) must surface immediately
+      if (code !== 'ENOENT') {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('git executable not found. Install git or add it to PATH.');
 }
 
 /**
@@ -93,12 +140,24 @@ export async function getGitDiffStaged(worktreePath: string, filePath?: string):
  * @param branchName - Name for the new branch
  * @returns Result with new worktree path and branch name
  */
-export async function addWorktree(projectPath: string, branchName: string): Promise<WorktreeAddResult> {
+export async function addWorktree(
+  projectPath: string,
+  branchName: string
+): Promise<WorktreeAddResult> {
   const worktreePath = path.join(projectPath, '..', `${path.basename(projectPath)}-${branchName}`);
-  
+
   await executeGitCommand(['worktree', 'add', '-b', branchName, worktreePath], projectPath);
-  
-  return { path: worktreePath, branch: branchName };
+
+  // Per-project post-create hook (.vibetree/hooks/post-create): dependency
+  // installs, .env copies, etc. A failing hook is reported, not fatal - the
+  // worktree already exists
+  const hook = await runWorktreeHookIfPresent('post-create', {
+    projectPath,
+    worktreePath,
+    branch: branchName
+  });
+
+  return { path: worktreePath, branch: branchName, hook };
 }
 
 /**
@@ -109,24 +168,39 @@ export async function addWorktree(projectPath: string, branchName: string): Prom
  * @returns Result indicating success and any warnings
  */
 export async function removeWorktree(
-  projectPath: string, 
-  worktreePath: string, 
+  projectPath: string,
+  worktreePath: string,
   branchName: string
 ): Promise<WorktreeRemoveResult> {
+  // Per-project pre-remove hook (.vibetree/hooks/pre-remove): stop dev
+  // servers, back up state, etc. Failure warns but never blocks removal -
+  // the user asked to delete and a broken script should not hold that hostage
+  const hook = await runWorktreeHookIfPresent('pre-remove', {
+    projectPath,
+    worktreePath,
+    branch: branchName
+  });
+  const hookWarning =
+    hook && !hook.ok
+      ? `pre-remove hook ${hook.timedOut ? 'timed out' : `exited with code ${hook.exitCode}`}`
+      : undefined;
+
   try {
     // First remove the worktree
     await executeGitCommand(['worktree', 'remove', worktreePath, '--force'], projectPath);
-    
+
     try {
       // Then try to delete the branch
       await executeGitCommand(['branch', '-D', branchName], projectPath);
-      return { success: true };
+      return { success: true, warning: hookWarning, hook };
     } catch (branchError) {
       // If branch deletion fails, still consider it success since worktree was removed
       console.warn('Failed to delete branch but worktree was removed:', branchError);
-      return { 
-        success: true, 
-        warning: `Worktree removed but failed to delete branch: ${branchError}` 
+      const warning = `Worktree removed but failed to delete branch: ${branchError}`;
+      return {
+        success: true,
+        warning: hookWarning ? `${warning}; ${hookWarning}` : warning,
+        hook
       };
     }
   } catch (error) {
@@ -179,7 +253,7 @@ export async function validateProjects(projectPaths: string[]): Promise<ProjectV
 
         // Get repository name from path
         const name = path.basename(projectPath);
-        
+
         return {
           path: projectPath,
           name,

@@ -9,19 +9,39 @@ import { ProjectProvider, useProjects } from './contexts/ProjectContext';
 import { Plus, X } from 'lucide-react';
 import { GlobalTerminalSettings } from './components/GlobalTerminalSettings';
 import { GlobalSettings } from './components/GlobalSettings';
+import { OnboardingDialog } from './components/OnboardingDialog';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
+  DialogTitle
 } from './components/ui/dialog';
 
 function AppContent() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [projectToClose, setProjectToClose] = useState<{ id: string; name: string } | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const { projects, activeProjectId, addProject, removeProject, setActiveProject } = useProjects();
+
+  useEffect(() => {
+    window.electronAPI.appSettings
+      .get()
+      .then((settings) => {
+        if (!settings.hasSeenOnboarding) {
+          setShowOnboarding(true);
+        }
+      })
+      .catch(() => {
+        // Settings unavailable (e.g. in tests): skip onboarding
+      });
+  }, []);
+
+  const completeOnboarding = () => {
+    setShowOnboarding(false);
+    window.electronAPI.appSettings.update({ hasSeenOnboarding: true }).catch(() => {});
+  };
 
   useEffect(() => {
     // Get initial theme from localStorage or system
@@ -45,7 +65,7 @@ function AppContent() {
       link.rel = 'stylesheet';
       link.href = './styles/debug-layout.css';
       document.head.appendChild(link);
-      console.log('🎨 Debug layout mode enabled - Component borders visible');
+      console.log('Debug layout mode enabled - Component borders visible');
     }
   }, []);
 
@@ -71,7 +91,7 @@ function AppContent() {
 
   const handleCloseProject = (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
-    const project = projects.find(p => p.id === projectId);
+    const project = projects.find((p) => p.id === projectId);
     if (project) {
       setProjectToClose({ id: project.id, name: project.name });
     }
@@ -150,12 +170,19 @@ function AppContent() {
       <GlobalTerminalSettings />
       <GlobalSettings />
 
+      <OnboardingDialog
+        open={showOnboarding}
+        onComplete={completeOnboarding}
+        onOpenProject={handleOpenProjectDialog}
+      />
+
       <Dialog open={projectToClose !== null} onOpenChange={(open) => !open && cancelCloseProject()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Close Project?</DialogTitle>
             <DialogDescription>
-              Are you sure you want to close &quot;{projectToClose?.name}&quot;? All terminal sessions for this project will be terminated.
+              Are you sure you want to close &quot;{projectToClose?.name}&quot;? All terminal
+              sessions for this project will be terminated.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

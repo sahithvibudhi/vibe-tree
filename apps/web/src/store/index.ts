@@ -15,17 +15,17 @@ interface AppState {
   connected: boolean;
   connecting: boolean;
   error: string | null;
-  
+
   // Project state
   projects: Project[];
   activeProjectId: string | null;
-  
+
   // Terminal state
   terminalSessions: Map<string, string>; // worktreePath -> sessionId
-  
+
   // Theme state
   theme: 'light' | 'dark';
-  
+
   // Actions
   setConnected: (connected: boolean) => void;
   setConnecting: (connecting: boolean) => void;
@@ -53,16 +53,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeProjectId: null,
   terminalSessions: new Map(),
   theme: 'light',
-  
+
   // Actions
   setConnected: (connected) => set({ connected }),
   setConnecting: (connecting) => set({ connecting }),
   setError: (error) => set({ error }),
-  
+
   addProject: (path: string) => {
     const state = get();
     // Check if project already exists
-    const existing = state.projects.find(p => p.path === path);
+    const existing = state.projects.find((p) => p.path === path);
     if (existing) {
       set({ activeProjectId: existing.id });
       return existing.id;
@@ -70,7 +70,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const id = `project-${Date.now()}`;
     const name = path.split('/').pop() || 'Unnamed Project';
-    
+
     const newProject: Project = {
       id,
       path,
@@ -92,9 +92,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     const newProjects: Project[] = [];
     const addedIds: string[] = [];
 
-    paths.forEach(path => {
+    paths.forEach((path) => {
       // Check if project already exists
-      const existing = state.projects.find(p => p.path === path);
+      const existing = state.projects.find((p) => p.path === path);
       if (existing) {
         addedIds.push(existing.id);
         return;
@@ -102,7 +102,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       const id = `project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const name = path.split('/').pop() || 'Unnamed Project';
-      
+
       const newProject: Project = {
         id,
         path,
@@ -127,7 +127,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   removeProject: (id: string) => {
     set((state) => ({
-      projects: state.projects.filter(p => p.id !== id),
+      projects: state.projects.filter((p) => p.id !== id),
       activeProjectId: state.activeProjectId === id ? null : state.activeProjectId
     }));
   },
@@ -138,7 +138,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   updateProjectWorktrees: (id: string, worktrees: Worktree[]) => {
     set((state) => ({
-      projects: state.projects.map(project =>
+      projects: state.projects.map((project) =>
         project.id === id ? { ...project, worktrees } : project
       )
     }));
@@ -146,46 +146,44 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setSelectedWorktree: (projectId: string, worktreePath: string | null) => {
     set((state) => ({
-      projects: state.projects.map(project =>
-        project.id === projectId 
-          ? { ...project, selectedWorktree: worktreePath }
-          : project
+      projects: state.projects.map((project) =>
+        project.id === projectId ? { ...project, selectedWorktree: worktreePath } : project
       )
     }));
   },
 
   setSelectedTab: (projectId: string, tab: 'terminal' | 'changes') => {
     set((state) => ({
-      projects: state.projects.map(project =>
-        project.id === projectId 
-          ? { ...project, selectedTab: tab }
-          : project
+      projects: state.projects.map((project) =>
+        project.id === projectId ? { ...project, selectedTab: tab } : project
       )
     }));
   },
 
   getProject: (id: string) => {
-    return get().projects.find(p => p.id === id);
+    return get().projects.find((p) => p.id === id);
   },
 
   getActiveProject: () => {
     const state = get();
-    return state.activeProjectId ? state.projects.find(p => p.id === state.activeProjectId) : undefined;
+    return state.activeProjectId
+      ? state.projects.find((p) => p.id === state.activeProjectId)
+      : undefined;
   },
 
-  addTerminalSession: (worktreePath, sessionId) => 
+  addTerminalSession: (worktreePath, sessionId) =>
     set((state) => {
       const sessions = new Map(state.terminalSessions);
       sessions.set(worktreePath, sessionId);
       return { terminalSessions: sessions };
     }),
-    
+
   removeTerminalSession: (worktreePath) =>
     set((state) => {
       const sessions = new Map(state.terminalSessions);
       sessions.delete(worktreePath);
       return { terminalSessions: sessions };
     }),
-    
-  setTheme: (theme) => set({ theme }),
+
+  setTheme: (theme) => set({ theme })
 }));

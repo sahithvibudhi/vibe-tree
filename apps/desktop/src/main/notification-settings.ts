@@ -13,7 +13,7 @@ export interface NotificationSettings {
 export type NotificationSettingsUpdate = Partial<NotificationSettings>;
 
 const DEFAULT_SETTINGS: NotificationSettings = {
-  enabled: true,
+  enabled: true
 };
 
 class NotificationSettingsManager {

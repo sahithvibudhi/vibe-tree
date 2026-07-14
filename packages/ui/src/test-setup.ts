@@ -5,11 +5,11 @@ import { vi } from 'vitest';
 global.ResizeObserver = vi.fn().mockImplementation(() => ({
   observe: vi.fn(),
   unobserve: vi.fn(),
-  disconnect: vi.fn(),
+  disconnect: vi.fn()
 }));
 
 // Mock Audio for terminal bell sound
 global.Audio = vi.fn().mockImplementation(() => ({
   play: vi.fn().mockResolvedValue(undefined),
-  volume: 0.5,
+  volume: 0.5
 }));

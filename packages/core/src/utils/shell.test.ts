@@ -18,7 +18,7 @@ async function waitUntil(
     if (await condition()) {
       return;
     }
-    await new Promise(resolve => setTimeout(resolve, interval));
+    await new Promise((resolve) => setTimeout(resolve, interval));
   }
 
   throw new Error(`${message} (timed out after ${timeout}ms)`);
@@ -37,23 +37,34 @@ async function waitForFile(filePath: string, timeout = 5000): Promise<void> {
 /**
  * Wait until file content changes from initial value
  */
-async function waitForFileChange(filePath: string, initialContent: string, timeout = 5000): Promise<string> {
+async function waitForFileChange(
+  filePath: string,
+  initialContent: string,
+  timeout = 5000
+): Promise<string> {
   let currentContent = initialContent;
-  await waitUntil(() => {
-    if (!fs.existsSync(filePath)) return false;
-    currentContent = fs.readFileSync(filePath, 'utf-8');
-    return currentContent !== initialContent;
-  }, {
-    timeout,
-    message: `File ${filePath} content did not change`
-  });
+  await waitUntil(
+    () => {
+      if (!fs.existsSync(filePath)) return false;
+      currentContent = fs.readFileSync(filePath, 'utf-8');
+      return currentContent !== initialContent;
+    },
+    {
+      timeout,
+      message: `File ${filePath} content did not change`
+    }
+  );
   return currentContent;
 }
 
 /**
  * Wait until file content stops changing (process has stopped writing)
  */
-async function waitForFileStable(filePath: string, stabilityPeriod = 300, timeout = 5000): Promise<string> {
+async function waitForFileStable(
+  filePath: string,
+  stabilityPeriod = 300,
+  timeout = 5000
+): Promise<string> {
   let lastContent = '';
   let lastChangeTime = Date.now();
   const startTime = Date.now();
@@ -68,7 +79,7 @@ async function waitForFileStable(filePath: string, stabilityPeriod = 300, timeou
         return lastContent;
       }
     }
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 50));
   }
 
   throw new Error(`File ${filePath} did not stabilize (timed out after ${timeout}ms)`);
@@ -90,61 +101,61 @@ describe('shell utils', () => {
       process.env = originalEnv;
       Object.defineProperty(process, 'platform', {
         value: originalPlatform,
-        configurable: true,
+        configurable: true
       });
     });
 
     it('should set LANG to en_US.UTF-8 when not present and setLocaleVariables is true', () => {
       delete process.env.LANG;
       const options = getPtyOptions('/test/path');
-      
+
       expect(options.env.LANG).toBe('en_US.UTF-8');
     });
 
     it('should not set LANG when setLocaleVariables is false', () => {
       delete process.env.LANG;
       const options = getPtyOptions('/test/path', 80, 30, false);
-      
+
       expect(options.env.LANG).toBeUndefined();
     });
 
     it('should preserve existing LANG when already set', () => {
       process.env.LANG = 'fr_FR.UTF-8';
       const options = getPtyOptions('/test/path');
-      
+
       expect(options.env.LANG).toBe('fr_FR.UTF-8');
     });
 
     it('should set LANG when it exists but is empty', () => {
       process.env.LANG = '';
       const options = getPtyOptions('/test/path');
-      
+
       expect(options.env.LANG).toBe('en_US.UTF-8');
     });
 
     it('should fallback to en_US.UTF-8 on macOS when system locale detection fails', () => {
       Object.defineProperty(process, 'platform', {
         value: 'darwin',
-        configurable: true,
+        configurable: true
       });
-      
+
       delete process.env.LANG;
-      
+
       // The actual implementation will try to read system locale but fail in tests
       // and fallback to en_US.UTF-8
       const options = getPtyOptions('/test/path');
-      
+
       expect(options.env.LANG).toBe('en_US.UTF-8');
     });
 
     it('should include all required PTY options', () => {
       const options = getPtyOptions('/test/path', 100, 50);
-      
+
       expect(options).toMatchObject({
         name: 'xterm-256color',
         cols: 100,
         rows: 50,
-        cwd: '/test/path',
+        cwd: '/test/path'
       });
       expect(options.env).toBeDefined();
     });
@@ -157,7 +168,7 @@ describe('shell utils', () => {
     afterEach(() => {
       Object.defineProperty(process, 'platform', {
         value: originalPlatform,
-        configurable: true,
+        configurable: true
       });
       process.env.SHELL = originalShell;
     });
@@ -165,29 +176,29 @@ describe('shell utils', () => {
     it('should return powershell.exe on Windows', () => {
       Object.defineProperty(process, 'platform', {
         value: 'win32',
-        configurable: true,
+        configurable: true
       });
-      
+
       expect(getDefaultShell()).toBe('powershell.exe');
     });
 
     it('should return SHELL environment variable on Unix', () => {
       Object.defineProperty(process, 'platform', {
         value: 'darwin',
-        configurable: true,
+        configurable: true
       });
       process.env.SHELL = '/bin/zsh';
-      
+
       expect(getDefaultShell()).toBe('/bin/zsh');
     });
 
     it('should default to /bin/bash when SHELL is not set', () => {
       Object.defineProperty(process, 'platform', {
         value: 'linux',
-        configurable: true,
+        configurable: true
       });
       delete process.env.SHELL;
-      
+
       expect(getDefaultShell()).toBe('/bin/bash');
     });
   });
@@ -231,7 +242,7 @@ describe('shell utils', () => {
       const updatedContent = await waitForFileChange(testFile, initialContent);
 
       expect(initialContent).not.toBe(updatedContent);
-      console.log('✓ Process is running and updating file');
+      console.log('Process is running and updating file');
 
       // Kill the PTY gracefully
       await killPtyGraceful(ptyProcess, 10000);
@@ -242,7 +253,7 @@ describe('shell utils', () => {
       // Verify file stayed stable
       const finalContent = fs.readFileSync(testFile, 'utf-8');
       expect(stableContent).toBe(finalContent);
-      console.log('✓ Process has stopped updating file after kill');
+      console.log('Process has stopped updating file after kill');
     }, 15000);
 
     it('should kill child processes when PTY is killed', async () => {
@@ -270,7 +281,7 @@ describe('shell utils', () => {
       const updatedContent = await waitForFileChange(testFile, initialContent);
 
       expect(initialContent).not.toBe(updatedContent);
-      console.log('✓ Child process is running and updating file');
+      console.log('Child process is running and updating file');
 
       // Kill the PTY gracefully
       await killPtyGraceful(ptyProcess, 10000);
@@ -281,7 +292,7 @@ describe('shell utils', () => {
       // Verify file stayed stable
       const finalContent = fs.readFileSync(testFile, 'utf-8');
       expect(stableContent).toBe(finalContent);
-      console.log('✓ Child process has stopped after PTY kill');
+      console.log('Child process has stopped after PTY kill');
     }, 15000);
 
     it('should force kill stubborn processes', async () => {
@@ -308,7 +319,7 @@ describe('shell utils', () => {
       const updatedContent = await waitForFileChange(testFile, initialContent);
 
       expect(initialContent).not.toBe(updatedContent);
-      console.log('✓ Stubborn process is running');
+      console.log('Stubborn process is running');
 
       // Force kill the PTY
       await killPtyForce(ptyProcess);
@@ -319,7 +330,7 @@ describe('shell utils', () => {
       // Verify file stayed stable
       const finalContent = fs.readFileSync(testFile, 'utf-8');
       expect(stableContent).toBe(finalContent);
-      console.log('✓ Stubborn process has been force killed');
+      console.log('Stubborn process has been force killed');
     }, 15000);
   });
 });

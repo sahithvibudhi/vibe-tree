@@ -5,7 +5,7 @@ import { NotificationSettingsTab } from './NotificationSettingsTab';
 // Mock the toast hook
 const mockToast = vi.fn();
 vi.mock('./ui/use-toast', () => ({
-  useToast: () => ({ toast: mockToast }),
+  useToast: () => ({ toast: mockToast })
 }));
 
 describe('NotificationSettingsTab', () => {
@@ -13,18 +13,22 @@ describe('NotificationSettingsTab', () => {
     vi.clearAllMocks();
     // Reset to default mocks
     (window.electronAPI.notification.getSettings as ReturnType<typeof vi.fn>).mockResolvedValue({
-      enabled: true,
+      enabled: true
     });
-    (window.electronAPI.notification.getPermissionStatus as ReturnType<typeof vi.fn>).mockResolvedValue({
+    (
+      window.electronAPI.notification.getPermissionStatus as ReturnType<typeof vi.fn>
+    ).mockResolvedValue({
       supported: true,
       authorized: true,
-      authorizationStatus: 'authorized',
+      authorizationStatus: 'authorized'
     });
   });
 
   describe('Rendering', () => {
     it('should render nothing when settings are not loaded', () => {
-      (window.electronAPI.notification.getSettings as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+      (window.electronAPI.notification.getSettings as ReturnType<typeof vi.fn>).mockResolvedValue(
+        null
+      );
 
       const { container } = render(<NotificationSettingsTab isVisible={true} />);
 
@@ -39,7 +43,9 @@ describe('NotificationSettingsTab', () => {
         expect(screen.getByText('Notification Settings')).toBeInTheDocument();
       });
 
-      expect(screen.getByText('Configure when to receive notifications for Claude Code CLI activity.')).toBeInTheDocument();
+      expect(
+        screen.getByText('Configure when to receive notifications for Claude Code CLI activity.')
+      ).toBeInTheDocument();
       expect(screen.getByText('Enable Notifications')).toBeInTheDocument();
     });
 
@@ -72,7 +78,9 @@ describe('NotificationSettingsTab', () => {
         expect(screen.getByText('Notifications Enabled')).toBeInTheDocument();
       });
 
-      expect(screen.getByText('System notifications are allowed for this app.')).toBeInTheDocument();
+      expect(
+        screen.getByText('System notifications are allowed for this app.')
+      ).toBeInTheDocument();
     });
 
     it('should show Test button when authorized', async () => {
@@ -92,17 +100,19 @@ describe('NotificationSettingsTab', () => {
 
       // Find refresh button (it's a ghost button with RefreshCw icon)
       const buttons = screen.getAllByRole('button');
-      const refreshButton = buttons.find(btn => btn.querySelector('svg.lucide-refresh-cw'));
+      const refreshButton = buttons.find((btn) => btn.querySelector('svg.lucide-refresh-cw'));
       expect(refreshButton).toBeInTheDocument();
     });
   });
 
   describe('Permission Status - Blocked', () => {
     beforeEach(() => {
-      (window.electronAPI.notification.getPermissionStatus as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (
+        window.electronAPI.notification.getPermissionStatus as ReturnType<typeof vi.fn>
+      ).mockResolvedValue({
         supported: true,
         authorized: false,
-        authorizationStatus: 'denied',
+        authorizationStatus: 'denied'
       });
     });
 
@@ -113,7 +123,9 @@ describe('NotificationSettingsTab', () => {
         expect(screen.getByText('Notifications Blocked')).toBeInTheDocument();
       });
 
-      expect(screen.getByText('Notifications are disabled in system settings.')).toBeInTheDocument();
+      expect(
+        screen.getByText('Notifications are disabled in system settings.')
+      ).toBeInTheDocument();
     });
 
     it('should show "Open Settings" button when blocked', async () => {
@@ -139,10 +151,12 @@ describe('NotificationSettingsTab', () => {
 
   describe('Permission Status - Not Supported', () => {
     beforeEach(() => {
-      (window.electronAPI.notification.getPermissionStatus as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (
+        window.electronAPI.notification.getPermissionStatus as ReturnType<typeof vi.fn>
+      ).mockResolvedValue({
         supported: false,
         authorized: false,
-        authorizationStatus: 'unknown',
+        authorizationStatus: 'unknown'
       });
     });
 
@@ -159,10 +173,12 @@ describe('NotificationSettingsTab', () => {
 
   describe('Permission Status - Unknown', () => {
     beforeEach(() => {
-      (window.electronAPI.notification.getPermissionStatus as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (
+        window.electronAPI.notification.getPermissionStatus as ReturnType<typeof vi.fn>
+      ).mockResolvedValue({
         supported: true,
         authorized: true,
-        authorizationStatus: 'unknown',
+        authorizationStatus: 'unknown'
       });
     });
 
@@ -202,7 +218,7 @@ describe('NotificationSettingsTab', () => {
 
     it('should show checkbox unchecked when notifications are disabled', async () => {
       (window.electronAPI.notification.getSettings as ReturnType<typeof vi.fn>).mockResolvedValue({
-        enabled: false,
+        enabled: false
       });
 
       render(<NotificationSettingsTab isVisible={true} />);
@@ -226,7 +242,7 @@ describe('NotificationSettingsTab', () => {
       fireEvent.click(checkbox);
 
       expect(window.electronAPI.notification.updateSettings).toHaveBeenCalledWith({
-        enabled: false,
+        enabled: false
       });
     });
 
@@ -247,9 +263,9 @@ describe('NotificationSettingsTab', () => {
     });
 
     it('should show toast on update error', async () => {
-      (window.electronAPI.notification.updateSettings as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error('Update failed')
-      );
+      (
+        window.electronAPI.notification.updateSettings as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error('Update failed'));
 
       render(<NotificationSettingsTab isVisible={true} />);
 
@@ -264,7 +280,7 @@ describe('NotificationSettingsTab', () => {
         expect(mockToast).toHaveBeenCalledWith({
           title: 'Error',
           description: 'Failed to update settings.',
-          variant: 'destructive',
+          variant: 'destructive'
         });
       });
     });
@@ -288,7 +304,9 @@ describe('NotificationSettingsTab', () => {
     });
 
     it('should show success toast when test notification is shown', async () => {
-      (window.electronAPI.notification.showTest as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+      (window.electronAPI.notification.showTest as ReturnType<typeof vi.fn>).mockResolvedValue(
+        true
+      );
 
       render(<NotificationSettingsTab isVisible={true} />);
 
@@ -301,13 +319,15 @@ describe('NotificationSettingsTab', () => {
       await waitFor(() => {
         expect(mockToast).toHaveBeenCalledWith({
           title: 'Test Sent',
-          description: 'A test notification was sent. Check if it appeared.',
+          description: 'A test notification was sent. Check if it appeared.'
         });
       });
     });
 
     it('should show warning toast when notification was skipped', async () => {
-      (window.electronAPI.notification.showTest as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+      (window.electronAPI.notification.showTest as ReturnType<typeof vi.fn>).mockResolvedValue(
+        false
+      );
 
       render(<NotificationSettingsTab isVisible={true} />);
 
@@ -321,7 +341,7 @@ describe('NotificationSettingsTab', () => {
         expect(mockToast).toHaveBeenCalledWith({
           title: 'Notification Skipped',
           description: 'Notification was not shown (notifications may be disabled).',
-          variant: 'destructive',
+          variant: 'destructive'
         });
       });
     });
@@ -343,11 +363,10 @@ describe('NotificationSettingsTab', () => {
         expect(mockToast).toHaveBeenCalledWith({
           title: 'Test Failed',
           description: 'Failed to send test notification.',
-          variant: 'destructive',
+          variant: 'destructive'
         });
       });
     });
-
   });
 
   describe('Refresh Permission Status', () => {
@@ -360,7 +379,7 @@ describe('NotificationSettingsTab', () => {
 
       // Find and click refresh button
       const buttons = screen.getAllByRole('button');
-      const refreshButton = buttons.find(btn => btn.querySelector('svg.lucide-refresh-cw'));
+      const refreshButton = buttons.find((btn) => btn.querySelector('svg.lucide-refresh-cw'));
       expect(refreshButton).toBeInTheDocument();
 
       fireEvent.click(refreshButton!);
@@ -378,14 +397,14 @@ describe('NotificationSettingsTab', () => {
       });
 
       const buttons = screen.getAllByRole('button');
-      const refreshButton = buttons.find(btn => btn.querySelector('svg.lucide-refresh-cw'));
+      const refreshButton = buttons.find((btn) => btn.querySelector('svg.lucide-refresh-cw'));
 
       fireEvent.click(refreshButton!);
 
       await waitFor(() => {
         expect(mockToast).toHaveBeenCalledWith({
           title: 'Status Refreshed',
-          description: 'Notifications are enabled.',
+          description: 'Notifications are enabled.'
         });
       });
     });
@@ -396,12 +415,12 @@ describe('NotificationSettingsTab', () => {
         .mockResolvedValueOnce({
           supported: true,
           authorized: true,
-          authorizationStatus: 'authorized',
+          authorizationStatus: 'authorized'
         })
         .mockResolvedValueOnce({
           supported: true,
           authorized: false,
-          authorizationStatus: 'denied',
+          authorizationStatus: 'denied'
         });
 
       render(<NotificationSettingsTab isVisible={true} />);
@@ -411,14 +430,14 @@ describe('NotificationSettingsTab', () => {
       });
 
       const buttons = screen.getAllByRole('button');
-      const refreshButton = buttons.find(btn => btn.querySelector('svg.lucide-refresh-cw'));
+      const refreshButton = buttons.find((btn) => btn.querySelector('svg.lucide-refresh-cw'));
 
       fireEvent.click(refreshButton!);
 
       await waitFor(() => {
         expect(mockToast).toHaveBeenCalledWith({
           title: 'Status Refreshed',
-          description: 'Notifications are blocked.',
+          description: 'Notifications are blocked.'
         });
       });
     });
@@ -429,7 +448,7 @@ describe('NotificationSettingsTab', () => {
         .mockResolvedValueOnce({
           supported: true,
           authorized: true,
-          authorizationStatus: 'authorized',
+          authorizationStatus: 'authorized'
         })
         .mockRejectedValueOnce(new Error('Refresh failed'));
 
@@ -440,7 +459,7 @@ describe('NotificationSettingsTab', () => {
       });
 
       const buttons = screen.getAllByRole('button');
-      const refreshButton = buttons.find(btn => btn.querySelector('svg.lucide-refresh-cw'));
+      const refreshButton = buttons.find((btn) => btn.querySelector('svg.lucide-refresh-cw'));
 
       fireEvent.click(refreshButton!);
 
@@ -448,7 +467,7 @@ describe('NotificationSettingsTab', () => {
         expect(mockToast).toHaveBeenCalledWith({
           title: 'Refresh Failed',
           description: 'Could not check permission status.',
-          variant: 'destructive',
+          variant: 'destructive'
         });
       });
     });
@@ -475,9 +494,9 @@ describe('NotificationSettingsTab', () => {
 
     it('should handle getPermissionStatus error gracefully', async () => {
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-      (window.electronAPI.notification.getPermissionStatus as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error('Permission check failed')
-      );
+      (
+        window.electronAPI.notification.getPermissionStatus as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error('Permission check failed'));
 
       render(<NotificationSettingsTab isVisible={true} />);
 
@@ -493,14 +512,16 @@ describe('NotificationSettingsTab', () => {
 
     it('should handle openSystemSettings error gracefully', async () => {
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-      (window.electronAPI.notification.getPermissionStatus as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (
+        window.electronAPI.notification.getPermissionStatus as ReturnType<typeof vi.fn>
+      ).mockResolvedValue({
         supported: true,
         authorized: false,
-        authorizationStatus: 'denied',
+        authorizationStatus: 'denied'
       });
-      (window.electronAPI.notification.openSystemSettings as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error('Failed to open')
-      );
+      (
+        window.electronAPI.notification.openSystemSettings as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error('Failed to open'));
 
       render(<NotificationSettingsTab isVisible={true} />);
 

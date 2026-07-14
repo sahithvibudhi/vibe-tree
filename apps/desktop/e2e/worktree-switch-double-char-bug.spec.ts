@@ -40,10 +40,10 @@ test.describe('Worktree Switch Double Character Bug', () => {
         ...process.env,
         NODE_ENV: 'test',
         TEST_MODE: 'true',
-        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
+        DISABLE_QUIT_DIALOG: 'true' // Prevent blocking on quit dialog
       },
       args: [testMainPath],
-      cwd: appDir,
+      cwd: appDir
     });
 
     page = await electronApp.firstWindow();
@@ -75,7 +75,9 @@ test.describe('Worktree Switch Double Character Bug', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Verify the app launches with project selector
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({
+      timeout: 10000
+    });
 
     // Click the "Open Project Folder" button
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
@@ -100,11 +102,11 @@ test.describe('Worktree Switch Double Character Bug', () => {
     // Use the reliable data-worktree-branch selector
     const wt1Button = page.locator('button[data-worktree-branch="wt1"]');
     const wt1Count = await wt1Button.count();
-    
+
     if (wt1Count === 0) {
       throw new Error('Could not find wt1 worktree button');
     }
-    
+
     console.log('Found wt1 worktree button');
 
     // First click on wt1
@@ -115,11 +117,11 @@ test.describe('Worktree Switch Double Character Bug', () => {
     // Find and click on wt2 using the data attribute
     const wt2Button = page.locator('button[data-worktree-branch="wt2"]');
     const wt2Count = await wt2Button.count();
-    
+
     if (wt2Count === 0) {
       throw new Error('Could not find wt2 worktree button');
     }
-    
+
     console.log('Found wt2 worktree button');
 
     console.log('Clicking on wt2...');
@@ -137,7 +139,7 @@ test.describe('Worktree Switch Double Character Bug', () => {
 
     for (const selector of terminalSelectors) {
       const element = page.locator(selector).first();
-      if (await element.count() > 0) {
+      if ((await element.count()) > 0) {
         terminalElement = element;
         break;
       }
@@ -161,10 +163,10 @@ test.describe('Worktree Switch Double Character Bug', () => {
     // The bug causes "eecchhoo" to appear instead of "echo"
     // This test should FAIL initially (demonstrating the bug exists)
     // and PASS after the fix is applied
-    
+
     // Check that the terminal does NOT contain the doubled characters
     expect(terminalContent).not.toContain('eecchhoo');
-    
+
     // Check that the terminal contains the correct single "echo"
     expect(terminalContent).toContain('echo');
   });

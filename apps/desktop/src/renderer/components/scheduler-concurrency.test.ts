@@ -82,7 +82,7 @@ describe('Scheduler Overlap Bug', () => {
     // Find positions of the two \r (enter) characters
     const enterPositions = mockWrites
       .map((char, index) => (char === '\r' ? index : -1))
-      .filter(pos => pos !== -1);
+      .filter((pos) => pos !== -1);
 
     console.log('Enter key positions:', enterPositions);
     console.log('Expected 2 enter keys, got:', enterPositions.length);

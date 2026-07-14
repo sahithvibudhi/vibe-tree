@@ -47,10 +47,10 @@ test.describe('Worktree Scheduler Indicator Test', () => {
         ...process.env,
         NODE_ENV: 'test',
         TEST_MODE: 'true',
-        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
+        DISABLE_QUIT_DIALOG: 'true' // Prevent blocking on quit dialog
       },
       args: [testMainPath],
-      cwd: appDir,
+      cwd: appDir
     });
 
     page = await electronApp.firstWindow();
@@ -78,7 +78,7 @@ test.describe('Worktree Scheduler Indicator Test', () => {
 
     // Capture console logs from the renderer process
     const consoleLogs: string[] = [];
-    page.on('console', msg => {
+    page.on('console', (msg) => {
       const text = msg.text();
       if (text.includes('[WorktreePanel]') || text.includes('[TerminalManager]')) {
         console.log(`[RENDERER] ${text}`);
@@ -89,7 +89,9 @@ test.describe('Worktree Scheduler Indicator Test', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Verify the app launches with project selector
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({
+      timeout: 10000
+    });
 
     // Click the "Open Project Folder" button
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
@@ -171,7 +173,7 @@ test.describe('Worktree Scheduler Indicator Test', () => {
 
     // Debug: Print all captured console logs
     console.log('=== Console logs from renderer ===');
-    consoleLogs.forEach(log => console.log(log));
+    consoleLogs.forEach((log) => console.log(log));
     console.log('=== End console logs ===');
 
     // Verify the clock icon is now visible
@@ -207,7 +209,9 @@ test.describe('Worktree Scheduler Indicator Test', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Open project
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({
+      timeout: 10000
+    });
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
 
     // Mock the Electron dialog

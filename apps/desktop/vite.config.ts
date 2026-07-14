@@ -9,10 +9,13 @@ function portCapturePlugin() {
   return {
     name: 'port-capture',
     configureServer(server: ViteDevServer) {
-      server.middlewares.use('/__vite_port_capture', (req: IncomingMessage, res: ServerResponse, next: () => void) => {
-        // This won't be called, but ensures the plugin is active
-        next();
-      });
+      server.middlewares.use(
+        '/__vite_port_capture',
+        (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+          // This won't be called, but ensures the plugin is active
+          next();
+        }
+      );
 
       // Hook into the server listening event
       server.httpServer?.on('listening', () => {
@@ -33,18 +36,18 @@ export default defineConfig({
   base: './',
   build: {
     outDir: '../../dist/renderer',
-    emptyOutDir: true,
+    emptyOutDir: true
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src/renderer'),
-    },
+      '@': path.resolve(__dirname, './src/renderer')
+    }
   },
   server: {
     port: Math.floor(Math.random() * 1000) + 3000,
-    strictPort: false, // Allow Vite to find alternative ports if the random port is taken
+    strictPort: false // Allow Vite to find alternative ports if the random port is taken
   },
   define: {
-    'process.env.DEBUG_LAYOUT': JSON.stringify(process.env.DEBUG_LAYOUT || 'false'),
-  },
+    'process.env.DEBUG_LAYOUT': JSON.stringify(process.env.DEBUG_LAYOUT || 'false')
+  }
 });

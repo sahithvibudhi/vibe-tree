@@ -5,6 +5,7 @@
 View failing build logs: `gh api repos/{owner}/{repo}/actions/jobs/{jobId}/logs`
 
 Example:
+
 ```bash
 gh api repos/sahithvibudhi/vibe-tree/actions/jobs/51222513854/logs
 ```
@@ -14,6 +15,7 @@ This provides the full build logs for debugging CI/CD failures.
 ## Electron App Startup Issues
 
 If the Electron app fails to start with errors like:
+
 - `icudtl.dat not found in bundle`
 - `Library not loaded: @rpath/Electron Framework.framework/Electron Framework`
 - `Invalid file descriptor to ICU data received`

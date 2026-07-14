@@ -34,10 +34,10 @@ test.describe('Open Current Working Directory', () => {
         ...process.env,
         NODE_ENV: 'test',
         TEST_MODE: 'true',
-        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
+        DISABLE_QUIT_DIALOG: 'true' // Prevent blocking on quit dialog
       },
       args: [testMainPath],
-      cwd: testRepoPath, // Set the working directory for the Electron app
+      cwd: testRepoPath // Set the working directory for the Electron app
     });
 
     // Restore original working directory
@@ -70,7 +70,9 @@ test.describe('Open Current Working Directory', () => {
     const result = await electronApp.evaluate(async ({ ipcMain }) => {
       // Get the handler that was registered for 'project:open-cwd'
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const handlers = (ipcMain as unknown as {_invokeHandlers?: Map<string, (...args: any[]) => any>})._invokeHandlers;
+      const handlers = (
+        ipcMain as unknown as { _invokeHandlers?: Map<string, (...args: any[]) => any> }
+      )._invokeHandlers;
       if (handlers && handlers.get('project:open-cwd')) {
         const handler = handlers.get('project:open-cwd');
         return await handler(null);
@@ -91,10 +93,13 @@ test.describe('Open Current Working Directory', () => {
     // Verify that the project is now open
     // Check if we're still on the welcome screen or if the project loaded
     const pageContent = await page.content();
-    console.log('Page has worktree content:', pageContent.includes('worktree') || pageContent.includes('Worktree'));
-    
+    console.log(
+      'Page has worktree content:',
+      pageContent.includes('worktree') || pageContent.includes('Worktree')
+    );
+
     // The app should have navigated away from the select project screen
-    const selectProjectText = await page.locator('text="Select a Project"').count();
+    const selectProjectText = await page.locator('text="Open a project"').count();
     expect(selectProjectText).toBe(0);
   });
 
@@ -117,7 +122,7 @@ test.describe('Open Current Working Directory', () => {
     });
 
     console.log('openCwd via preload result:', result);
-    
+
     // The result might be empty object {} if successful but no return value
     // or it might have success/error fields
     if (result && result.error) {
@@ -130,10 +135,13 @@ test.describe('Open Current Working Directory', () => {
     // Verify that the project is now open
     // Check if we're still on the welcome screen or if the project loaded
     const pageContent = await page.content();
-    console.log('Page has worktree content:', pageContent.includes('worktree') || pageContent.includes('Worktree'));
-    
+    console.log(
+      'Page has worktree content:',
+      pageContent.includes('worktree') || pageContent.includes('Worktree')
+    );
+
     // The app should have navigated away from the select project screen
-    const selectProjectText = await page.locator('text="Select a Project"').count();
+    const selectProjectText = await page.locator('text="Open a project"').count();
     expect(selectProjectText).toBe(0);
   });
 
@@ -158,7 +166,7 @@ test.describe('Open Current Working Directory', () => {
     });
 
     console.log('Non-existent directory result:', result);
-    
+
     // The openPath should handle non-existent directories gracefully
     // It might return an error or just not change the current state
     if (result && result.success !== undefined) {

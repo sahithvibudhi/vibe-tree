@@ -112,7 +112,7 @@ const getTerminalTheme = (theme: 'light' | 'dark') => {
       brightWhite: '#e5e5e5'
     }
   };
-  
+
   return themes[theme];
 };
 
@@ -199,7 +199,7 @@ export const Terminal: React.FC<TerminalProps> = ({
     const fitAddon = new FitAddon();
     fitAddonRef.current = fitAddon;
     term.loadAddon(fitAddon);
-    
+
     // Configure WebLinksAddon with custom handler for opening links
     const webLinksAddon = new WebLinksAddon((event, uri) => {
       // Prevent default browser behavior to avoid opening in in-app browser
@@ -217,11 +217,11 @@ export const Terminal: React.FC<TerminalProps> = ({
       }
     });
     term.loadAddon(webLinksAddon);
-    
+
     const serializeAddon = new SerializeAddon();
     serializeAddonRef.current = serializeAddon;
     term.loadAddon(serializeAddon);
-    
+
     const unicode11Addon = new Unicode11Addon();
     term.loadAddon(unicode11Addon);
 
@@ -231,10 +231,10 @@ export const Terminal: React.FC<TerminalProps> = ({
 
     // Open terminal in DOM container
     term.open(terminalRef.current);
-    
+
     // Activate unicode support
     unicode11Addon.activate(term);
-    
+
     // Fit terminal to container after render
     setTimeout(() => {
       fitAddon.fit();
@@ -252,18 +252,22 @@ export const Terminal: React.FC<TerminalProps> = ({
 
     // Handle window resize
     const handleResize = () => {
-      if (terminalRef.current && terminalRef.current.offsetWidth > 0 && terminalRef.current.offsetHeight > 0) {
+      if (
+        terminalRef.current &&
+        terminalRef.current.offsetWidth > 0 &&
+        terminalRef.current.offsetHeight > 0
+      ) {
         // First, fit the terminal to the container
         fitAddon.fit();
-        
+
         // Get the new dimensions after fitting
         const newCols = term.cols;
         const newRows = term.rows;
-        
+
         // Explicitly resize the terminal to notify PTY of size change
         // This is crucial for applications like vim to handle resize properly
         term.resize(newCols, newRows);
-        
+
         // Notify parent component of the resize
         if (onResize) {
           onResize(newCols, newRows);
@@ -310,9 +314,11 @@ export const Terminal: React.FC<TerminalProps> = ({
     // Handle bell character - play sound when bell is triggered
     const bellDisposable = term.onBell(() => {
       // Create an audio element and play the bell sound
-      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhCSuBzvLZijYIG2m98OGiUSATVqzn77FgGwc4k9n1znksBSh+zPLaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSN3yfDTgDAJInfN9NuLOgoUYrfp56ZSFApGn+DyvmwhCSuBzvLZijYIG2m98OGiUSATVqzn77FgGwc4k9n1znksBSh+zPLaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQ==');
+      const audio = new Audio(
+        'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhCSuBzvLZijYIG2m98OGiUSATVqzn77FgGwc4k9n1znksBSh+zPLaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSN3yfDTgDAJInfN9NuLOgoUYrfp56ZSFApGn+DyvmwhCSuBzvLZijYIG2m98OGiUSATVqzn77FgGwc4k9n1znksBSh+zPLaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQU2ktXwy3YqBSh+zPDaizsIGWi58OKjTQ8NTqbi78BkHQ=='
+      );
       audio.volume = 0.5; // Set volume to 50%
-      audio.play().catch(err => {
+      audio.play().catch((err) => {
         // Silently fail if audio playback is blocked
         console.debug('Bell sound playback failed:', err);
       });
@@ -352,12 +358,15 @@ export const Terminal: React.FC<TerminalProps> = ({
     }
   }, []);
 
-  const handleSearchInputChange = useCallback((value: string) => {
-    setSearchQuery(value);
-    if (value) {
-      handleSearch(value);
-    }
-  }, [handleSearch]);
+  const handleSearchInputChange = useCallback(
+    (value: string) => {
+      setSearchQuery(value);
+      if (value) {
+        handleSearch(value);
+      }
+    },
+    [handleSearch]
+  );
 
   /**
    * Handle drag over event
@@ -378,8 +387,13 @@ export const Terminal: React.FC<TerminalProps> = ({
 
     // Check if we're actually leaving the terminal container
     const rect = terminalRef.current?.getBoundingClientRect();
-    if (rect && (e.clientX < rect.left || e.clientX > rect.right ||
-                 e.clientY < rect.top || e.clientY > rect.bottom)) {
+    if (
+      rect &&
+      (e.clientX < rect.left ||
+        e.clientX > rect.right ||
+        e.clientY < rect.top ||
+        e.clientY > rect.bottom)
+    ) {
       setIsDragOver(false);
     }
   }, []);
@@ -387,34 +401,37 @@ export const Terminal: React.FC<TerminalProps> = ({
   /**
    * Handle drop event
    */
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
 
-    if (!terminal || !onData) return;
+      if (!terminal || !onData) return;
 
-    // Get the dropped files
-    const files = e.dataTransfer.files;
-    if (files.length === 0) return;
+      // Get the dropped files
+      const files = e.dataTransfer.files;
+      if (files.length === 0) return;
 
-    // Build the escaped paths
-    const paths: string[] = [];
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      // In web environment, we get the file name; in Electron, we get the full path
-      const path = (file as any).path || file.name;
-      if (path) {
-        paths.push(escapeShellPath(path));
+      // Build the escaped paths
+      const paths: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        // In web environment, we get the file name; in Electron, we get the full path
+        const path = (file as any).path || file.name;
+        if (path) {
+          paths.push(escapeShellPath(path));
+        }
       }
-    }
 
-    if (paths.length > 0) {
-      // Insert the paths at current cursor position
-      const pathString = paths.join(' ');
-      onData(pathString);
-    }
-  }, [terminal, onData]);
+      if (paths.length > 0) {
+        // Insert the paths at current cursor position
+        const pathString = paths.join(' ');
+        onData(pathString);
+      }
+    },
+    [terminal, onData]
+  );
 
   /**
    * Public API methods exposed via ref
@@ -561,11 +578,13 @@ export const Terminal: React.FC<TerminalProps> = ({
           height: '100%',
           minHeight: '100px',
           position: 'relative',
-          ...(isDragOver ? {
-            outline: '2px dashed #007acc',
-            outlineOffset: '-2px',
-            backgroundColor: 'rgba(0, 122, 204, 0.1)'
-          } : {})
+          ...(isDragOver
+            ? {
+                outline: '2px dashed #007acc',
+                outlineOffset: '-2px',
+                backgroundColor: 'rgba(0, 122, 204, 0.1)'
+              }
+            : {})
         }}
       />
     </div>

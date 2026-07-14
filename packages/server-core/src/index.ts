@@ -1,0 +1,10 @@
+export { createVibeTreeServer } from './server';
+export type { CreateServerOptions, VibeTreeServer } from './server';
+export { loadConfigFromEnv } from './config';
+export type { ServerConfig } from './config';
+export { ShellManager } from './services/ShellManager';
+export type { PtySpawn, ShellSettings } from './services/ShellManager';
+export { AuthService } from './auth/AuthService';
+export { setupWebSocketHandlers } from './api/websocket';
+export type { SessionHooks } from './api/websocket';
+export { setupRestRoutes } from './api/rest';

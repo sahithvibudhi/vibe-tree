@@ -18,8 +18,8 @@ test.describe('Quit Confirmation Dialog', () => {
         ...process.env,
         NODE_ENV: 'test',
         TEST_MODE: 'true',
-        DISABLE_QUIT_DIALOG: 'true'  // Disable dialog (default for tests)
-      },
+        DISABLE_QUIT_DIALOG: 'true' // Disable dialog (default for tests)
+      }
     });
 
     const page = await electronApp.firstWindow();
@@ -65,7 +65,7 @@ test.describe('Quit Confirmation Dialog', () => {
         NODE_ENV: 'test',
         TEST_MODE: 'true',
         DISABLE_QUIT_DIALOG: 'true'
-      },
+      }
     });
 
     const page = await electronApp.firstWindow();

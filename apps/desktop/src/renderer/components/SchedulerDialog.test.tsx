@@ -28,7 +28,11 @@ describe('SchedulerDialog', () => {
       );
 
       expect(screen.getByText('Schedule Terminal Command')).toBeInTheDocument();
-      expect(screen.getByText('Configure a command to be typed into the terminal automatically. Characters will be typed one by one, then ENTER will be pressed to execute.')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'Configure a command to be typed into the terminal automatically. Characters will be typed one by one, then ENTER will be pressed to execute.'
+        )
+      ).toBeInTheDocument();
     });
 
     it('should not render when open is false', () => {
@@ -124,7 +128,7 @@ describe('SchedulerDialog', () => {
       const config: SchedulerConfig = {
         command: 'echo "test"',
         delayMs: 1000,
-        repeat: false,
+        repeat: false
       };
 
       render(
@@ -169,7 +173,7 @@ describe('SchedulerDialog', () => {
       const config: SchedulerConfig = {
         command: 'echo "test"',
         delayMs: 1000,
-        repeat: false,
+        repeat: false
       };
 
       render(
@@ -248,7 +252,7 @@ describe('SchedulerDialog', () => {
       const config: SchedulerConfig = {
         command: 'echo "test"',
         delayMs: 1000,
-        repeat: false,
+        repeat: false
       };
 
       render(
@@ -295,7 +299,7 @@ describe('SchedulerDialog', () => {
       expect(mockOnStart).toHaveBeenCalledWith({
         command: 'echo "Hello World"',
         delayMs: 1000,
-        repeat: false,
+        repeat: false
       });
     });
 
@@ -326,7 +330,7 @@ describe('SchedulerDialog', () => {
       expect(mockOnStart).toHaveBeenCalledWith({
         command: 'echo "test"',
         delayMs: 2500,
-        repeat: true,
+        repeat: true
       });
     });
 
@@ -354,7 +358,7 @@ describe('SchedulerDialog', () => {
       expect(mockOnStart).toHaveBeenCalledWith({
         command: 'echo "test"',
         delayMs: 1000,
-        repeat: false,
+        repeat: false
       });
     });
   });
@@ -364,7 +368,7 @@ describe('SchedulerDialog', () => {
       const config: SchedulerConfig = {
         command: 'echo "existing"',
         delayMs: 3000,
-        repeat: true,
+        repeat: true
       };
 
       render(
@@ -391,7 +395,7 @@ describe('SchedulerDialog', () => {
       const config: SchedulerConfig = {
         command: 'echo "test"',
         delayMs: 1000,
-        repeat: true,
+        repeat: true
       };
 
       render(
@@ -413,7 +417,7 @@ describe('SchedulerDialog', () => {
       const config: SchedulerConfig = {
         command: 'echo "test"',
         delayMs: 2000,
-        repeat: false,
+        repeat: false
       };
 
       render(
@@ -434,7 +438,7 @@ describe('SchedulerDialog', () => {
       const config: SchedulerConfig = {
         command: 'echo "test"',
         delayMs: 1000,
-        repeat: false,
+        repeat: false
       };
 
       render(
@@ -477,7 +481,7 @@ describe('SchedulerDialog', () => {
       expect(mockOnStart).toHaveBeenCalledWith({
         command: 'echo "test"',
         delayMs: 1000,
-        repeat: false,
+        repeat: false
       });
     });
   });
@@ -487,7 +491,7 @@ describe('SchedulerDialog', () => {
       const config: SchedulerConfig = {
         command: 'echo "test"',
         delayMs: 1000,
-        repeat: true,
+        repeat: true
       };
 
       const { unmount } = render(
@@ -582,7 +586,7 @@ describe('SchedulerDialog', () => {
     it('should load history when dialog opens', async () => {
       const mockHistory = [
         { command: 'echo "test1"', delayMs: 1000, repeat: false, timestamp: Date.now() },
-        { command: 'echo "test2"', delayMs: 2000, repeat: true, timestamp: Date.now() - 1000 },
+        { command: 'echo "test2"', delayMs: 2000, repeat: true, timestamp: Date.now() - 1000 }
       ];
       (window.electronAPI.schedulerHistory.get as any).mockResolvedValue(mockHistory);
 
@@ -623,7 +627,7 @@ describe('SchedulerDialog', () => {
 
     it('should show history button when history is available', async () => {
       const mockHistory = [
-        { command: 'echo "test"', delayMs: 1000, repeat: false, timestamp: Date.now() },
+        { command: 'echo "test"', delayMs: 1000, repeat: false, timestamp: Date.now() }
       ];
       (window.electronAPI.schedulerHistory.get as any).mockResolvedValue(mockHistory);
 
@@ -645,14 +649,14 @@ describe('SchedulerDialog', () => {
 
     it('should not show history button when scheduler is running', async () => {
       const mockHistory = [
-        { command: 'echo "test"', delayMs: 1000, repeat: false, timestamp: Date.now() },
+        { command: 'echo "test"', delayMs: 1000, repeat: false, timestamp: Date.now() }
       ];
       (window.electronAPI.schedulerHistory.get as any).mockResolvedValue(mockHistory);
 
       const config: SchedulerConfig = {
         command: 'echo "running"',
         delayMs: 1000,
-        repeat: false,
+        repeat: false
       };
 
       render(
@@ -674,7 +678,7 @@ describe('SchedulerDialog', () => {
     it('should display history entries in dropdown menu', async () => {
       const mockHistory = [
         { command: 'echo "test1"', delayMs: 1000, repeat: false, timestamp: Date.now() },
-        { command: 'echo "test2"', delayMs: 2000, repeat: true, timestamp: Date.now() - 1000 },
+        { command: 'echo "test2"', delayMs: 2000, repeat: true, timestamp: Date.now() - 1000 }
       ];
       (window.electronAPI.schedulerHistory.get as any).mockResolvedValue(mockHistory);
 
@@ -703,7 +707,7 @@ describe('SchedulerDialog', () => {
 
     it('should load history entry into form when clicked', async () => {
       const mockHistory = [
-        { command: 'echo "historical"', delayMs: 3000, repeat: true, timestamp: Date.now() },
+        { command: 'echo "historical"', delayMs: 3000, repeat: true, timestamp: Date.now() }
       ];
       (window.electronAPI.schedulerHistory.get as any).mockResolvedValue(mockHistory);
 
@@ -752,7 +756,11 @@ describe('SchedulerDialog', () => {
 
       await waitFor(() => {
         expect(window.electronAPI.schedulerHistory.add).toHaveBeenCalledTimes(1);
-        expect(window.electronAPI.schedulerHistory.add).toHaveBeenCalledWith('echo "save me"', 2500, true);
+        expect(window.electronAPI.schedulerHistory.add).toHaveBeenCalledWith(
+          'echo "save me"',
+          2500,
+          true
+        );
       });
     });
 

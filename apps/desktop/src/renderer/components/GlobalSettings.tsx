@@ -1,8 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-} from './ui/dialog';
+import { Dialog, DialogContent } from './ui/dialog';
 import { Settings, Bell } from 'lucide-react';
 import { NotificationSettingsTab } from './NotificationSettingsTab';
 
@@ -23,16 +20,14 @@ export function GlobalSettings() {
 
   const tabs = [
     { id: 'general' as const, label: 'General', icon: Settings },
-    { id: 'notifications' as const, label: 'Notifications', icon: Bell },
+    { id: 'notifications' as const, label: 'Notifications', icon: Bell }
   ];
 
   const renderGeneralTab = () => (
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-medium mb-1">General Settings</h3>
-        <p className="text-sm text-muted-foreground">
-          Configure general application settings.
-        </p>
+        <p className="text-sm text-muted-foreground">Configure general application settings.</p>
       </div>
 
       <div className="p-4 border rounded-lg bg-muted/30">
@@ -79,7 +74,9 @@ export function GlobalSettings() {
           {/* Content */}
           <div className="flex-1 p-6 overflow-y-auto">
             {activeTab === 'general' && renderGeneralTab()}
-            {activeTab === 'notifications' && <NotificationSettingsTab isVisible={open && activeTab === 'notifications'} />}
+            {activeTab === 'notifications' && (
+              <NotificationSettingsTab isVisible={open && activeTab === 'notifications'} />
+            )}
           </div>
         </div>
       </DialogContent>

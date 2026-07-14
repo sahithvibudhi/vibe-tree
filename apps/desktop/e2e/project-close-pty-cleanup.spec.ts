@@ -25,7 +25,7 @@ test.describe('Project Close PTY Cleanup', () => {
         DISABLE_QUIT_DIALOG: 'true'
       },
       args: [testMainPath],
-      cwd: appDir,
+      cwd: appDir
     });
 
     page = await electronApp.firstWindow();
@@ -46,7 +46,9 @@ test.describe('Project Close PTY Cleanup', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Open the project
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({
+      timeout: 10000
+    });
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
     await expect(openButton).toBeVisible();
 
@@ -121,7 +123,9 @@ test.describe('Project Close PTY Cleanup', () => {
     await confirmButton.click();
 
     // Verify the project selector is shown again (dialog should close and project removed)
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({
+      timeout: 10000
+    });
 
     console.log('Project closed successfully, PTY sessions should have been terminated');
 

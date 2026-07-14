@@ -13,10 +13,5 @@ export function GlobalTerminalSettings() {
     return unsubscribe;
   }, []);
 
-  return (
-    <TerminalSettings
-      open={showSettings}
-      onOpenChange={setShowSettings}
-    />
-  );
+  return <TerminalSettings open={showSettings} onOpenChange={setShowSettings} />;
 }

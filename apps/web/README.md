@@ -18,6 +18,7 @@ pnpm dev:web     # Web app on random 3XXX port
 ### Network/Mobile Access
 
 1. Start the services:
+
    ```bash
    pnpm dev:all
    ```
@@ -38,6 +39,7 @@ pnpm dev:web     # Web app on random 3XXX port
    - If you have firewall enabled, allow connections on the ports shown in the console output
 
 If you see "Not connected" on mobile:
+
 - Start the server allowing LAN dev connections (no pairing/auth):
   `ALLOW_INSECURE_NETWORK=1 HOST=0.0.0.0 pnpm dev:server`
 - Optionally set an explicit socket URL in `apps/web/.env`:

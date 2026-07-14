@@ -12,27 +12,37 @@ beforeEach(() => {
   notificationClickCallback = null;
 
   // Mock recentProjects
-  (window.electronAPI.recentProjects.onOpenProject as ReturnType<typeof vi.fn>).mockImplementation(() => () => {});
-  (window.electronAPI.recentProjects.onOpenRecentProject as ReturnType<typeof vi.fn>).mockImplementation(() => () => {});
+  (window.electronAPI.recentProjects.onOpenProject as ReturnType<typeof vi.fn>).mockImplementation(
+    () => () => {}
+  );
+  (
+    window.electronAPI.recentProjects.onOpenRecentProject as ReturnType<typeof vi.fn>
+  ).mockImplementation(() => () => {});
   (window.electronAPI.recentProjects.add as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
   // Mock claudeNotification.onClicked to capture the callback
-  (window.electronAPI.claudeNotification.onClicked as ReturnType<typeof vi.fn>).mockImplementation((callback) => {
-    notificationClickCallback = callback;
-    return () => {
-      notificationClickCallback = null;
-    };
-  });
+  (window.electronAPI.claudeNotification.onClicked as ReturnType<typeof vi.fn>).mockImplementation(
+    (callback) => {
+      notificationClickCallback = callback;
+      return () => {
+        notificationClickCallback = null;
+      };
+    }
+  );
 
   // Mock shell.terminateForWorktree
   (window.electronAPI as any).shell = {
     ...(window.electronAPI as any).shell,
-    terminateForWorktree: vi.fn().mockResolvedValue({ success: true, count: 0 }),
+    terminateForWorktree: vi.fn().mockResolvedValue({ success: true, count: 0 })
   };
 });
 
 // Test component to access context
-function TestComponent({ onContext }: { onContext: (ctx: ReturnType<typeof useProjects>) => void }) {
+function TestComponent({
+  onContext
+}: {
+  onContext: (ctx: ReturnType<typeof useProjects>) => void;
+}) {
   const context = useProjects();
   onContext(context);
   return null;
@@ -56,7 +66,11 @@ describe('ProjectContext', () => {
       let context: ReturnType<typeof useProjects> | null = null;
 
       renderWithProvider(
-        <TestComponent onContext={(ctx) => { context = ctx; }} />
+        <TestComponent
+          onContext={(ctx) => {
+            context = ctx;
+          }}
+        />
       );
 
       // Add a project
@@ -72,7 +86,7 @@ describe('ProjectContext', () => {
       act(() => {
         context!.updateProjectWorktrees(context!.projects[0].id, [
           { path: '/path/to/project1', branch: 'main', head: 'abc123' },
-          { path: '/path/to/project1-feature', branch: 'feature', head: 'def456' },
+          { path: '/path/to/project1-feature', branch: 'feature', head: 'def456' }
         ]);
       });
 
@@ -103,7 +117,11 @@ describe('ProjectContext', () => {
       let context: ReturnType<typeof useProjects> | null = null;
 
       renderWithProvider(
-        <TestComponent onContext={(ctx) => { context = ctx; }} />
+        <TestComponent
+          onContext={(ctx) => {
+            context = ctx;
+          }}
+        />
       );
 
       // Add two projects
@@ -130,7 +148,11 @@ describe('ProjectContext', () => {
       let context: ReturnType<typeof useProjects> | null = null;
 
       renderWithProvider(
-        <TestComponent onContext={(ctx) => { context = ctx; }} />
+        <TestComponent
+          onContext={(ctx) => {
+            context = ctx;
+          }}
+        />
       );
 
       // Add a project
@@ -164,7 +186,11 @@ describe('ProjectContext', () => {
       let context: ReturnType<typeof useProjects> | null = null;
 
       renderWithProvider(
-        <TestComponent onContext={(ctx) => { context = ctx; }} />
+        <TestComponent
+          onContext={(ctx) => {
+            context = ctx;
+          }}
+        />
       );
 
       // Add a project with multiple worktrees
@@ -176,7 +202,7 @@ describe('ProjectContext', () => {
         context!.updateProjectWorktrees(context!.projects[0].id, [
           { path: '/path/to/project', branch: 'main', head: 'abc123' },
           { path: '/path/to/project-wt1', branch: 'feature-1', head: 'def456' },
-          { path: '/path/to/project-wt2', branch: 'feature-2', head: 'ghi789' },
+          { path: '/path/to/project-wt2', branch: 'feature-2', head: 'ghi789' }
         ]);
       });
 
@@ -208,7 +234,11 @@ describe('ProjectContext', () => {
       let context: ReturnType<typeof useProjects> | null = null;
 
       renderWithProvider(
-        <TestComponent onContext={(ctx) => { context = ctx; }} />
+        <TestComponent
+          onContext={(ctx) => {
+            context = ctx;
+          }}
+        />
       );
 
       expect(context!.projects).toHaveLength(0);
@@ -227,7 +257,11 @@ describe('ProjectContext', () => {
       let context: ReturnType<typeof useProjects> | null = null;
 
       renderWithProvider(
-        <TestComponent onContext={(ctx) => { context = ctx; }} />
+        <TestComponent
+          onContext={(ctx) => {
+            context = ctx;
+          }}
+        />
       );
 
       // Add project first time
@@ -250,7 +284,11 @@ describe('ProjectContext', () => {
       let context: ReturnType<typeof useProjects> | null = null;
 
       renderWithProvider(
-        <TestComponent onContext={(ctx) => { context = ctx; }} />
+        <TestComponent
+          onContext={(ctx) => {
+            context = ctx;
+          }}
+        />
       );
 
       act(() => {
@@ -277,7 +315,11 @@ describe('ProjectContext', () => {
       let context: ReturnType<typeof useProjects> | null = null;
 
       renderWithProvider(
-        <TestComponent onContext={(ctx) => { context = ctx; }} />
+        <TestComponent
+          onContext={(ctx) => {
+            context = ctx;
+          }}
+        />
       );
 
       act(() => {
@@ -289,7 +331,7 @@ describe('ProjectContext', () => {
       act(() => {
         context!.updateProjectWorktrees(projectId, [
           { path: '/path/to/project', branch: 'main', head: 'abc123' },
-          { path: '/path/to/project-wt', branch: 'feature', head: 'def456' },
+          { path: '/path/to/project-wt', branch: 'feature', head: 'def456' }
         ]);
       });
 
@@ -302,7 +344,11 @@ describe('ProjectContext', () => {
       let context: ReturnType<typeof useProjects> | null = null;
 
       renderWithProvider(
-        <TestComponent onContext={(ctx) => { context = ctx; }} />
+        <TestComponent
+          onContext={(ctx) => {
+            context = ctx;
+          }}
+        />
       );
 
       act(() => {

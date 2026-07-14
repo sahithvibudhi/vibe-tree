@@ -57,12 +57,16 @@ export class TerminalController {
         throw error;
       }
 
-      console.log(`[TerminalController] Successfully terminated PTY process ${processId} for terminal ${terminalId}`);
+      console.log(
+        `[TerminalController] Successfully terminated PTY process ${processId} for terminal ${terminalId}`
+      );
       this.onCleanupSuccess?.(terminalId);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       // Log the full error with stack trace for debugging
-      console.error(`[TerminalController] Error terminating PTY process ${processId}:\n${err.stack || err.message}`);
+      console.error(
+        `[TerminalController] Error terminating PTY process ${processId}:\n${err.stack || err.message}`
+      );
       this.onCleanupError?.(terminalId, err);
       throw err;
     }
@@ -77,10 +81,10 @@ export class TerminalController {
     console.log(`[TerminalController] Batch closing ${events.length} terminals`);
 
     const results = await Promise.allSettled(
-      events.map(event => this.handleTerminalClose(event))
+      events.map((event) => this.handleTerminalClose(event))
     );
 
-    const failures = results.filter(r => r.status === 'rejected');
+    const failures = results.filter((r) => r.status === 'rejected');
     if (failures.length > 0) {
       console.error(`[TerminalController] ${failures.length} terminal(s) failed to close properly`);
       throw new Error(`Failed to close ${failures.length} terminal(s)`);

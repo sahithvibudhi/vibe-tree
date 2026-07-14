@@ -28,25 +28,25 @@ class IDEDetector {
     });
 
     ipcMain.handle('ide:open', async (_, ideName: string, worktreePath: string) => {
-      const ide = this.detectedIDEs.find(i => i.name === ideName);
+      const ide = this.detectedIDEs.find((i) => i.name === ideName);
       if (!ide) {
         return { success: false, error: 'IDE not found' };
       }
 
       try {
         const command = `${ide.command} "${worktreePath}"`;
-        
+
         if (process.platform === 'win32') {
           await execAsync(command);
         } else {
           await execAsync(command);
         }
-        
+
         return { success: true };
       } catch (error) {
-        return { 
-          success: false, 
-          error: error instanceof Error ? error.message : 'Failed to open IDE' 
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to open IDE'
         };
       }
     });
@@ -66,18 +66,18 @@ class IDEDetector {
 
   private async detectMacIDEs() {
     const ides = [
-      { 
-        name: 'Cursor', 
+      {
+        name: 'Cursor',
         path: '/Applications/Cursor.app',
         command: 'open -a Cursor'
       },
-      { 
-        name: 'Visual Studio Code', 
+      {
+        name: 'Visual Studio Code',
         path: '/Applications/Visual Studio Code.app',
         command: 'open -a "Visual Studio Code"'
       },
-      { 
-        name: 'VSCode', 
+      {
+        name: 'VSCode',
         path: '/Applications/VSCode.app',
         command: 'open -a VSCode'
       }
@@ -95,7 +95,7 @@ class IDEDetector {
     // Also check for command line tools
     try {
       await execAsync('which cursor');
-      if (!this.detectedIDEs.find(ide => ide.name === 'Cursor')) {
+      if (!this.detectedIDEs.find((ide) => ide.name === 'Cursor')) {
         this.detectedIDEs.push({
           name: 'Cursor',
           command: 'cursor'
@@ -107,7 +107,7 @@ class IDEDetector {
 
     try {
       await execAsync('which code');
-      if (!this.detectedIDEs.find(ide => ide.name.includes('Visual Studio Code'))) {
+      if (!this.detectedIDEs.find((ide) => ide.name.includes('Visual Studio Code'))) {
         this.detectedIDEs.push({
           name: 'Visual Studio Code',
           command: 'code'
@@ -152,7 +152,7 @@ class IDEDetector {
     // Check PATH
     try {
       await execAsync('where cursor');
-      if (!this.detectedIDEs.find(ide => ide.name === 'Cursor')) {
+      if (!this.detectedIDEs.find((ide) => ide.name === 'Cursor')) {
         this.detectedIDEs.push({
           name: 'Cursor',
           command: 'cursor'
@@ -164,7 +164,7 @@ class IDEDetector {
 
     try {
       await execAsync('where code');
-      if (!this.detectedIDEs.find(ide => ide.name.includes('Visual Studio Code'))) {
+      if (!this.detectedIDEs.find((ide) => ide.name.includes('Visual Studio Code'))) {
         this.detectedIDEs.push({
           name: 'Visual Studio Code',
           command: 'code'

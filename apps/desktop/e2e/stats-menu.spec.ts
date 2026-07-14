@@ -25,7 +25,7 @@ test.describe('Stats Menu', () => {
         DISABLE_QUIT_DIALOG: 'true'
       },
       args: [testMainPath],
-      cwd: appDir,
+      cwd: appDir
     });
 
     page = await electronApp.firstWindow();
@@ -46,7 +46,9 @@ test.describe('Stats Menu', () => {
     // Call the IPC handler directly to get stats
     const stats = await electronApp.evaluate(async ({ ipcMain }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const handlers = (ipcMain as unknown as {_invokeHandlers?: Map<string, (...args: any[]) => any>})._invokeHandlers;
+      const handlers = (
+        ipcMain as unknown as { _invokeHandlers?: Map<string, (...args: any[]) => any> }
+      )._invokeHandlers;
       if (handlers && handlers.get('shell:get-stats')) {
         const handler = handlers.get('shell:get-stats');
         return await handler();
@@ -65,7 +67,9 @@ test.describe('Stats Menu', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Open the project
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({
+      timeout: 10000
+    });
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
     await expect(openButton).toBeVisible();
 
@@ -97,7 +101,9 @@ test.describe('Stats Menu', () => {
       condition: async () => {
         const stats = await electronApp.evaluate(async ({ ipcMain }) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const handlers = (ipcMain as unknown as {_invokeHandlers?: Map<string, (...args: any[]) => any>})._invokeHandlers;
+          const handlers = (
+            ipcMain as unknown as { _invokeHandlers?: Map<string, (...args: any[]) => any> }
+          )._invokeHandlers;
           if (handlers && handlers.get('shell:get-stats')) {
             const handler = handlers.get('shell:get-stats');
             return await handler();
@@ -115,7 +121,9 @@ test.describe('Stats Menu', () => {
     // Get stats for final verification
     const stats = await electronApp.evaluate(async ({ ipcMain }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const handlers = (ipcMain as unknown as {_invokeHandlers?: Map<string, (...args: any[]) => any>})._invokeHandlers;
+      const handlers = (
+        ipcMain as unknown as { _invokeHandlers?: Map<string, (...args: any[]) => any> }
+      )._invokeHandlers;
       if (handlers && handlers.get('shell:get-stats')) {
         const handler = handlers.get('shell:get-stats');
         return await handler();
@@ -138,7 +146,9 @@ test.describe('Stats Menu', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Open the project
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({
+      timeout: 10000
+    });
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
     await expect(openButton).toBeVisible();
 
@@ -178,7 +188,9 @@ test.describe('Stats Menu', () => {
     // Get stats - should have 2 active processes
     const stats = await electronApp.evaluate(async ({ ipcMain }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const handlers = (ipcMain as unknown as {_invokeHandlers?: Map<string, (...args: any[]) => any>})._invokeHandlers;
+      const handlers = (
+        ipcMain as unknown as { _invokeHandlers?: Map<string, (...args: any[]) => any> }
+      )._invokeHandlers;
       if (handlers && handlers.get('shell:get-stats')) {
         const handler = handlers.get('shell:get-stats');
         return await handler();
@@ -210,7 +222,9 @@ test.describe('Stats Menu', () => {
       if (!viewMenu || !viewMenu.submenu) throw new Error('View menu not found');
 
       // Find Stats menu item
-      const statsItem = viewMenu.submenu.items.find((item: Electron.MenuItem) => item.label === 'Stats...');
+      const statsItem = viewMenu.submenu.items.find(
+        (item: Electron.MenuItem) => item.label === 'Stats...'
+      );
       if (!statsItem || !statsItem.click) {
         // Debug: list all items
         const labels = viewMenu.submenu.items.map((item: Electron.MenuItem) => item.label);
@@ -235,7 +249,7 @@ test.describe('Stats Menu', () => {
     expect(windowsAfter.length).toBe(2); // Main window + stats dialog
 
     // Get the stats dialog window
-    const statsDialog = windowsAfter.find(w => w !== windowsBefore[0]);
+    const statsDialog = windowsAfter.find((w) => w !== windowsBefore[0]);
     expect(statsDialog).toBeDefined();
 
     if (!statsDialog) throw new Error('Stats dialog not found');

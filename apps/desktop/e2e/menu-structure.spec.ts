@@ -29,8 +29,8 @@ test.describe('Application Menu Structure', () => {
         ...process.env,
         NODE_ENV: 'test',
         TEST_MODE: 'true',
-        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
-      },
+        DISABLE_QUIT_DIALOG: 'true' // Prevent blocking on quit dialog
+      }
     });
 
     page = await electronApp.firstWindow();
@@ -81,13 +81,15 @@ test.describe('Application Menu Structure', () => {
     expect(fileMenuLabels).toContain('Recent Projects');
 
     // The quit menu item might have different labels depending on platform/Electron version
-    const hasQuitItem = fileMenuLabels.some((label: string) =>
-      label.includes('Quit') || label === 'Exit'
+    const hasQuitItem = fileMenuLabels.some(
+      (label: string) => label.includes('Quit') || label === 'Exit'
     );
     expect(hasQuitItem).toBeTruthy();
 
     // Verify Recent Projects submenu exists
-    const recentProjectsItem = fileMenu.submenu.find((item: MenuItem) => item.label === 'Recent Projects');
+    const recentProjectsItem = fileMenu.submenu.find(
+      (item: MenuItem) => item.label === 'Recent Projects'
+    );
     expect(recentProjectsItem).toBeTruthy();
     expect(recentProjectsItem.submenu).toBeTruthy();
 
@@ -100,7 +102,9 @@ test.describe('Application Menu Structure', () => {
     expect(editMenu.submenu).toBeTruthy();
 
     // Verify Edit menu has standard items (roles might be lowercase)
-    const editMenuRoles = editMenu.submenu.map((item: MenuItem) => item.role?.toLowerCase()).filter(Boolean);
+    const editMenuRoles = editMenu.submenu
+      .map((item: MenuItem) => item.role?.toLowerCase())
+      .filter(Boolean);
     expect(editMenuRoles).toContain('undo');
     expect(editMenuRoles).toContain('redo');
     expect(editMenuRoles).toContain('cut');
@@ -118,7 +122,9 @@ test.describe('Application Menu Structure', () => {
     expect(viewMenuLabels).toContain('Terminal Settings...');
     expect(viewMenuLabels).toContain('Stats...');
 
-    const viewMenuRoles = viewMenu.submenu.map((item: MenuItem) => item.role?.toLowerCase()).filter(Boolean);
+    const viewMenuRoles = viewMenu.submenu
+      .map((item: MenuItem) => item.role?.toLowerCase())
+      .filter(Boolean);
     expect(viewMenuRoles).toContain('toggledevtools');
     expect(viewMenuRoles).toContain('togglefullscreen');
 
@@ -128,7 +134,9 @@ test.describe('Application Menu Structure', () => {
     expect(windowMenu.submenu).toBeTruthy();
 
     // Verify Window menu has standard items
-    const windowMenuRoles = windowMenu.submenu.map((item: MenuItem) => item.role?.toLowerCase()).filter(Boolean);
+    const windowMenuRoles = windowMenu.submenu
+      .map((item: MenuItem) => item.role?.toLowerCase())
+      .filter(Boolean);
     expect(windowMenuRoles).toContain('minimize');
     expect(windowMenuRoles).toContain('close');
   });
@@ -141,8 +149,10 @@ test.describe('Application Menu Structure', () => {
       }
 
       // Extract all menu items with accelerators
-      const extractAccelerators = (menuItem: Electron.MenuItem): Array<{label?: string; accelerator?: string}> => {
-        const items: Array<{label?: string; accelerator?: string}> = [];
+      const extractAccelerators = (
+        menuItem: Electron.MenuItem
+      ): Array<{ label?: string; accelerator?: string }> => {
+        const items: Array<{ label?: string; accelerator?: string }> = [];
 
         if (menuItem.accelerator) {
           items.push({
@@ -160,7 +170,7 @@ test.describe('Application Menu Structure', () => {
         return items;
       };
 
-      const allAccelerators: Array<{label?: string; accelerator?: string}> = [];
+      const allAccelerators: Array<{ label?: string; accelerator?: string }> = [];
       menu.items.forEach((item: Electron.MenuItem) => {
         allAccelerators.push(...extractAccelerators(item));
       });
@@ -169,7 +179,9 @@ test.describe('Application Menu Structure', () => {
     });
 
     // Verify important shortcuts exist
-    const shortcuts = menuStructure.map((item: {label?: string; accelerator?: string}) => item.accelerator);
+    const shortcuts = menuStructure.map(
+      (item: { label?: string; accelerator?: string }) => item.accelerator
+    );
     expect(shortcuts).toContain('CmdOrCtrl+O'); // Open Project Folder
   });
 
@@ -178,7 +190,9 @@ test.describe('Application Menu Structure', () => {
     const testProjectPath = '/test/project/path';
     await electronApp.evaluate(async ({ ipcMain }, projectPath) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const handlers = (ipcMain as unknown as {_invokeHandlers?: Map<string, (...args: any[]) => any>})._invokeHandlers;
+      const handlers = (
+        ipcMain as unknown as { _invokeHandlers?: Map<string, (...args: any[]) => any> }
+      )._invokeHandlers;
       if (handlers && handlers.get('recent-projects:add')) {
         const handler = handlers.get('recent-projects:add');
         await handler(null, projectPath);
@@ -196,12 +210,14 @@ test.describe('Application Menu Structure', () => {
             return null;
           }
 
-          const fileMenu = menu.items.find(item => item.label === 'File');
+          const fileMenu = menu.items.find((item) => item.label === 'File');
           if (!fileMenu || !fileMenu.submenu) {
             return null;
           }
 
-          const recentProjects = fileMenu.submenu.items.find(item => item.label === 'Recent Projects');
+          const recentProjects = fileMenu.submenu.items.find(
+            (item) => item.label === 'Recent Projects'
+          );
           if (!recentProjects || !recentProjects.submenu) {
             return null;
           }
@@ -216,11 +232,14 @@ test.describe('Application Menu Structure', () => {
           return false;
         }
 
-        const projectLabels = menuStructure.map((item: {label?: string; enabled?: boolean}) => item.label).filter(Boolean);
-        return projectLabels.some((label: string) =>
-          label === 'Clear Recent Projects' ||
-          label === 'No Recent Projects' ||
-          (label.includes('test') && label.includes(testProjectPath))
+        const projectLabels = menuStructure
+          .map((item: { label?: string; enabled?: boolean }) => item.label)
+          .filter(Boolean);
+        return projectLabels.some(
+          (label: string) =>
+            label === 'Clear Recent Projects' ||
+            label === 'No Recent Projects' ||
+            (label.includes('test') && label.includes(testProjectPath))
         );
       },
       timeoutMs: 5000,
@@ -235,12 +254,14 @@ test.describe('Application Menu Structure', () => {
         throw new Error('Application menu not found');
       }
 
-      const fileMenu = menu.items.find(item => item.label === 'File');
+      const fileMenu = menu.items.find((item) => item.label === 'File');
       if (!fileMenu || !fileMenu.submenu) {
         throw new Error('File menu not found');
       }
 
-      const recentProjects = fileMenu.submenu.items.find(item => item.label === 'Recent Projects');
+      const recentProjects = fileMenu.submenu.items.find(
+        (item) => item.label === 'Recent Projects'
+      );
       if (!recentProjects || !recentProjects.submenu) {
         throw new Error('Recent Projects submenu not found');
       }
@@ -251,14 +272,19 @@ test.describe('Application Menu Structure', () => {
       }));
     });
 
-    const projectLabels = menuStructure.map((item: {label?: string; enabled?: boolean}) => item.label).filter(Boolean);
+    const projectLabels = menuStructure
+      .map((item: { label?: string; enabled?: boolean }) => item.label)
+      .filter(Boolean);
 
     // Should either have the test project or "Clear Recent Projects" option
     expect(menuStructure.length).toBeGreaterThan(0);
-    expect(projectLabels.some((label: string) =>
-      label === 'Clear Recent Projects' ||
-      label === 'No Recent Projects' ||
-      (label.includes('test') && label.includes(testProjectPath))
-    )).toBeTruthy();
+    expect(
+      projectLabels.some(
+        (label: string) =>
+          label === 'Clear Recent Projects' ||
+          label === 'No Recent Projects' ||
+          (label.includes('test') && label.includes(testProjectPath))
+      )
+    ).toBeTruthy();
   });
 });

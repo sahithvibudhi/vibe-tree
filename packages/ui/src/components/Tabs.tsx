@@ -25,9 +25,7 @@ interface TabsProps {
 const Tabs: React.FC<TabsProps> = ({ value, onValueChange, className = '', children }) => {
   return (
     <TabsContext.Provider value={{ value, onValueChange }}>
-      <div className={className}>
-        {children}
-      </div>
+      <div className={className}>{children}</div>
     </TabsContext.Provider>
   );
 };
@@ -39,7 +37,9 @@ interface TabsListProps {
 
 const TabsList: React.FC<TabsListProps> = ({ className = '', children }) => {
   return (
-    <div className={`inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground ${className}`}>
+    <div
+      className={`inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground ${className}`}
+    >
       {children}
     </div>
   );
@@ -83,13 +83,15 @@ interface TabsContentProps {
 
 const TabsContent: React.FC<TabsContentProps> = ({ value, className = '', children }) => {
   const { value: activeValue } = useTabsContext();
-  
+
   if (activeValue !== value) {
     return null;
   }
 
   return (
-    <div className={`mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${className}`}>
+    <div
+      className={`mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${className}`}
+    >
       {children}
     </div>
   );

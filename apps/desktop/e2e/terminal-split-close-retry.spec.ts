@@ -9,7 +9,7 @@ import { execSync } from 'child_process';
  */
 async function navigateToWorktree(electronApp: ElectronApplication, page: Page, repoPath: string) {
   // Verify the app launches with project selector
-  await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+  await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({ timeout: 10000 });
 
   // Click the "Open Project Folder" button
   const openButton = page.locator('button', { hasText: 'Open Project Folder' });
@@ -64,10 +64,10 @@ test.describe('Terminal Split Close Retry', () => {
         ...process.env,
         NODE_ENV: 'test',
         TEST_MODE: 'true',
-        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
+        DISABLE_QUIT_DIALOG: 'true' // Prevent blocking on quit dialog
       },
       args: [testMainPath],
-      cwd: appDir,
+      cwd: appDir
     });
 
     page = await electronApp.firstWindow();
@@ -157,7 +157,7 @@ test.describe('Terminal Split Close Retry', () => {
     // Click all close buttons as fast as possible
     for (let i = 0; i < closeButtonCount; i++) {
       const button = closeButtons.nth(i);
-      if (await button.isVisible() && !await button.isDisabled()) {
+      if ((await button.isVisible()) && !(await button.isDisabled())) {
         await button.click();
         // Small delay to let the UI update
         await page.waitForTimeout(100);
@@ -214,22 +214,17 @@ test.describe('Terminal Split Close Retry', () => {
     let terminalCount = await page.locator('.claude-terminal-root').count();
     expect(terminalCount).toBe(2);
 
-    // Mock the shell terminate handler to fail with a specific error message
-    await electronApp.evaluate(({ ipcMain }) => {
-      // Store the original handler
-      const originalHandler = ipcMain.listeners('shell:terminate')[0];
-
-      // Remove the original handler
-      ipcMain.removeHandler('shell:terminate');
-
-      // Add a handler that will fail with a specific error message
-      ipcMain.handle('shell:terminate', async () => {
-        // Return success: false with a specific error message
-        return { success: false, error: 'Process is locked and cannot be terminated (EPERM)' };
+    // Make session termination fail with a specific error. Terminal traffic
+    // runs over WebSocket to the embedded server, so the failure is injected
+    // by patching the session manager exposed by the test entry point.
+    await electronApp.evaluate(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const manager = (global as any).__vibetreeSessionManager;
+      (global as any).__originalTerminate = manager.terminateSession;
+      manager.terminateSession = async () => ({
+        success: false,
+        error: 'Process is locked and cannot be terminated (EPERM)'
       });
-
-      // Store the original handler so we can restore it later
-      (global as any).__originalTerminateHandler = originalHandler;
     });
 
     // Clear previous console messages
@@ -244,11 +239,12 @@ test.describe('Terminal Split Close Retry', () => {
     // Wait for error handling to complete
     await page.waitForTimeout(3000);
 
-    // Restore the original handler
-    await electronApp.evaluate(({ ipcMain }) => {
-      ipcMain.removeHandler('shell:terminate');
-      if ((global as any).__originalTerminateHandler) {
-        ipcMain.handle('shell:terminate', (global as any).__originalTerminateHandler);
+    // Restore the original terminate implementation
+    await electronApp.evaluate(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const manager = (global as any).__vibetreeSessionManager;
+      if ((global as any).__originalTerminate) {
+        manager.terminateSession = (global as any).__originalTerminate;
       }
     });
 
@@ -263,9 +259,9 @@ test.describe('Terminal Split Close Retry', () => {
 
     // Should contain stack trace elements (at least one stack frame with "at")
     // The error.stack should include the stack trace with "at" prefix
-    const hasStackTrace = allMessages.includes('at ') &&
-                         (allMessages.includes('handleTerminalClose') ||
-                          allMessages.includes('TerminalController'));
+    const hasStackTrace =
+      allMessages.includes('at ') &&
+      (allMessages.includes('handleTerminalClose') || allMessages.includes('TerminalController'));
 
     // The key validation: error logs should contain detailed information
     expect(allMessages).toContain('TerminalController');

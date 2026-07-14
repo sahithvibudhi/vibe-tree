@@ -68,7 +68,7 @@ export class QuitManager {
       cancelId: 0,
       title: 'Quit VibeTree?',
       message: 'Quit VibeTree?',
-      detail: 'All sessions will be closed.',
+      detail: 'All sessions will be closed.'
     };
 
     const choice = mainWindow

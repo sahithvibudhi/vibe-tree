@@ -37,7 +37,7 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
         DISABLE_QUIT_DIALOG: 'true'
       },
       args: [testMainPath],
-      cwd: appDir,
+      cwd: appDir
     });
 
     page = await electronApp.firstWindow();
@@ -67,7 +67,9 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Open project
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({
+      timeout: 10000
+    });
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
     await expect(openButton).toBeVisible();
 
@@ -149,7 +151,9 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
 
     // The fix prevents overlapping executions, so we should NOT see corrupted output
     if (hasCorruptedOutput) {
-      console.error('BUG DETECTED: Overlapping scheduler executions caused corrupted terminal input!');
+      console.error(
+        'BUG DETECTED: Overlapping scheduler executions caused corrupted terminal input!'
+      );
       console.error('Signs of corruption:');
       if (terminalContent?.includes('dquote>')) {
         console.error('  - Found "dquote>" indicating unclosed quote');
@@ -176,7 +180,9 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Open project
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({
+      timeout: 10000
+    });
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
     await expect(openButton).toBeVisible();
 
@@ -261,7 +267,9 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Open project
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({
+      timeout: 10000
+    });
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
     await expect(openButton).toBeVisible();
 
@@ -331,7 +339,10 @@ test.describe('Terminal Scheduler Overlap Fix Verification', () => {
     // 2. Command split mid-word across lines (like "This\nis a longer" instead of complete output)
     // 3. Words split with excessive whitespace in the middle (more than 1 space)
     const hasDquote = terminalContent?.includes('dquote>') || false;
-    const hasSplitCommand = /echo "This is a longer\s*\n(?!This is a longer command to test overlap)/.test(terminalContent || '');
+    const hasSplitCommand =
+      /echo "This is a longer\s*\n(?!This is a longer command to test overlap)/.test(
+        terminalContent || ''
+      );
     const hasExtraSpaces = /longer\s{2,}command/.test(terminalContent || ''); // 2 or more spaces
 
     const hasCorruptedOutput = hasDquote || hasSplitCommand || hasExtraSpaces;

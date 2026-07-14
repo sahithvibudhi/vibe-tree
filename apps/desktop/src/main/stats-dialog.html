@@ -1,1169 +1,1219 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline' 'self'">
-  <title>Process Statistics</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      background: #ffffff;
-      color: #333;
-      padding: 20px;
-      overflow: hidden;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      max-height: 600px;
-    }
-
-    h1 {
-      font-size: 18px;
-      font-weight: 600;
-      margin-bottom: 16px;
-      color: #1a1a1a;
-      flex-shrink: 0;
-    }
-
-    .summary {
-      margin-bottom: 16px;
-      padding: 12px;
-      background: #f5f5f5;
-      border-radius: 6px;
-      font-size: 14px;
-      flex-shrink: 0;
-    }
-
-    .tabs {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 16px;
-      border-bottom: 2px solid #e0e0e0;
-      flex-shrink: 0;
-    }
-
-    .tab-button {
-      padding: 10px 20px;
-      background: transparent;
-      color: #666;
-      border: none;
-      border-bottom: 2px solid transparent;
-      margin-bottom: -2px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-      border-radius: 0;
-    }
-
-    .tab-button:hover {
-      background: #f5f5f5;
-      color: #333;
-    }
-
-    .tab-button.active {
-      background: transparent;
-      color: #007aff;
-      border-bottom-color: #007aff;
-    }
-
-    .tab-content-wrapper {
-      flex: 1;
-      overflow: hidden;
-      min-height: 0;
-      position: relative;
-    }
-
-    .tab-panel {
-      display: none;
-      height: 100%;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding-right: 8px;
-    }
-
-    .tab-panel.active {
-      display: block;
-    }
-
-    .tab-panel::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    .tab-panel::-webkit-scrollbar-track {
-      background: #f1f1f1;
-      border-radius: 4px;
-    }
-
-    .tab-panel::-webkit-scrollbar-thumb {
-      background: #888;
-      border-radius: 4px;
-    }
-
-    .tab-panel::-webkit-scrollbar-thumb:hover {
-      background: #555;
-    }
-
-    .warning-section {
-      margin-bottom: 16px;
-      padding: 12px;
-      background: #fff3cd;
-      border: 1px solid #ffc107;
-      border-radius: 6px;
-      font-size: 13px;
-    }
-
-    .warning-section.hidden {
-      display: none;
-    }
-
-    .warning-header {
-      font-weight: 600;
-      color: #856404;
-      margin-bottom: 8px;
-    }
-
-    .warning-item {
-      color: #856404;
-      margin: 4px 0;
-      padding-left: 20px;
-      position: relative;
-    }
-
-    .warning-item::before {
-      content: '⚠️';
-      position: absolute;
-      left: 0;
-    }
-
-    .diagnostics-section {
-      margin-bottom: 16px;
-      padding: 12px;
-      background: #f5f5f5;
-      border-radius: 6px;
-      font-size: 13px;
-    }
-
-    .diagnostics-header {
-      font-weight: 600;
-      color: #555;
-      margin-bottom: 8px;
-    }
-
-    .diagnostics-content {
-      margin-top: 8px;
-    }
-
-    .diagnostics-item {
-      margin: 4px 0;
-      color: #666;
-      font-size: 12px;
-    }
-
-    .diagnostics-label {
-      font-weight: 500;
-      color: #555;
-    }
-
-    .error-section {
-      margin-bottom: 16px;
-      padding: 12px;
-      background: #f8d7da;
-      border: 1px solid #f5c6cb;
-      border-radius: 6px;
-      font-size: 13px;
-    }
-
-    .error-section.hidden {
-      display: none;
-    }
-
-    .error-header {
-      font-weight: 600;
-      color: #721c24;
-      margin-bottom: 8px;
-    }
-
-    .error-item {
-      margin: 8px 0;
-      padding: 8px;
-      background: #fff;
-      border-radius: 4px;
-      color: #721c24;
-      font-size: 12px;
-    }
-
-    .error-time {
-      font-weight: 500;
-      margin-bottom: 4px;
-    }
-
-    .error-code {
-      font-weight: 600;
-      color: #c62828;
-    }
-
-    .error-path {
-      color: #666;
-      word-break: break-all;
-    }
-
-    .child-processes-header {
-      font-weight: 600;
-      color: #555;
-      margin-bottom: 12px;
-      font-size: 14px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .child-processes-content {
-      margin-top: 8px;
-      overflow-x: auto;
-    }
-
-    .no-child-processes {
-      text-align: center;
-      color: #999;
-      padding: 20px;
-      font-style: italic;
-    }
-
-    .child-processes-content::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    .child-processes-content::-webkit-scrollbar-track {
-      background: #f1f1f1;
-      border-radius: 4px;
-    }
-
-    .child-processes-content::-webkit-scrollbar-thumb {
-      background: #888;
-      border-radius: 4px;
-    }
-
-    .child-processes-content::-webkit-scrollbar-thumb:hover {
-      background: #555;
-    }
-
-    .regroup-button {
-      padding: 6px 16px;
-      background: #f5f5f5;
-      color: #333;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .regroup-button:hover {
-      background: #e0e0e0;
-      border-color: #999;
-    }
-
-    .regroup-button:active {
-      background: #d0d0d0;
-    }
-
-    .regroup-button.hidden {
-      display: none;
-    }
-
-    .process-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-    }
-
-    .process-table thead {
-      background: #f5f5f5;
-      position: sticky;
-      top: 0;
-      z-index: 1;
-    }
-
-    .process-table th {
-      text-align: left;
-      padding: 8px;
-      font-weight: 600;
-      border-bottom: 2px solid #ddd;
-      cursor: pointer;
-      user-select: none;
-      white-space: nowrap;
-    }
-
-    .process-table th:hover {
-      background: #e8e8e8;
-    }
-
-    .process-table th.sortable::after {
-      content: ' ↕';
-      color: #999;
-      font-size: 10px;
-    }
-
-    .process-table th.sorted-asc::after {
-      content: ' ↑';
-      color: #007aff;
-    }
-
-    .process-table th.sorted-desc::after {
-      content: ' ↓';
-      color: #007aff;
-    }
-
-    .process-table td {
-      padding: 6px 8px;
-      border-bottom: 1px solid #eee;
-    }
-
-    .process-table tbody tr:hover {
-      background: #f9f9f9;
-    }
-
-    .process-table .pid-col {
-      color: #0066cc;
-      font-weight: 500;
-    }
-
-    .process-table .status-col {
-      color: #666;
-      font-weight: 500;
-    }
-
-    .process-table .status-zombie {
-      color: #c62828;
-      font-weight: 700;
-    }
-
-    .process-table .memory-col {
-      text-align: right;
-      color: #666;
-    }
-
-    .process-table .name-col {
-      color: #333;
-      font-weight: 500;
-    }
-
-    .process-table .command-col {
-      color: #666;
-      max-width: 400px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .process-tree-prefix {
-      color: #999;
-      user-select: none;
-    }
-
-    .process-pid {
-      color: #0066cc;
-      font-weight: 500;
-    }
-
-    .process-state {
-      color: #666;
-      font-weight: 500;
-    }
-
-    .process-state-zombie {
-      color: #c62828;
-      font-weight: 700;
-    }
-
-    .process-command {
-      color: #333;
-    }
-
-    .process-time {
-      color: #888;
-      font-size: 10px;
-    }
-
-    .summary-label {
-      font-weight: 600;
-      color: #555;
-    }
-
-    .summary-value {
-      font-weight: 700;
-      color: #000;
-      font-size: 16px;
-    }
-
-    .sessions-header {
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 12px;
-      color: #555;
-    }
-
-    .sessions-container {
-      overflow-x: hidden;
-    }
-
-    .session-item {
-      padding: 12px;
-      margin-bottom: 8px;
-      background: #f9f9f9;
-      border: 1px solid #e0e0e0;
-      border-radius: 6px;
-      font-size: 13px;
-    }
-
-    .session-path {
-      font-weight: 600;
-      margin-bottom: 6px;
-      color: #1a1a1a;
-      word-break: break-all;
-    }
-
-    .session-detail {
-      margin-top: 4px;
-      color: #666;
-      font-size: 12px;
-    }
-
-    .session-detail-label {
-      font-weight: 500;
-      color: #555;
-    }
-
-    .no-sessions {
-      text-align: center;
-      color: #999;
-      padding: 20px;
-      font-style: italic;
-    }
-
-    .button-container {
-      display: flex;
-      justify-content: flex-end;
-      padding-top: 12px;
-      border-top: 1px solid #e0e0e0;
-      flex-shrink: 0;
-      background: #ffffff;
-    }
-
-    button {
-      padding: 8px 24px;
-      background: #007aff;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    button:hover {
-      background: #0051d5;
-    }
-
-    button:active {
-      background: #004bb5;
-    }
-
-    .metrics-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-      margin-top: 8px;
-    }
-
-    .metrics-table thead {
-      background: #f5f5f5;
-      position: sticky;
-      top: 0;
-      z-index: 1;
-    }
-
-    .metrics-table th {
-      text-align: left;
-      padding: 10px 12px;
-      font-weight: 600;
-      border-bottom: 2px solid #ddd;
-      color: #333;
-    }
-
-    .metrics-table th:first-child {
-      width: 40%;
-    }
-
-    .metrics-table th:nth-child(2) {
-      width: 30%;
-      text-align: right;
-      color: #0066cc;
-    }
-
-    .metrics-table th:nth-child(3) {
-      width: 30%;
-      text-align: right;
-      color: #666;
-    }
-
-    .metrics-table td {
-      padding: 8px 12px;
-      border-bottom: 1px solid #eee;
-    }
-
-    .metrics-table tbody tr:hover {
-      background: #f9f9f9;
-    }
-
-    .metrics-table .metric-name {
-      color: #555;
-      font-weight: 500;
-    }
-
-    .metrics-table .metric-value {
-      text-align: right;
-      color: #333;
-      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-    }
-
-    .metrics-table .metric-value-app {
-      color: #0066cc;
-      font-weight: 500;
-    }
-
-    .metrics-table .metric-warning {
-      color: #c62828;
-      font-weight: 600;
-    }
-
-    .metrics-table .metric-good {
-      color: #28a745;
-      font-weight: 500;
-    }
-
-    .metrics-table .metric-subtext {
-      font-size: 11px;
-      color: #888;
-      margin-top: 2px;
-    }
-
-    .metrics-section-header {
-      font-weight: 700;
-      background: #e8e8e8;
-      color: #333;
-    }
-
-    .metrics-section-header td {
-      padding: 10px 12px;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .loading-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(255, 255, 255, 0.95);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 10;
-    }
-
-    .loading-overlay.hidden {
-      display: none;
-    }
-
-    .loading-spinner {
-      width: 40px;
-      height: 40px;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #007aff;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-
-    .loading-text {
-      margin-top: 16px;
-      color: #666;
-      font-size: 14px;
-      font-weight: 500;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-  </style>
-</head>
-<body>
-  <h1>Process Statistics</h1>
-
-  <div class="summary">
-    <span class="summary-label">Active PTY Processes:</span>
-    <span class="summary-value" id="activeCount">0</span>
-  </div>
-
-  <div class="tabs">
-    <button class="tab-button active" data-tab="system">System Diagnostics</button>
-    <button class="tab-button" data-tab="processes">Child Processes</button>
-    <button class="tab-button" data-tab="sessions">Active Sessions</button>
-  </div>
-
-  <div class="tab-content-wrapper">
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
-      <div class="loading-spinner"></div>
-      <div class="loading-text">Collecting system metrics...</div>
-    </div>
-
-    <!-- System Diagnostics Tab -->
-    <div class="tab-panel active" id="tab-system">
-      <!-- Warnings Section -->
-      <div class="warning-section hidden" id="warningSection">
-        <div class="warning-header">⚠️ System Warnings</div>
-        <div id="warningsList"></div>
-      </div>
-
-      <!-- Recent Spawn Errors Section -->
-      <div class="error-section hidden" id="errorSection">
-        <div class="error-header">Recent Spawn Errors</div>
-        <div id="errorsList"></div>
-      </div>
-
-      <!-- System Diagnostics Section -->
-      <div class="diagnostics-section">
-        <div class="diagnostics-header">System Metrics</div>
-        <table class="metrics-table" id="metricsTable">
-          <thead>
-            <tr>
-              <th>Metric</th>
-              <th>VibeTree</th>
-              <th>System Wide</th>
-            </tr>
-          </thead>
-          <tbody id="metricsTableBody">
-            <!-- Metrics will be populated here -->
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Child Processes Tab -->
-    <div class="tab-panel" id="tab-processes">
-      <div class="child-processes-header">
-        <span id="childProcessesHeader">Child Processes</span>
-        <button class="regroup-button hidden" id="regroupButton">Regroup</button>
-      </div>
-      <div class="child-processes-content" id="childProcessesContent">
-        <div class="no-child-processes">No child processes.</div>
-      </div>
-    </div>
-
-    <!-- Active Sessions Tab -->
-    <div class="tab-panel" id="tab-sessions">
-      <div class="sessions-header" id="sessionsHeader">Active Sessions</div>
-      <div class="sessions-container" id="sessionsContainer">
-        <div class="no-sessions" id="noSessions">No active sessions.</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="button-container">
-    <button id="closeButton">OK</button>
-  </div>
-
-  <script>
-
-    // Global state
-    let allProcesses = [];
-    let originalProcessTree = [];
-    let currentSortColumn = null;
-    let currentSortOrder = 'asc';
-    let isGroupedView = true;
-
-    /**
-     * Format memory size in KB to human-readable format
-     */
-    function formatMemory(kb) {
-      if (kb < 1024) {
-        return kb.toFixed(0) + ' KB';
-      } else if (kb < 1024 * 1024) {
-        return (kb / 1024).toFixed(1) + ' MB';
-      } else {
-        return (kb / (1024 * 1024)).toFixed(2) + ' GB';
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline' 'self'"
+    />
+    <title>Process Statistics</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
       }
-    }
 
-    /**
-     * Extract binary name from command
-     */
-    function extractBinaryName(command) {
-      // Remove leading/trailing whitespace
-      const trimmed = command.trim();
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background: #ffffff;
+        color: #333;
+        padding: 20px;
+        overflow: hidden;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        max-height: 600px;
+      }
 
-      // Split by space to get the first part (the executable)
-      const parts = trimmed.split(/\s+/);
-      const executable = parts[0];
+      h1 {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 16px;
+        color: #1a1a1a;
+        flex-shrink: 0;
+      }
 
-      // Get just the binary name (last part of path)
-      const pathParts = executable.split('/');
-      return pathParts[pathParts.length - 1];
-    }
+      .summary {
+        margin-bottom: 16px;
+        padding: 12px;
+        background: #f5f5f5;
+        border-radius: 6px;
+        font-size: 14px;
+        flex-shrink: 0;
+      }
 
-    /**
-     * Flatten process tree into a list
-     */
-    function flattenProcessTree(processes, parentPrefix = '', level = 0) {
-      let flat = [];
+      .tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 16px;
+        border-bottom: 2px solid #e0e0e0;
+        flex-shrink: 0;
+      }
 
-      processes.forEach((proc, index) => {
-        const isLast = index === processes.length - 1;
-        const connector = isLast ? '└─' : '├─';
-        const childPrefix = parentPrefix + (isLast ? '  ' : '│ ');
+      .tab-button {
+        padding: 10px 20px;
+        background: transparent;
+        color: #666;
+        border: none;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border-radius: 0;
+      }
 
-        flat.push({
-          ...proc,
-          level: level,
-          prefix: parentPrefix + connector + ' ',
-          binaryName: extractBinaryName(proc.command)
+      .tab-button:hover {
+        background: #f5f5f5;
+        color: #333;
+      }
+
+      .tab-button.active {
+        background: transparent;
+        color: #007aff;
+        border-bottom-color: #007aff;
+      }
+
+      .tab-content-wrapper {
+        flex: 1;
+        overflow: hidden;
+        min-height: 0;
+        position: relative;
+      }
+
+      .tab-panel {
+        display: none;
+        height: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 8px;
+      }
+
+      .tab-panel.active {
+        display: block;
+      }
+
+      .tab-panel::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .tab-panel::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+      }
+
+      .tab-panel::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+      }
+
+      .tab-panel::-webkit-scrollbar-thumb:hover {
+        background: #555;
+      }
+
+      .warning-section {
+        margin-bottom: 16px;
+        padding: 12px;
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 6px;
+        font-size: 13px;
+      }
+
+      .warning-section.hidden {
+        display: none;
+      }
+
+      .warning-header {
+        font-weight: 600;
+        color: #856404;
+        margin-bottom: 8px;
+      }
+
+      .warning-item {
+        color: #856404;
+        margin: 4px 0;
+        padding-left: 20px;
+        position: relative;
+      }
+
+      .warning-item::before {
+        content: '⚠️';
+        position: absolute;
+        left: 0;
+      }
+
+      .diagnostics-section {
+        margin-bottom: 16px;
+        padding: 12px;
+        background: #f5f5f5;
+        border-radius: 6px;
+        font-size: 13px;
+      }
+
+      .diagnostics-header {
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 8px;
+      }
+
+      .diagnostics-content {
+        margin-top: 8px;
+      }
+
+      .diagnostics-item {
+        margin: 4px 0;
+        color: #666;
+        font-size: 12px;
+      }
+
+      .diagnostics-label {
+        font-weight: 500;
+        color: #555;
+      }
+
+      .error-section {
+        margin-bottom: 16px;
+        padding: 12px;
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 6px;
+        font-size: 13px;
+      }
+
+      .error-section.hidden {
+        display: none;
+      }
+
+      .error-header {
+        font-weight: 600;
+        color: #721c24;
+        margin-bottom: 8px;
+      }
+
+      .error-item {
+        margin: 8px 0;
+        padding: 8px;
+        background: #fff;
+        border-radius: 4px;
+        color: #721c24;
+        font-size: 12px;
+      }
+
+      .error-time {
+        font-weight: 500;
+        margin-bottom: 4px;
+      }
+
+      .error-code {
+        font-weight: 600;
+        color: #c62828;
+      }
+
+      .error-path {
+        color: #666;
+        word-break: break-all;
+      }
+
+      .child-processes-header {
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 12px;
+        font-size: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .child-processes-content {
+        margin-top: 8px;
+        overflow-x: auto;
+      }
+
+      .no-child-processes {
+        text-align: center;
+        color: #999;
+        padding: 20px;
+        font-style: italic;
+      }
+
+      .child-processes-content::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .child-processes-content::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+      }
+
+      .child-processes-content::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+      }
+
+      .child-processes-content::-webkit-scrollbar-thumb:hover {
+        background: #555;
+      }
+
+      .regroup-button {
+        padding: 6px 16px;
+        background: #f5f5f5;
+        color: #333;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .regroup-button:hover {
+        background: #e0e0e0;
+        border-color: #999;
+      }
+
+      .regroup-button:active {
+        background: #d0d0d0;
+      }
+
+      .regroup-button.hidden {
+        display: none;
+      }
+
+      .process-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      }
+
+      .process-table thead {
+        background: #f5f5f5;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+      }
+
+      .process-table th {
+        text-align: left;
+        padding: 8px;
+        font-weight: 600;
+        border-bottom: 2px solid #ddd;
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+      }
+
+      .process-table th:hover {
+        background: #e8e8e8;
+      }
+
+      .process-table th.sortable::after {
+        content: ' ↕';
+        color: #999;
+        font-size: 10px;
+      }
+
+      .process-table th.sorted-asc::after {
+        content: ' ↑';
+        color: #007aff;
+      }
+
+      .process-table th.sorted-desc::after {
+        content: ' ↓';
+        color: #007aff;
+      }
+
+      .process-table td {
+        padding: 6px 8px;
+        border-bottom: 1px solid #eee;
+      }
+
+      .process-table tbody tr:hover {
+        background: #f9f9f9;
+      }
+
+      .process-table .pid-col {
+        color: #0066cc;
+        font-weight: 500;
+      }
+
+      .process-table .status-col {
+        color: #666;
+        font-weight: 500;
+      }
+
+      .process-table .status-zombie {
+        color: #c62828;
+        font-weight: 700;
+      }
+
+      .process-table .memory-col {
+        text-align: right;
+        color: #666;
+      }
+
+      .process-table .name-col {
+        color: #333;
+        font-weight: 500;
+      }
+
+      .process-table .command-col {
+        color: #666;
+        max-width: 400px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .process-tree-prefix {
+        color: #999;
+        user-select: none;
+      }
+
+      .process-pid {
+        color: #0066cc;
+        font-weight: 500;
+      }
+
+      .process-state {
+        color: #666;
+        font-weight: 500;
+      }
+
+      .process-state-zombie {
+        color: #c62828;
+        font-weight: 700;
+      }
+
+      .process-command {
+        color: #333;
+      }
+
+      .process-time {
+        color: #888;
+        font-size: 10px;
+      }
+
+      .summary-label {
+        font-weight: 600;
+        color: #555;
+      }
+
+      .summary-value {
+        font-weight: 700;
+        color: #000;
+        font-size: 16px;
+      }
+
+      .sessions-header {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: #555;
+      }
+
+      .sessions-container {
+        overflow-x: hidden;
+      }
+
+      .session-item {
+        padding: 12px;
+        margin-bottom: 8px;
+        background: #f9f9f9;
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 13px;
+      }
+
+      .session-path {
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #1a1a1a;
+        word-break: break-all;
+      }
+
+      .session-detail {
+        margin-top: 4px;
+        color: #666;
+        font-size: 12px;
+      }
+
+      .session-detail-label {
+        font-weight: 500;
+        color: #555;
+      }
+
+      .no-sessions {
+        text-align: center;
+        color: #999;
+        padding: 20px;
+        font-style: italic;
+      }
+
+      .button-container {
+        display: flex;
+        justify-content: flex-end;
+        padding-top: 12px;
+        border-top: 1px solid #e0e0e0;
+        flex-shrink: 0;
+        background: #ffffff;
+      }
+
+      button {
+        padding: 8px 24px;
+        background: #007aff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      button:hover {
+        background: #0051d5;
+      }
+
+      button:active {
+        background: #004bb5;
+      }
+
+      .metrics-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin-top: 8px;
+      }
+
+      .metrics-table thead {
+        background: #f5f5f5;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+      }
+
+      .metrics-table th {
+        text-align: left;
+        padding: 10px 12px;
+        font-weight: 600;
+        border-bottom: 2px solid #ddd;
+        color: #333;
+      }
+
+      .metrics-table th:first-child {
+        width: 40%;
+      }
+
+      .metrics-table th:nth-child(2) {
+        width: 30%;
+        text-align: right;
+        color: #0066cc;
+      }
+
+      .metrics-table th:nth-child(3) {
+        width: 30%;
+        text-align: right;
+        color: #666;
+      }
+
+      .metrics-table td {
+        padding: 8px 12px;
+        border-bottom: 1px solid #eee;
+      }
+
+      .metrics-table tbody tr:hover {
+        background: #f9f9f9;
+      }
+
+      .metrics-table .metric-name {
+        color: #555;
+        font-weight: 500;
+      }
+
+      .metrics-table .metric-value {
+        text-align: right;
+        color: #333;
+        font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      }
+
+      .metrics-table .metric-value-app {
+        color: #0066cc;
+        font-weight: 500;
+      }
+
+      .metrics-table .metric-warning {
+        color: #c62828;
+        font-weight: 600;
+      }
+
+      .metrics-table .metric-good {
+        color: #28a745;
+        font-weight: 500;
+      }
+
+      .metrics-table .metric-subtext {
+        font-size: 11px;
+        color: #888;
+        margin-top: 2px;
+      }
+
+      .metrics-section-header {
+        font-weight: 700;
+        background: #e8e8e8;
+        color: #333;
+      }
+
+      .metrics-section-header td {
+        padding: 10px 12px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.95);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+      }
+
+      .loading-overlay.hidden {
+        display: none;
+      }
+
+      .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #007aff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      .loading-text {
+        margin-top: 16px;
+        color: #666;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Process Statistics</h1>
+
+    <div class="summary">
+      <span class="summary-label">Active PTY Processes:</span>
+      <span class="summary-value" id="activeCount">0</span>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-button active" data-tab="system">System Diagnostics</button>
+      <button class="tab-button" data-tab="processes">Child Processes</button>
+      <button class="tab-button" data-tab="sessions">Active Sessions</button>
+    </div>
+
+    <div class="tab-content-wrapper">
+      <!-- Loading Overlay -->
+      <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Collecting system metrics...</div>
+      </div>
+
+      <!-- System Diagnostics Tab -->
+      <div class="tab-panel active" id="tab-system">
+        <!-- Warnings Section -->
+        <div class="warning-section hidden" id="warningSection">
+          <div class="warning-header">⚠️ System Warnings</div>
+          <div id="warningsList"></div>
+        </div>
+
+        <!-- Recent Spawn Errors Section -->
+        <div class="error-section hidden" id="errorSection">
+          <div class="error-header">Recent Spawn Errors</div>
+          <div id="errorsList"></div>
+        </div>
+
+        <!-- System Diagnostics Section -->
+        <div class="diagnostics-section">
+          <div class="diagnostics-header">System Metrics</div>
+          <table class="metrics-table" id="metricsTable">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>VibeTree</th>
+                <th>System Wide</th>
+              </tr>
+            </thead>
+            <tbody id="metricsTableBody">
+              <!-- Metrics will be populated here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Child Processes Tab -->
+      <div class="tab-panel" id="tab-processes">
+        <div class="child-processes-header">
+          <span id="childProcessesHeader">Child Processes</span>
+          <button class="regroup-button hidden" id="regroupButton">Regroup</button>
+        </div>
+        <div class="child-processes-content" id="childProcessesContent">
+          <div class="no-child-processes">No child processes.</div>
+        </div>
+      </div>
+
+      <!-- Active Sessions Tab -->
+      <div class="tab-panel" id="tab-sessions">
+        <div class="sessions-header" id="sessionsHeader">Active Sessions</div>
+        <div class="sessions-container" id="sessionsContainer">
+          <div class="no-sessions" id="noSessions">No active sessions.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="button-container">
+      <button id="closeButton">OK</button>
+    </div>
+
+    <script>
+      // Global state
+      let allProcesses = [];
+      let originalProcessTree = [];
+      let currentSortColumn = null;
+      let currentSortOrder = 'asc';
+      let isGroupedView = true;
+
+      /**
+       * Format memory size in KB to human-readable format
+       */
+      function formatMemory(kb) {
+        if (kb < 1024) {
+          return kb.toFixed(0) + ' KB';
+        } else if (kb < 1024 * 1024) {
+          return (kb / 1024).toFixed(1) + ' MB';
+        } else {
+          return (kb / (1024 * 1024)).toFixed(2) + ' GB';
+        }
+      }
+
+      /**
+       * Extract binary name from command
+       */
+      function extractBinaryName(command) {
+        // Remove leading/trailing whitespace
+        const trimmed = command.trim();
+
+        // Split by space to get the first part (the executable)
+        const parts = trimmed.split(/\s+/);
+        const executable = parts[0];
+
+        // Get just the binary name (last part of path)
+        const pathParts = executable.split('/');
+        return pathParts[pathParts.length - 1];
+      }
+
+      /**
+       * Flatten process tree into a list
+       */
+      function flattenProcessTree(processes, parentPrefix = '', level = 0) {
+        let flat = [];
+
+        processes.forEach((proc, index) => {
+          const isLast = index === processes.length - 1;
+          const connector = isLast ? '└─' : '├─';
+          const childPrefix = parentPrefix + (isLast ? '  ' : '│ ');
+
+          flat.push({
+            ...proc,
+            level: level,
+            prefix: parentPrefix + connector + ' ',
+            binaryName: extractBinaryName(proc.command)
+          });
+
+          if (proc.children && proc.children.length > 0) {
+            flat = flat.concat(flattenProcessTree(proc.children, childPrefix, level + 1));
+          }
         });
 
-        if (proc.children && proc.children.length > 0) {
-          flat = flat.concat(flattenProcessTree(proc.children, childPrefix, level + 1));
-        }
-      });
-
-      return flat;
-    }
-
-    /**
-     * Render process table
-     */
-    function renderProcessTable(processes, showPrefix = false) {
-      if (processes.length === 0) {
-        return '<div class="no-child-processes">No child processes.</div>';
+        return flat;
       }
 
-      let html = '<table class="process-table"><thead><tr>';
-      html += '<th class="sortable" data-column="pid">PID</th>';
-      html += '<th class="sortable" data-column="status">Status</th>';
-      html += '<th class="sortable" data-column="memory">Memory</th>';
-      html += '<th class="sortable" data-column="name">Name</th>';
-      html += '<th class="sortable" data-column="command">Command</th>';
-      html += '</tr></thead><tbody>';
-
-      processes.forEach(proc => {
-        const statusClass = proc.state.startsWith('Z') ? 'status-zombie' : 'status-col';
-        const statusText = proc.state.startsWith('Z')
-          ? `${proc.stateDescription} ⚠️`
-          : proc.stateDescription;
-
-        const prefix = showPrefix && proc.prefix ? `<span class="process-tree-prefix">${proc.prefix}</span>` : '';
-
-        html += '<tr>';
-        html += `<td class="pid-col">${proc.pid}</td>`;
-        html += `<td class="${statusClass}">${statusText}</td>`;
-        html += `<td class="memory-col">${formatMemory(proc.memoryRSS)}</td>`;
-        html += `<td class="name-col">${prefix}${proc.binaryName}</td>`;
-        html += `<td class="command-col" title="${proc.command}">${proc.command}</td>`;
-        html += '</tr>';
-      });
-
-      html += '</tbody></table>';
-      return html;
-    }
-
-    /**
-     * Render grouped process view (now just shows all processes with tree prefixes)
-     */
-    function renderGroupedProcessView(processTree) {
-      if (processTree.length === 0) {
-        return '<div class="no-child-processes">No child processes.</div>';
-      }
-
-      // Flatten all processes but keep tree structure
-      const allProcesses = flattenProcessTree(processTree);
-      return renderProcessTable(allProcesses, true);
-    }
-
-    /**
-     * Sort processes by column
-     */
-    function sortProcesses(processes, column, order) {
-      const sorted = [...processes];
-
-      sorted.sort((a, b) => {
-        let aVal, bVal;
-
-        switch (column) {
-          case 'pid':
-            aVal = a.pid;
-            bVal = b.pid;
-            break;
-          case 'status':
-            aVal = a.stateDescription;
-            bVal = b.stateDescription;
-            break;
-          case 'memory':
-            aVal = a.memoryRSS;
-            bVal = b.memoryRSS;
-            break;
-          case 'name':
-            aVal = a.binaryName.toLowerCase();
-            bVal = b.binaryName.toLowerCase();
-            break;
-          case 'command':
-            aVal = a.command.toLowerCase();
-            bVal = b.command.toLowerCase();
-            break;
-          default:
-            return 0;
+      /**
+       * Render process table
+       */
+      function renderProcessTable(processes, showPrefix = false) {
+        if (processes.length === 0) {
+          return '<div class="no-child-processes">No child processes.</div>';
         }
 
-        if (aVal < bVal) return order === 'asc' ? -1 : 1;
-        if (aVal > bVal) return order === 'asc' ? 1 : -1;
-        return 0;
-      });
+        let html = '<table class="process-table"><thead><tr>';
+        html += '<th class="sortable" data-column="pid">PID</th>';
+        html += '<th class="sortable" data-column="status">Status</th>';
+        html += '<th class="sortable" data-column="memory">Memory</th>';
+        html += '<th class="sortable" data-column="name">Name</th>';
+        html += '<th class="sortable" data-column="command">Command</th>';
+        html += '</tr></thead><tbody>';
 
-      return sorted;
-    }
+        processes.forEach((proc) => {
+          const statusClass = proc.state.startsWith('Z') ? 'status-zombie' : 'status-col';
+          const statusText = proc.state.startsWith('Z')
+            ? `${proc.stateDescription} ⚠️`
+            : proc.stateDescription;
 
-    /**
-     * Update sort indicators
-     */
-    function updateSortIndicators(column, order) {
-      const headers = document.querySelectorAll('.process-table th');
-      headers.forEach(th => {
-        th.classList.remove('sorted-asc', 'sorted-desc');
-        if (th.dataset.column === column) {
-          th.classList.add(order === 'asc' ? 'sorted-asc' : 'sorted-desc');
-        }
-      });
-    }
+          const prefix =
+            showPrefix && proc.prefix
+              ? `<span class="process-tree-prefix">${proc.prefix}</span>`
+              : '';
 
-    /**
-     * Render processes based on current view mode
-     */
-    function renderProcesses() {
-      const container = document.getElementById('childProcessesContent');
-      const regroupButton = document.getElementById('regroupButton');
+          html += '<tr>';
+          html += `<td class="pid-col">${proc.pid}</td>`;
+          html += `<td class="${statusClass}">${statusText}</td>`;
+          html += `<td class="memory-col">${formatMemory(proc.memoryRSS)}</td>`;
+          html += `<td class="name-col">${prefix}${proc.binaryName}</td>`;
+          html += `<td class="command-col" title="${proc.command}">${proc.command}</td>`;
+          html += '</tr>';
+        });
 
-      if (isGroupedView) {
-        container.innerHTML = renderGroupedProcessView(originalProcessTree);
-        regroupButton.classList.add('hidden');
-      } else {
-        const sorted = currentSortColumn
-          ? sortProcesses(allProcesses, currentSortColumn, currentSortOrder)
-          : allProcesses;
-        container.innerHTML = renderProcessTable(sorted, false);
-        updateSortIndicators(currentSortColumn, currentSortOrder);
-        regroupButton.classList.remove('hidden');
+        html += '</tbody></table>';
+        return html;
       }
 
-      // Add click handlers to table headers
-      const headers = container.querySelectorAll('.process-table th[data-column]');
-      headers.forEach(th => {
-        th.addEventListener('click', () => {
-          const column = th.dataset.column;
+      /**
+       * Render grouped process view (now just shows all processes with tree prefixes)
+       */
+      function renderGroupedProcessView(processTree) {
+        if (processTree.length === 0) {
+          return '<div class="no-child-processes">No child processes.</div>';
+        }
 
-          // Toggle sort order if clicking same column
-          if (currentSortColumn === column) {
-            currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
-          } else {
-            currentSortColumn = column;
-            currentSortOrder = 'asc';
+        // Flatten all processes but keep tree structure
+        const allProcesses = flattenProcessTree(processTree);
+        return renderProcessTable(allProcesses, true);
+      }
+
+      /**
+       * Sort processes by column
+       */
+      function sortProcesses(processes, column, order) {
+        const sorted = [...processes];
+
+        sorted.sort((a, b) => {
+          let aVal, bVal;
+
+          switch (column) {
+            case 'pid':
+              aVal = a.pid;
+              bVal = b.pid;
+              break;
+            case 'status':
+              aVal = a.stateDescription;
+              bVal = b.stateDescription;
+              break;
+            case 'memory':
+              aVal = a.memoryRSS;
+              bVal = b.memoryRSS;
+              break;
+            case 'name':
+              aVal = a.binaryName.toLowerCase();
+              bVal = b.binaryName.toLowerCase();
+              break;
+            case 'command':
+              aVal = a.command.toLowerCase();
+              bVal = b.command.toLowerCase();
+              break;
+            default:
+              return 0;
           }
 
-          isGroupedView = false;
-          renderProcesses();
+          if (aVal < bVal) return order === 'asc' ? -1 : 1;
+          if (aVal > bVal) return order === 'asc' ? 1 : -1;
+          return 0;
         });
-      });
-    }
 
-    function updateStats(stats) {
-      document.getElementById('activeCount').textContent = stats.activeProcessCount;
-
-      // Update warnings section
-      const warningSection = document.getElementById('warningSection');
-      const warningsList = document.getElementById('warningsList');
-      if (stats.systemDiagnostics && stats.systemDiagnostics.warnings && stats.systemDiagnostics.warnings.length > 0) {
-        warningSection.classList.remove('hidden');
-        warningsList.innerHTML = stats.systemDiagnostics.warnings.map(w =>
-          `<div class="warning-item">${w}</div>`
-        ).join('');
-      } else {
-        warningSection.classList.add('hidden');
+        return sorted;
       }
 
-      // Update spawn errors section
-      const errorSection = document.getElementById('errorSection');
-      const errorsList = document.getElementById('errorsList');
-      if (stats.spawnErrors && stats.spawnErrors.length > 0) {
-        errorSection.classList.remove('hidden');
-        errorsList.innerHTML = stats.spawnErrors.map(e => {
-          const time = new Date(e.timestamp).toLocaleString();
-          const errorCodeText = e.errorCode ? ` <span class="error-code">[${e.errorCode}]</span>` : '';
-          return `
+      /**
+       * Update sort indicators
+       */
+      function updateSortIndicators(column, order) {
+        const headers = document.querySelectorAll('.process-table th');
+        headers.forEach((th) => {
+          th.classList.remove('sorted-asc', 'sorted-desc');
+          if (th.dataset.column === column) {
+            th.classList.add(order === 'asc' ? 'sorted-asc' : 'sorted-desc');
+          }
+        });
+      }
+
+      /**
+       * Render processes based on current view mode
+       */
+      function renderProcesses() {
+        const container = document.getElementById('childProcessesContent');
+        const regroupButton = document.getElementById('regroupButton');
+
+        if (isGroupedView) {
+          container.innerHTML = renderGroupedProcessView(originalProcessTree);
+          regroupButton.classList.add('hidden');
+        } else {
+          const sorted = currentSortColumn
+            ? sortProcesses(allProcesses, currentSortColumn, currentSortOrder)
+            : allProcesses;
+          container.innerHTML = renderProcessTable(sorted, false);
+          updateSortIndicators(currentSortColumn, currentSortOrder);
+          regroupButton.classList.remove('hidden');
+        }
+
+        // Add click handlers to table headers
+        const headers = container.querySelectorAll('.process-table th[data-column]');
+        headers.forEach((th) => {
+          th.addEventListener('click', () => {
+            const column = th.dataset.column;
+
+            // Toggle sort order if clicking same column
+            if (currentSortColumn === column) {
+              currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+              currentSortColumn = column;
+              currentSortOrder = 'asc';
+            }
+
+            isGroupedView = false;
+            renderProcesses();
+          });
+        });
+      }
+
+      function updateStats(stats) {
+        document.getElementById('activeCount').textContent = stats.activeProcessCount;
+
+        // Update warnings section
+        const warningSection = document.getElementById('warningSection');
+        const warningsList = document.getElementById('warningsList');
+        if (
+          stats.systemDiagnostics &&
+          stats.systemDiagnostics.warnings &&
+          stats.systemDiagnostics.warnings.length > 0
+        ) {
+          warningSection.classList.remove('hidden');
+          warningsList.innerHTML = stats.systemDiagnostics.warnings
+            .map((w) => `<div class="warning-item">${w}</div>`)
+            .join('');
+        } else {
+          warningSection.classList.add('hidden');
+        }
+
+        // Update spawn errors section
+        const errorSection = document.getElementById('errorSection');
+        const errorsList = document.getElementById('errorsList');
+        if (stats.spawnErrors && stats.spawnErrors.length > 0) {
+          errorSection.classList.remove('hidden');
+          errorsList.innerHTML = stats.spawnErrors
+            .map((e) => {
+              const time = new Date(e.timestamp).toLocaleString();
+              const errorCodeText = e.errorCode
+                ? ` <span class="error-code">[${e.errorCode}]</span>`
+                : '';
+              return `
             <div class="error-item">
               <div class="error-time">${time}</div>
               <div>${e.error}${errorCodeText}</div>
               <div class="error-path">${e.worktreePath}</div>
             </div>
           `;
-        }).join('');
-      } else {
-        errorSection.classList.add('hidden');
-      }
+            })
+            .join('');
+        } else {
+          errorSection.classList.add('hidden');
+        }
 
-      // Update system diagnostics section with metrics table
-      if (stats.systemDiagnostics) {
-        const diag = stats.systemDiagnostics;
-        const metricsTableBody = document.getElementById('metricsTableBody');
+        // Update system diagnostics section with metrics table
+        if (stats.systemDiagnostics) {
+          const diag = stats.systemDiagnostics;
+          const metricsTableBody = document.getElementById('metricsTableBody');
 
-        const metrics = [];
+          const metrics = [];
 
-        // Helper function to add metric row
-        const addMetric = (name, appValue, systemValue, options = {}) => {
-          const appClass = options.appWarning ? 'metric-warning' : options.appGood ? 'metric-good' : 'metric-value-app';
-          const sysClass = options.sysWarning ? 'metric-warning' : 'metric-value';
+          // Helper function to add metric row
+          const addMetric = (name, appValue, systemValue, options = {}) => {
+            const appClass = options.appWarning
+              ? 'metric-warning'
+              : options.appGood
+                ? 'metric-good'
+                : 'metric-value-app';
+            const sysClass = options.sysWarning ? 'metric-warning' : 'metric-value';
 
-          metrics.push(`
+            metrics.push(`
             <tr>
               <td class="metric-name">${name}</td>
               <td class="metric-value ${appClass}">${appValue || '-'}</td>
               <td class="metric-value ${sysClass}">${systemValue || '-'}</td>
             </tr>
           `);
-        };
+          };
 
-        // Helper function to add section header
-        const addSection = (name) => {
-          metrics.push(`
+          // Helper function to add section header
+          const addSection = (name) => {
+            metrics.push(`
             <tr class="metrics-section-header">
               <td colspan="3">${name}</td>
             </tr>
           `);
-        };
+          };
 
-        // Memory Section
-        addSection('Memory');
+          // Memory Section
+          addSection('Memory');
 
-        if (diag.processTreeMemory) {
-          const appMem = formatMemory(diag.processTreeMemory.currentProcessRSS);
-          const treeMem = formatMemory(diag.processTreeMemory.totalTreeRSS);
-          const totalGB = (diag.totalMemory / (1024 ** 3)).toFixed(2) + ' GB';
-          const freeGB = (diag.freeMemory / (1024 ** 3)).toFixed(2) + ' GB';
-          const usedGB = ((diag.totalMemory - diag.freeMemory) / (1024 ** 3)).toFixed(2) + ' GB';
-          const usedPercent = ((1 - diag.freeMemory / diag.totalMemory) * 100).toFixed(1) + '%';
+          if (diag.processTreeMemory) {
+            const appMem = formatMemory(diag.processTreeMemory.currentProcessRSS);
+            const treeMem = formatMemory(diag.processTreeMemory.totalTreeRSS);
+            const totalGB = (diag.totalMemory / 1024 ** 3).toFixed(2) + ' GB';
+            const freeGB = (diag.freeMemory / 1024 ** 3).toFixed(2) + ' GB';
+            const usedGB = ((diag.totalMemory - diag.freeMemory) / 1024 ** 3).toFixed(2) + ' GB';
+            const usedPercent = ((1 - diag.freeMemory / diag.totalMemory) * 100).toFixed(1) + '%';
 
-          // Calculate app's percentage of total memory
-          const appPercent = (diag.processTreeMemory.currentProcessRSS / (1024 * 1024) / (diag.totalMemory / (1024 ** 3)) * 100).toFixed(2);
-          const treePercent = (diag.processTreeMemory.totalTreeRSS / (1024 * 1024) / (diag.totalMemory / (1024 ** 3)) * 100).toFixed(2);
+            // Calculate app's percentage of total memory
+            const appPercent = (
+              (diag.processTreeMemory.currentProcessRSS /
+                (1024 * 1024) /
+                (diag.totalMemory / 1024 ** 3)) *
+              100
+            ).toFixed(2);
+            const treePercent = (
+              (diag.processTreeMemory.totalTreeRSS /
+                (1024 * 1024) /
+                (diag.totalMemory / 1024 ** 3)) *
+              100
+            ).toFixed(2);
 
-          addMetric('Process Memory', `${appMem} (${appPercent}%)`, `${totalGB} total`);
-          addMetric('Process Tree Memory', `${treeMem} (${treePercent}%)`, `${usedGB} / ${totalGB} (${usedPercent})`);
-        }
-
-        // PTY Devices Section
-        addSection('PTY Devices');
-
-        if (diag.appPtyInfo && diag.ptyDeviceInfo) {
-          // Use master FDs as they directly represent PTY sessions
-          const ptyMasterFds = diag.appPtyInfo.ptyMasterFds || 0;
-          const activeSessions = diag.appPtyInfo.currentActiveSessions;
-          const currentCount = diag.ptyDeviceInfo.currentCount || 0;
-          const systemLimit = diag.ptyDeviceInfo.systemLimit || 0;
-          const usage = systemLimit > 0 ? (currentCount / systemLimit * 100).toFixed(1) : '0';
-          const isHighUsage = systemLimit > 0 && currentCount / systemLimit > 0.8;
-
-          addMetric(
-            'PTY Master Devices',
-            ptyMasterFds,
-            `${currentCount} / ${systemLimit} (${usage}%)`,
-            { appWarning: ptyMasterFds > systemLimit * 0.5, sysWarning: isHighUsage }
-          );
-
-          const totalCreated = diag.appPtyInfo.totalPtyInstancesCreated;
-          const leaked = totalCreated - activeSessions - (diag.appPtyInfo.ptyChildProcesses || 0);
-
-          // Show total created if different from active (indicates churn/leaks)
-          const sessionInfo = totalCreated > activeSessions
-            ? `${totalCreated} total created`
-            : '--';
-
-          addMetric(
-            'Active PTY Sessions',
-            activeSessions,
-            sessionInfo,
-            { appWarning: leaked > 0 }
-          );
-
-          // Note: PTY Master FDs can be ~2x active sessions due to fork architecture
-          // Each session has a PTY in the fork process, which results in multiple FDs
-          // Only show leak warning if ratio is significantly high (>3x)
-          const expectedMaxFds = activeSessions * 3;
-          const potentialLeaks = ptyMasterFds > expectedMaxFds ? ptyMasterFds - activeSessions : 0;
-          if (potentialLeaks > 0) {
+            addMetric('Process Memory', `${appMem} (${appPercent}%)`, `${totalGB} total`);
             addMetric(
-              'Potential PTY Leak',
-              `${potentialLeaks} (${ptyMasterFds} FDs - ${activeSessions} sessions)`,
-              '--',
-              { appWarning: true }
+              'Process Tree Memory',
+              `${treeMem} (${treePercent}%)`,
+              `${usedGB} / ${totalGB} (${usedPercent})`
             );
           }
+
+          // PTY Devices Section
+          addSection('PTY Devices');
+
+          if (diag.appPtyInfo && diag.ptyDeviceInfo) {
+            // Use master FDs as they directly represent PTY sessions
+            const ptyMasterFds = diag.appPtyInfo.ptyMasterFds || 0;
+            const activeSessions = diag.appPtyInfo.currentActiveSessions;
+            const currentCount = diag.ptyDeviceInfo.currentCount || 0;
+            const systemLimit = diag.ptyDeviceInfo.systemLimit || 0;
+            const usage = systemLimit > 0 ? ((currentCount / systemLimit) * 100).toFixed(1) : '0';
+            const isHighUsage = systemLimit > 0 && currentCount / systemLimit > 0.8;
+
+            addMetric(
+              'PTY Master Devices',
+              ptyMasterFds,
+              `${currentCount} / ${systemLimit} (${usage}%)`,
+              { appWarning: ptyMasterFds > systemLimit * 0.5, sysWarning: isHighUsage }
+            );
+
+            const totalCreated = diag.appPtyInfo.totalPtyInstancesCreated;
+            const leaked = totalCreated - activeSessions - (diag.appPtyInfo.ptyChildProcesses || 0);
+
+            // Show total created if different from active (indicates churn/leaks)
+            const sessionInfo =
+              totalCreated > activeSessions ? `${totalCreated} total created` : '--';
+
+            addMetric('Active PTY Sessions', activeSessions, sessionInfo, {
+              appWarning: leaked > 0
+            });
+
+            // Note: PTY Master FDs can be ~2x active sessions due to fork architecture
+            // Each session has a PTY in the fork process, which results in multiple FDs
+            // Only show leak warning if ratio is significantly high (>3x)
+            const expectedMaxFds = activeSessions * 3;
+            const potentialLeaks =
+              ptyMasterFds > expectedMaxFds ? ptyMasterFds - activeSessions : 0;
+            if (potentialLeaks > 0) {
+              addMetric(
+                'Potential PTY Leak',
+                `${potentialLeaks} (${ptyMasterFds} FDs - ${activeSessions} sessions)`,
+                '--',
+                { appWarning: true }
+              );
+            }
+          }
+
+          // Processes Section
+          addSection('Processes');
+
+          if (diag.childProcesses) {
+            function countTotal(procs) {
+              let count = procs.length;
+              procs.forEach((p) => {
+                if (p.children) count += countTotal(p.children);
+              });
+              return count;
+            }
+            const childCount = countTotal(diag.childProcesses);
+            const processCount = diag.currentProcessCount || 0;
+            const processLimit = diag.processLimit || 0;
+            const processUsage =
+              processLimit > 0 ? ((processCount / processLimit) * 100).toFixed(1) : '0';
+
+            addMetric(
+              'Child Processes',
+              childCount,
+              `${processCount} / ${processLimit} (${processUsage}%)`
+            );
+
+            if (diag.zombieProcessCount > 0) {
+              addMetric('Zombie Processes', diag.zombieProcessCount, '-', { appWarning: true });
+            }
+          }
+
+          // File Descriptors Section
+          addSection('File Descriptors');
+
+          if (diag.openFileDescriptors !== null && diag.fileDescriptorLimit.soft !== null) {
+            const fdUsage = (
+              (diag.openFileDescriptors / diag.fileDescriptorLimit.soft) *
+              100
+            ).toFixed(1);
+            const isHighFdUsage = diag.openFileDescriptors / diag.fileDescriptorLimit.soft > 0.75;
+
+            let systemFdInfo = `${diag.fileDescriptorLimit.soft} limit (per-process)`;
+
+            // Add system-wide FD usage if available
+            if (
+              diag.systemFileDescriptors &&
+              diag.systemFileDescriptors.current !== null &&
+              diag.systemFileDescriptors.limit !== null
+            ) {
+              const systemUsage = (
+                (diag.systemFileDescriptors.current / diag.systemFileDescriptors.limit) *
+                100
+              ).toFixed(1);
+              const isHighSystemUsage =
+                diag.systemFileDescriptors.current / diag.systemFileDescriptors.limit > 0.75;
+
+              systemFdInfo = `${diag.systemFileDescriptors.current} / ${diag.systemFileDescriptors.limit} (${systemUsage}%)`;
+
+              addMetric(
+                'File Descriptors',
+                `${diag.openFileDescriptors} / ${diag.fileDescriptorLimit.soft} (${fdUsage}%)`,
+                systemFdInfo,
+                { appWarning: isHighFdUsage, sysWarning: isHighSystemUsage }
+              );
+            } else {
+              addMetric(
+                'File Descriptors',
+                `${diag.openFileDescriptors} / ${diag.fileDescriptorLimit.soft} (${fdUsage}%)`,
+                systemFdInfo,
+                { appWarning: isHighFdUsage }
+              );
+            }
+          }
+
+          metricsTableBody.innerHTML = metrics.join('');
         }
 
-        // Processes Section
-        addSection('Processes');
+        // Update child processes section
+        const childProcessesHeader = document.getElementById('childProcessesHeader');
 
-        if (diag.childProcesses) {
+        if (
+          stats.systemDiagnostics &&
+          stats.systemDiagnostics.childProcesses &&
+          stats.systemDiagnostics.childProcesses.length > 0
+        ) {
+          // Store process data globally
+          originalProcessTree = stats.systemDiagnostics.childProcesses;
+          allProcesses = flattenProcessTree(originalProcessTree);
+
+          // Count total processes
           function countTotal(procs) {
             let count = procs.length;
-            procs.forEach(p => {
+            procs.forEach((p) => {
               if (p.children) count += countTotal(p.children);
             });
             return count;
           }
-          const childCount = countTotal(diag.childProcesses);
-          const processCount = diag.currentProcessCount || 0;
-          const processLimit = diag.processLimit || 0;
-          const processUsage = processLimit > 0 ? (processCount / processLimit * 100).toFixed(1) : '0';
 
-          addMetric(
-            'Child Processes',
-            childCount,
-            `${processCount} / ${processLimit} (${processUsage}%)`
-          );
+          const totalCount = countTotal(stats.systemDiagnostics.childProcesses);
+          const zombieCount = stats.systemDiagnostics.zombieProcessCount || 0;
+          const zombieText =
+            zombieCount > 0 ? ` (${zombieCount} zombie${zombieCount > 1 ? 's' : ''})` : '';
 
-          if (diag.zombieProcessCount > 0) {
-            addMetric('Zombie Processes', diag.zombieProcessCount, '-', { appWarning: true });
+          // Calculate total memory of children (excluding current process)
+          function calculateMemory(procs) {
+            let total = 0;
+            procs.forEach((p) => {
+              total += p.memoryRSS;
+              if (p.children) total += calculateMemory(p.children);
+            });
+            return total;
           }
+
+          const childrenMemory = calculateMemory(stats.systemDiagnostics.childProcesses);
+          const memoryText = childrenMemory > 0 ? ` - ${formatMemory(childrenMemory)}` : '';
+
+          childProcessesHeader.textContent = `Child Processes (${totalCount}${zombieText}${memoryText})`;
+
+          // Reset to grouped view
+          isGroupedView = true;
+          currentSortColumn = null;
+          currentSortOrder = 'asc';
+          renderProcesses();
+        } else {
+          childProcessesHeader.textContent = 'Child Processes';
+          originalProcessTree = [];
+          allProcesses = [];
+          isGroupedView = true;
+          renderProcesses();
         }
 
-        // File Descriptors Section
-        addSection('File Descriptors');
+        const container = document.getElementById('sessionsContainer');
+        const noSessions = document.getElementById('noSessions');
+        const header = document.getElementById('sessionsHeader');
 
-        if (diag.openFileDescriptors !== null && diag.fileDescriptorLimit.soft !== null) {
-          const fdUsage = (diag.openFileDescriptors / diag.fileDescriptorLimit.soft * 100).toFixed(1);
-          const isHighFdUsage = diag.openFileDescriptors / diag.fileDescriptorLimit.soft > 0.75;
+        if (stats.activeProcessCount === 0) {
+          noSessions.style.display = 'block';
+          header.textContent = 'Active Sessions:';
+        } else {
+          noSessions.style.display = 'none';
+          header.textContent = `Active Sessions (${stats.sessions.length}):`;
 
-          let systemFdInfo = `${diag.fileDescriptorLimit.soft} limit (per-process)`;
+          // Clear existing sessions
+          const existingSessions = container.querySelectorAll('.session-item');
+          existingSessions.forEach((item) => item.remove());
 
-          // Add system-wide FD usage if available
-          if (diag.systemFileDescriptors && diag.systemFileDescriptors.current !== null && diag.systemFileDescriptors.limit !== null) {
-            const systemUsage = (diag.systemFileDescriptors.current / diag.systemFileDescriptors.limit * 100).toFixed(1);
-            const isHighSystemUsage = diag.systemFileDescriptors.current / diag.systemFileDescriptors.limit > 0.75;
+          // Add session items
+          stats.sessions.forEach((session) => {
+            const sessionDiv = document.createElement('div');
+            sessionDiv.className = 'session-item';
 
-            systemFdInfo = `${diag.systemFileDescriptors.current} / ${diag.systemFileDescriptors.limit} (${systemUsage}%)`;
+            const createdDate = new Date(session.createdAt).toLocaleString();
+            const lastActiveDate = new Date(session.lastActivity).toLocaleString();
 
-            addMetric(
-              'File Descriptors',
-              `${diag.openFileDescriptors} / ${diag.fileDescriptorLimit.soft} (${fdUsage}%)`,
-              systemFdInfo,
-              { appWarning: isHighFdUsage, sysWarning: isHighSystemUsage }
-            );
-          } else {
-            addMetric(
-              'File Descriptors',
-              `${diag.openFileDescriptors} / ${diag.fileDescriptorLimit.soft} (${fdUsage}%)`,
-              systemFdInfo,
-              { appWarning: isHighFdUsage }
-            );
-          }
-        }
-
-        metricsTableBody.innerHTML = metrics.join('');
-      }
-
-      // Update child processes section
-      const childProcessesHeader = document.getElementById('childProcessesHeader');
-
-      if (stats.systemDiagnostics && stats.systemDiagnostics.childProcesses && stats.systemDiagnostics.childProcesses.length > 0) {
-        // Store process data globally
-        originalProcessTree = stats.systemDiagnostics.childProcesses;
-        allProcesses = flattenProcessTree(originalProcessTree);
-
-        // Count total processes
-        function countTotal(procs) {
-          let count = procs.length;
-          procs.forEach(p => {
-            if (p.children) count += countTotal(p.children);
-          });
-          return count;
-        }
-
-        const totalCount = countTotal(stats.systemDiagnostics.childProcesses);
-        const zombieCount = stats.systemDiagnostics.zombieProcessCount || 0;
-        const zombieText = zombieCount > 0 ? ` (${zombieCount} zombie${zombieCount > 1 ? 's' : ''})` : '';
-
-        // Calculate total memory of children (excluding current process)
-        function calculateMemory(procs) {
-          let total = 0;
-          procs.forEach(p => {
-            total += p.memoryRSS;
-            if (p.children) total += calculateMemory(p.children);
-          });
-          return total;
-        }
-
-        const childrenMemory = calculateMemory(stats.systemDiagnostics.childProcesses);
-        const memoryText = childrenMemory > 0 ? ` - ${formatMemory(childrenMemory)}` : '';
-
-        childProcessesHeader.textContent = `Child Processes (${totalCount}${zombieText}${memoryText})`;
-
-        // Reset to grouped view
-        isGroupedView = true;
-        currentSortColumn = null;
-        currentSortOrder = 'asc';
-        renderProcesses();
-      } else {
-        childProcessesHeader.textContent = 'Child Processes';
-        originalProcessTree = [];
-        allProcesses = [];
-        isGroupedView = true;
-        renderProcesses();
-      }
-
-      const container = document.getElementById('sessionsContainer');
-      const noSessions = document.getElementById('noSessions');
-      const header = document.getElementById('sessionsHeader');
-
-      if (stats.activeProcessCount === 0) {
-        noSessions.style.display = 'block';
-        header.textContent = 'Active Sessions:';
-      } else {
-        noSessions.style.display = 'none';
-        header.textContent = `Active Sessions (${stats.sessions.length}):`;
-
-        // Clear existing sessions
-        const existingSessions = container.querySelectorAll('.session-item');
-        existingSessions.forEach(item => item.remove());
-
-        // Add session items
-        stats.sessions.forEach(session => {
-          const sessionDiv = document.createElement('div');
-          sessionDiv.className = 'session-item';
-
-          const createdDate = new Date(session.createdAt).toLocaleString();
-          const lastActiveDate = new Date(session.lastActivity).toLocaleString();
-
-          sessionDiv.innerHTML = `
+            sessionDiv.innerHTML = `
             <div class="session-path">${session.worktreePath}</div>
             <div class="session-detail">
               <span class="session-detail-label">Created:</span> ${createdDate}
@@ -1173,85 +1223,84 @@
             </div>
           `;
 
-          container.appendChild(sessionDiv);
-        });
-      }
-    }
-
-    // Initialize the dialog
-    async function initDialog() {
-      const loadingOverlay = document.getElementById('loadingOverlay');
-
-      try {
-        // Show loading overlay
-        loadingOverlay.classList.remove('hidden');
-
-        if (window.statsDialog && window.statsDialog.getStats) {
-          const stats = await window.statsDialog.getStats();
-          updateStats(stats);
+            container.appendChild(sessionDiv);
+          });
         }
-      } catch (error) {
-        console.error('Failed to load stats:', error);
-      } finally {
-        // Hide loading overlay after stats are loaded
-        loadingOverlay.classList.add('hidden');
       }
 
-      // Setup tab switching
-      const tabButtons = document.querySelectorAll('.tab-button');
-      const tabPanels = document.querySelectorAll('.tab-panel');
+      // Initialize the dialog
+      async function initDialog() {
+        const loadingOverlay = document.getElementById('loadingOverlay');
 
-      tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-          const targetTab = button.getAttribute('data-tab');
+        try {
+          // Show loading overlay
+          loadingOverlay.classList.remove('hidden');
 
-          // Remove active class from all buttons and panels
-          tabButtons.forEach(btn => btn.classList.remove('active'));
-          tabPanels.forEach(panel => panel.classList.remove('active'));
-
-          // Add active class to clicked button and corresponding panel
-          button.classList.add('active');
-          document.getElementById(`tab-${targetTab}`).classList.add('active');
-        });
-      });
-
-      // Setup regroup button handler
-      const regroupButton = document.getElementById('regroupButton');
-      if (regroupButton) {
-        regroupButton.addEventListener('click', () => {
-          isGroupedView = true;
-          currentSortColumn = null;
-          currentSortOrder = 'asc';
-          renderProcesses();
-        });
-      }
-
-      // Setup close button handler
-      const closeButton = document.getElementById('closeButton');
-      if (closeButton) {
-        closeButton.addEventListener('click', () => {
-          try {
-            if (window.statsDialog && window.statsDialog.closeWindow) {
-              window.statsDialog.closeWindow();
-            } else if (window.require) {
-              const { ipcRenderer } = window.require('electron');
-              ipcRenderer.send('stats-dialog:close');
-            }
-          } catch (error) {
-            console.error('Error closing window:', error);
+          if (window.statsDialog && window.statsDialog.getStats) {
+            const stats = await window.statsDialog.getStats();
+            updateStats(stats);
           }
+        } catch (error) {
+          console.error('Failed to load stats:', error);
+        } finally {
+          // Hide loading overlay after stats are loaded
+          loadingOverlay.classList.add('hidden');
+        }
+
+        // Setup tab switching
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabPanels = document.querySelectorAll('.tab-panel');
+
+        tabButtons.forEach((button) => {
+          button.addEventListener('click', () => {
+            const targetTab = button.getAttribute('data-tab');
+
+            // Remove active class from all buttons and panels
+            tabButtons.forEach((btn) => btn.classList.remove('active'));
+            tabPanels.forEach((panel) => panel.classList.remove('active'));
+
+            // Add active class to clicked button and corresponding panel
+            button.classList.add('active');
+            document.getElementById(`tab-${targetTab}`).classList.add('active');
+          });
         });
+
+        // Setup regroup button handler
+        const regroupButton = document.getElementById('regroupButton');
+        if (regroupButton) {
+          regroupButton.addEventListener('click', () => {
+            isGroupedView = true;
+            currentSortColumn = null;
+            currentSortOrder = 'asc';
+            renderProcesses();
+          });
+        }
+
+        // Setup close button handler
+        const closeButton = document.getElementById('closeButton');
+        if (closeButton) {
+          closeButton.addEventListener('click', () => {
+            try {
+              if (window.statsDialog && window.statsDialog.closeWindow) {
+                window.statsDialog.closeWindow();
+              } else if (window.require) {
+                const { ipcRenderer } = window.require('electron');
+                ipcRenderer.send('stats-dialog:close');
+              }
+            } catch (error) {
+              console.error('Error closing window:', error);
+            }
+          });
+        }
       }
 
-    }
-
-    // Run initialization when DOM is ready
-    if (document.readyState === 'loading') {
-      window.addEventListener('DOMContentLoaded', initDialog);
-    } else {
-      // DOM already loaded, run immediately
-      initDialog();
-    }
-  </script>
-</body>
+      // Run initialization when DOM is ready
+      if (document.readyState === 'loading') {
+        window.addEventListener('DOMContentLoaded', initDialog);
+      } else {
+        // DOM already loaded, run immediately
+        initDialog();
+      }
+    </script>
+  </body>
 </html>

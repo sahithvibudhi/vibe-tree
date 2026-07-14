@@ -13,7 +13,7 @@ branch refs/heads/feature-branch
 `;
 
     const worktrees = parseWorktrees(output);
-    
+
     expect(worktrees).toHaveLength(2);
     expect(worktrees[0]).toEqual({
       path: '/Users/user/project',
@@ -37,7 +37,7 @@ HEAD 2f74501b1234567890abcdef
 `;
 
     const worktrees = parseWorktrees(output);
-    
+
     // This test currently fails because parseWorktrees filters out worktrees without a branch
     expect(worktrees).toHaveLength(2);
     expect(worktrees[0]).toEqual({
@@ -65,7 +65,7 @@ HEAD 305c9630
 `;
 
     const worktrees = parseWorktrees(output);
-    
+
     // All three worktrees should be included, even those with detached HEAD
     expect(worktrees).toHaveLength(3);
     expect(worktrees[0].path).toBe('/Users/phuongnd08/code/vibe-tree');
@@ -90,7 +90,7 @@ describe('parseGitStatus', () => {
 A  added-file.ts`;
 
     const status = parseGitStatus(output);
-    
+
     expect(status).toHaveLength(4);
     expect(status[0]).toEqual({
       path: 'src/file1.ts',

@@ -25,10 +25,10 @@ test.describe('Terminal Scheduler Test', () => {
         ...process.env,
         NODE_ENV: 'test',
         TEST_MODE: 'true',
-        DISABLE_QUIT_DIALOG: 'true'  // Prevent blocking on quit dialog
+        DISABLE_QUIT_DIALOG: 'true' // Prevent blocking on quit dialog
       },
       args: [testMainPath],
-      cwd: appDir,
+      cwd: appDir
     });
 
     page = await electronApp.firstWindow();
@@ -50,7 +50,9 @@ test.describe('Terminal Scheduler Test', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Verify the app launches with project selector
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({
+      timeout: 10000
+    });
 
     // Click the "Open Project Folder" button
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
@@ -90,7 +92,7 @@ test.describe('Terminal Scheduler Test', () => {
 
     for (const selector of terminalSelectors) {
       const element = page.locator(selector).first();
-      if (await element.count() > 0) {
+      if ((await element.count()) > 0) {
         terminalElement = element;
         break;
       }
@@ -153,7 +155,9 @@ test.describe('Terminal Scheduler Test', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Verify the app launches with project selector
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({
+      timeout: 10000
+    });
 
     // Click the "Open Project Folder" button
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
@@ -233,7 +237,9 @@ test.describe('Terminal Scheduler Test', () => {
     await expect(page.locator('text=Schedule Terminal Command')).toBeVisible({ timeout: 5000 });
 
     // Verify the "Scheduler is running" indicator is shown in the blue banner
-    await expect(page.locator('.text-blue-900, .text-blue-100').filter({ hasText: 'Scheduler is running' })).toBeVisible();
+    await expect(
+      page.locator('.text-blue-900, .text-blue-100').filter({ hasText: 'Scheduler is running' })
+    ).toBeVisible();
 
     // Click the Stop button
     const stopButton = page.locator('button', { hasText: 'Stop Scheduler' });
@@ -267,7 +273,9 @@ test.describe('Terminal Scheduler Test', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Verify the app launches with project selector
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({
+      timeout: 10000
+    });
 
     // Click the "Open Project Folder" button
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
@@ -342,7 +350,9 @@ test.describe('Terminal Scheduler Test', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Open project
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({
+      timeout: 10000
+    });
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
     await expect(openButton).toBeVisible();
 

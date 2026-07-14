@@ -1,8 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from './ui/dropdown-menu';
 import { PlayCircle, StopCircle, History } from 'lucide-react';
 
 export interface SchedulerConfig {
@@ -33,7 +45,7 @@ export function SchedulerDialog({
   onStart,
   onStop,
   isRunning,
-  currentConfig,
+  currentConfig
 }: SchedulerDialogProps) {
   const [command, setCommand] = useState('');
   const [delaySeconds, setDelaySeconds] = useState('1');
@@ -77,7 +89,7 @@ export function SchedulerDialog({
     const config = {
       command: command.trim(),
       delayMs,
-      repeat,
+      repeat
     };
 
     // Save to history
@@ -97,9 +109,8 @@ export function SchedulerDialog({
     onClose();
   };
 
-  const isValid = command.trim().length > 0 &&
-                  !isNaN(parseFloat(delaySeconds)) &&
-                  parseFloat(delaySeconds) > 0;
+  const isValid =
+    command.trim().length > 0 && !isNaN(parseFloat(delaySeconds)) && parseFloat(delaySeconds) > 0;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -122,11 +133,7 @@ export function SchedulerDialog({
               {history.length > 0 && !isRunning && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 gap-1"
-                    >
+                    <Button variant="outline" size="sm" className="h-7 gap-1">
                       <History className="h-3 w-3" />
                       History
                     </Button>
@@ -138,11 +145,9 @@ export function SchedulerDialog({
                         onClick={() => handleLoadFromHistory(entry)}
                         className="flex flex-col items-start gap-1 py-2"
                       >
-                        <div className="font-mono text-xs truncate w-full">
-                          {entry.command}
-                        </div>
+                        <div className="font-mono text-xs truncate w-full">{entry.command}</div>
                         <div className="text-xs text-muted-foreground">
-                          {(entry.delayMs / 1000)}s {entry.repeat ? '• Repeat' : '• One-time'}
+                          {entry.delayMs / 1000}s {entry.repeat ? '• Repeat' : '• One-time'}
                         </div>
                       </DropdownMenuItem>
                     ))}
@@ -214,28 +219,16 @@ export function SchedulerDialog({
 
         <DialogFooter>
           {isRunning ? (
-            <Button
-              onClick={handleStop}
-              variant="destructive"
-              className="w-full"
-            >
+            <Button onClick={handleStop} variant="destructive" className="w-full">
               <StopCircle className="h-4 w-4 mr-2" />
               Stop Scheduler
             </Button>
           ) : (
             <div className="flex gap-2 w-full">
-              <Button
-                onClick={onClose}
-                variant="outline"
-                className="flex-1"
-              >
+              <Button onClick={onClose} variant="outline" className="flex-1">
                 Cancel
               </Button>
-              <Button
-                onClick={handleStart}
-                disabled={!isValid}
-                className="flex-1"
-              >
+              <Button onClick={handleStart} disabled={!isValid} className="flex-1">
                 <PlayCircle className="h-4 w-4 mr-2" />
                 Start
               </Button>

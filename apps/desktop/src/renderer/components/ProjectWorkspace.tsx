@@ -12,7 +12,11 @@ export function ProjectWorkspace({ projectId, theme }: ProjectWorkspaceProps) {
   const project = getProject(projectId);
 
   if (!project) {
-    return <div className="flex-1 flex items-center justify-center text-muted-foreground">Project not found</div>;
+    return (
+      <div className="flex-1 flex items-center justify-center text-muted-foreground">
+        Project not found
+      </div>
+    );
   }
 
   return (
@@ -24,12 +28,22 @@ export function ProjectWorkspace({ projectId, theme }: ProjectWorkspaceProps) {
         onWorktreesChange={(worktrees) => updateProjectWorktrees(projectId, worktrees)}
         initialWorktrees={project.worktrees}
       />
-      {project.selectedWorktree && (
+      {project.selectedWorktree ? (
         <RightPaneView
           worktreePath={project.selectedWorktree}
           projectId={projectId}
           theme={theme}
         />
+      ) : (
+        <div className="flex-1 flex items-center justify-center text-muted-foreground">
+          <div className="text-center max-w-sm px-6">
+            <p className="text-lg mb-2">Pick a worktree to open its terminal</p>
+            <p className="text-sm">
+              Each worktree is an isolated checkout with its own branch and terminal session. Use
+              the + button in the panel to create one per task or AI agent.
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );

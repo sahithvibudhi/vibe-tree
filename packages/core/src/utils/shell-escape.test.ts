@@ -67,10 +67,12 @@ describe('escapeShellPath', () => {
   });
 
   it('should handle complex paths with multiple special characters', () => {
-    expect(escapeShellPath("/home/user/My Documents/Project (2024)/it's & file's.txt"))
-      .toBe("'/home/user/My Documents/Project (2024)/it'\\''s & file'\\''s.txt'");
-    expect(escapeShellPath("/Users/My Documents/Project (2024)/it's & file's.txt"))
-      .toBe("'/Users/My Documents/Project (2024)/it'\\''s & file'\\''s.txt'");
+    expect(escapeShellPath("/home/user/My Documents/Project (2024)/it's & file's.txt")).toBe(
+      "'/home/user/My Documents/Project (2024)/it'\\''s & file'\\''s.txt'"
+    );
+    expect(escapeShellPath("/Users/My Documents/Project (2024)/it's & file's.txt")).toBe(
+      "'/Users/My Documents/Project (2024)/it'\\''s & file'\\''s.txt'"
+    );
   });
 
   it('should handle empty strings and edge cases', () => {

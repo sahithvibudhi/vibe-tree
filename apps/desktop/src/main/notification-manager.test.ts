@@ -10,40 +10,40 @@ vi.mock('electron', () => ({
   },
   BrowserWindow: vi.fn(),
   app: {
-    getAppPath: vi.fn(() => '/mock/path'),
+    getAppPath: vi.fn(() => '/mock/path')
   },
   shell: {
-    openExternal: vi.fn(),
-  },
+    openExternal: vi.fn()
+  }
 }));
 
 // Mock fs
 vi.mock('fs', async (importOriginal) => {
-  const actual = await importOriginal() as object;
+  const actual = (await importOriginal()) as object;
   return {
     ...actual,
     default: {
       ...actual,
-      existsSync: vi.fn(() => false),
+      existsSync: vi.fn(() => false)
     },
-    existsSync: vi.fn(() => false),
+    existsSync: vi.fn(() => false)
   };
 });
 
 // Mock child_process
 vi.mock('child_process', async (importOriginal) => {
-  const actual = await importOriginal() as object;
+  const actual = (await importOriginal()) as object;
   return {
     ...actual,
-    execSync: vi.fn(() => ''),
+    execSync: vi.fn(() => '')
   };
 });
 
 // Mock notification-settings
 vi.mock('./notification-settings', () => ({
   notificationSettingsManager: {
-    isNotificationEnabled: vi.fn(() => true),
-  },
+    isNotificationEnabled: vi.fn(() => true)
+  }
 }));
 
 // Import after mocks

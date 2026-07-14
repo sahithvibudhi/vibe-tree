@@ -1,6 +1,6 @@
 export interface Worktree {
   path: string;
-  branch?: string;  // Optional - can be undefined for detached HEAD
+  branch?: string; // Optional - can be undefined for detached HEAD
   head: string;
 }
 
@@ -35,6 +35,8 @@ export interface ShellStartResult {
   processId?: string;
   isNew?: boolean;
   error?: string;
+  /** Buffered scrollback for reattached sessions, when the transport provides it */
+  buffer?: string;
 }
 
 export interface ShellWriteResult {
@@ -47,14 +49,24 @@ export interface ShellResizeResult {
   error?: string;
 }
 
+export interface HookResult {
+  name: string;
+  ok: boolean;
+  exitCode: number | null;
+  timedOut: boolean;
+  output: string;
+}
+
 export interface WorktreeAddResult {
   path: string;
   branch: string;
+  hook?: HookResult;
 }
 
 export interface WorktreeRemoveResult {
   success: boolean;
   warning?: string;
+  hook?: HookResult;
 }
 
 export interface ProjectValidationResult {

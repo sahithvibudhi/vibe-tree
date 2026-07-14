@@ -27,7 +27,7 @@ test.describe('Project Switch Scheduler Persistence Test', () => {
         DISABLE_QUIT_DIALOG: 'true'
       },
       args: [testMainPath],
-      cwd: appDir,
+      cwd: appDir
     });
 
     page = await electronApp.firstWindow();
@@ -69,7 +69,9 @@ test.describe('Project Switch Scheduler Persistence Test', () => {
     };
 
     // Open first project
-    await expect(page.locator('h2', { hasText: 'Select a Project' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: 'Open a project' })).toBeVisible({
+      timeout: 10000
+    });
     const openButton = page.locator('button', { hasText: 'Open Project Folder' });
     await expect(openButton).toBeVisible();
 
@@ -115,7 +117,10 @@ test.describe('Project Switch Scheduler Persistence Test', () => {
     expect(terminalContent).toContain('Project 1 Scheduler');
 
     // Open second project (this should create a new tab)
-    const addProjectButton = page.locator('button[title="Add Project"]').or(page.locator('button').filter({ has: page.locator('svg.lucide-plus') })).first();
+    const addProjectButton = page
+      .locator('button[title="Add Project"]')
+      .or(page.locator('button').filter({ has: page.locator('svg.lucide-plus') }))
+      .first();
     await setNextDialogPath(dummyRepoPath2);
     await addProjectButton.click();
     await page.waitForTimeout(3000);

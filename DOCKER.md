@@ -7,6 +7,7 @@ This guide explains how to run VibeTree in a Docker container, perfect for deplo
 Docker is a platform that packages applications and their dependencies into lightweight, portable containers. Think of it as a way to create a complete, self-contained version of your application that runs the same way everywhere.
 
 **Key Docker Concepts:**
+
 - **Image**: A blueprint/template containing your app and all its dependencies
 - **Container**: A running instance of an image (like running a program)
 - **Dockerfile**: Instructions for building your image (like a recipe)
@@ -29,6 +30,7 @@ npm run deploy
 ```
 
 This command automatically:
+
 - ✅ Builds the application locally
 - ✅ Creates the Docker image
 - ✅ Stops any existing container
@@ -51,16 +53,19 @@ docker stop vibetree-container
 If you prefer to run the steps manually:
 
 ### 1. Build Locally
+
 ```bash
 pnpm build:web && pnpm --filter @vibetree/server build
 ```
 
 ### 2. Build Docker Image
+
 ```bash
 docker build -t vibetree-webapp .
 ```
 
 ### 3. Run Container
+
 ```bash
 docker run -p 3000:3000 -p 3002:3002 --name vibetree-container vibetree-webapp
 ```
@@ -104,6 +109,7 @@ docker-compose up --build
 ```
 
 The `docker-compose.yml` includes:
+
 - **vibetree-server**: Backend API and WebSocket server
 - **vibetree-web**: Frontend web application
 - **nginx**: Optional reverse proxy (use profile: `--profile proxy`)
@@ -170,35 +176,42 @@ docker run -p 3000:3000 -p 3002:3002 \
 ## Troubleshooting
 
 ### Container Won't Start
+
 - Check Docker daemon is running: `docker version`
 - Verify ports are available: `netstat -tulpn | grep :3000`
 
 ### Build Fails
+
 - Ensure local build completed: `pnpm build:web && pnpm --filter @vibetree/server build`
 - Check Docker has enough resources (RAM/disk)
 
 ### Can't Access from Other Machines
+
 - Ensure container binds to `0.0.0.0`: already configured
 - Check firewall/security group settings
 - Verify correct ports are exposed: `docker port vibetree-container`
 
 ### Health Check Fails
+
 - Check server logs: `docker logs vibetree-container`
 - Test health endpoint: `curl http://localhost:3002/health`
 
 ### Permission Issues
+
 - Container runs as non-root user `vibetree` for security
 - Ensure file permissions allow read access
 
 ## Development vs Production
 
 ### Development
+
 ```bash
 # Quick development container (auto-removes on stop)
 npm run docker:dev
 ```
 
 ### Production
+
 ```bash
 # Persistent production container
 npm run docker:run
@@ -213,6 +226,7 @@ docker run -d --restart unless-stopped \
 ## Monitoring
 
 ### View Logs
+
 ```bash
 # View container logs
 docker logs vibetree-container
@@ -222,12 +236,14 @@ docker logs -f vibetree-container
 ```
 
 ### Container Stats
+
 ```bash
 # View resource usage
 docker stats vibetree-container
 ```
 
 ### Health Status
+
 ```bash
 # Check container health
 docker inspect vibetree-container | grep -i health

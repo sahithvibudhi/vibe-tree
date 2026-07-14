@@ -11,31 +11,31 @@ interface TerminalManagerProps {
 
 export function TerminalManager({ worktrees, selectedWorktree }: TerminalManagerProps) {
   const [mountedTerminals, setMountedTerminals] = useState<Set<string>>(new Set());
-  
+
   // Track which terminals have been created
   const createdTerminals = useRef<Set<string>>(new Set());
-  
+
   useEffect(() => {
     if (!selectedWorktree) return;
-    
+
     // Mount the selected terminal if it hasn't been mounted yet
     if (!mountedTerminals.has(selectedWorktree)) {
-      setMountedTerminals(prev => new Set(prev).add(selectedWorktree));
+      setMountedTerminals((prev) => new Set(prev).add(selectedWorktree));
       createdTerminals.current.add(selectedWorktree);
     }
   }, [selectedWorktree, mountedTerminals]);
-  
+
   // Clean up terminals for worktrees that no longer exist
   useEffect(() => {
-    const currentWorktreePaths = new Set(worktrees.map(w => w.path));
+    const currentWorktreePaths = new Set(worktrees.map((w) => w.path));
     const terminalsToRemove = Array.from(createdTerminals.current).filter(
-      path => !currentWorktreePaths.has(path)
+      (path) => !currentWorktreePaths.has(path)
     );
-    
+
     if (terminalsToRemove.length > 0) {
-      setMountedTerminals(prev => {
+      setMountedTerminals((prev) => {
         const next = new Set(prev);
-        terminalsToRemove.forEach(path => {
+        terminalsToRemove.forEach((path) => {
           next.delete(path);
           createdTerminals.current.delete(path);
         });
@@ -60,7 +60,7 @@ export function TerminalManager({ worktrees, selectedWorktree }: TerminalManager
       {Array.from(mountedTerminals).map((worktreePath) => (
         <div
           key={worktreePath}
-          style={{ 
+          style={{
             display: selectedWorktree === worktreePath ? 'block' : 'none',
             position: 'absolute',
             top: 0,

@@ -15,7 +15,7 @@ await build({
   platform: 'browser',
   target: 'es2020',
   external: ['react', 'react-dom'],
-  sourcemap: true,
+  sourcemap: true
 });
 
 // Build CJS version (for compatibility)
@@ -28,7 +28,7 @@ await build({
   platform: 'browser',
   target: 'es2020',
   external: ['react', 'react-dom'],
-  sourcemap: true,
+  sourcemap: true
 });
 
 console.log('Auth package build complete!');
