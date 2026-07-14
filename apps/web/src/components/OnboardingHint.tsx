@@ -33,15 +33,15 @@ export function OnboardingHint() {
       </p>
       <ul className="mt-3 space-y-1.5 text-xs text-muted-foreground">
         <li className="flex items-center gap-2">
-          <GitBranch className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
+          <GitBranch className="h-3.5 w-3.5 flex-shrink-0" />
           Create a worktree per task; each gets its own branch and directory
         </li>
         <li className="flex items-center gap-2">
-          <TerminalSquare className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
+          <TerminalSquare className="h-3.5 w-3.5 flex-shrink-0" />
           Open its terminal and launch your agent; sessions survive page reloads
         </li>
         <li className="flex items-center gap-2">
-          <Smartphone className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
+          <Smartphone className="h-3.5 w-3.5 flex-shrink-0" />
           Install this page as an app to check on your agents from your phone
         </li>
       </ul>

@@ -128,7 +128,7 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
   return (
     <div className="flex flex-col h-full w-full">
       {/* Panel Header */}
-      <div className="h-10 px-3 border-b flex items-center justify-between flex-shrink-0">
+      <div className="h-9 px-3 border-b flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           {/* Back button on mobile when terminal is selected */}
           {project.selectedWorktree && (
@@ -140,7 +140,10 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
               <ChevronLeft className="h-4 w-4" />
             </button>
           )}
-          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2
+            className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate"
+            title={project.path}
+          >
             Worktrees
             <span className="ml-1.5 font-normal">{project.worktrees.length}</span>
           </h2>
@@ -164,13 +167,6 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
             <Plus className="h-3.5 w-3.5" />
           </button>
         </div>
-      </div>
-
-      {/* Project Path */}
-      <div className="px-3 py-1.5 border-b">
-        <p className="font-mono text-[11px] text-muted-foreground truncate" title={project.path}>
-          {project.path}
-        </p>
       </div>
 
       {/* Worktree List */}
@@ -222,7 +218,7 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
                     }`}
                   >
                     <GitBranch
-                      className={`h-3.5 w-3.5 flex-shrink-0 ${isSelected ? 'text-primary' : ''}`}
+                      className="h-3.5 w-3.5 flex-shrink-0"
                     />
                     <span className="font-mono text-[13px] font-medium truncate">
                       {worktree.branch
@@ -238,8 +234,8 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
 
       {/* Create New Branch Dialog */}
       {showNewBranchDialog && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-popover text-popover-foreground border rounded-lg shadow-lg w-full max-w-sm">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+          <div className="bg-popover text-popover-foreground border rounded-lg shadow-2xl w-full max-w-sm">
             <div className="p-5">
               <h3 className="text-sm font-semibold">New worktree</h3>
               <p className="text-xs text-muted-foreground mt-1 mb-4">
@@ -260,7 +256,7 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
                     setNewBranchName('');
                   }
                 }}
-                className="w-full h-9 px-3 font-mono border border-input bg-background rounded-md text-[13px] placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                className="w-full h-9 px-3 font-mono border border-input bg-background rounded-md text-[13px] placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/15 focus:border-foreground/30"
                 autoFocus
                 spellCheck={false}
               />

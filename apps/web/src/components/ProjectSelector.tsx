@@ -34,8 +34,8 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
     <div className="flex-1 flex items-center justify-center p-8">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
-            <FolderOpen className="h-6 w-6 text-primary" />
+          <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center mx-auto">
+            <FolderOpen className="h-6 w-6 text-muted-foreground" />
           </div>
           <h2 className="text-xl font-semibold tracking-tight">Open a project</h2>
           <p className="text-sm text-muted-foreground">
@@ -58,7 +58,7 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
               value={projectPath}
               onChange={(e) => setProjectPath(e.target.value)}
               placeholder="/path/to/your/project"
-              className="w-full h-9 px-3 font-mono border border-input bg-background rounded-md text-[13px] placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+              className="w-full h-9 px-3 font-mono border border-input bg-background rounded-md text-[13px] placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/15 focus:border-foreground/30"
               disabled={isLoading}
             />
             {error && <p className="text-xs text-destructive">{error}</p>}

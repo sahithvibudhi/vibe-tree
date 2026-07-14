@@ -175,9 +175,8 @@ function App() {
     return (
       <div className="h-screen flex flex-col bg-background">
         {/* Header */}
-        <header className="h-12 border-b flex items-center justify-between px-4 flex-shrink-0">
+        <header className="h-12 border-b flex items-center justify-between px-3 flex-shrink-0">
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-primary" aria-hidden="true" />
             <h1 className="text-sm font-semibold tracking-tight">VibeTree</h1>
           </div>
           <div className="flex items-center gap-1">
@@ -206,7 +205,7 @@ function App() {
       {showSuccessNotification && (
         <div className="border-b bg-muted/40 px-4 py-1.5">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <CheckCircle className="h-3.5 w-3.5 text-primary" />
+            <CheckCircle className="h-3.5 w-3.5" />
             <span>{successMessage}</span>
             <button
               onClick={() => setShowSuccessNotification(false)}
@@ -220,9 +219,8 @@ function App() {
       )}
 
       {/* Header */}
-      <header className="h-12 border-b flex items-center justify-between px-4 flex-shrink-0">
+      <header className="h-12 border-b flex items-center justify-between px-3 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-primary" aria-hidden="true" />
           <h1 className="text-sm font-semibold tracking-tight">VibeTree</h1>
         </div>
         <div className="flex items-center gap-1">
@@ -245,7 +243,7 @@ function App() {
         onValueChange={setActiveProject}
         className="flex-1 flex flex-col"
       >
-        <div className="border-b flex items-center gap-1 bg-muted/30 h-9 px-2">
+        <div className="border-b flex items-center gap-1 h-9 px-2">
           <TabsList className="h-full bg-transparent p-0 rounded-none gap-1">
             {projects.map((project) => (
               <TabsTrigger

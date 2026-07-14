@@ -12,7 +12,7 @@ export function ConnectionStatus() {
     : error
       ? { dot: 'bg-destructive', label: 'Disconnected' }
       : connected
-        ? { dot: 'bg-primary', label: 'Connected' }
+        ? { dot: 'bg-green-500', label: 'Connected' }
         : null;
 
   if (!state) return null;

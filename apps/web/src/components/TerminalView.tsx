@@ -445,7 +445,7 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
   return (
     <div className={`flex flex-col w-full h-full ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       {/* Single toolbar: view switch, worktree identity, terminal actions */}
-      <div className="h-10 px-2 border-b flex items-center justify-between gap-2 flex-shrink-0 bg-background">
+      <div className="h-9 px-3 border-b flex items-center justify-between gap-2 flex-shrink-0 bg-background">
         <div className="flex items-center gap-2 min-w-0">
           <button
             onClick={handleBack}

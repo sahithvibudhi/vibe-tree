@@ -463,10 +463,10 @@ export function ClaudeTerminal({
         };
       } else {
         return {
-          background: '#101312',
-          foreground: '#e6ebe9',
+          background: '#000000',
+          foreground: '#ffffff',
           cursor: '#ffffff',
-          cursorAccent: '#101312',
+          cursorAccent: '#000000',
           selectionBackground: '#4a4a4a',
           black: '#000000',
           red: '#cd3131',
@@ -877,10 +877,10 @@ export function ClaudeTerminal({
         };
       } else {
         return {
-          background: '#101312',
-          foreground: '#e6ebe9',
+          background: '#000000',
+          foreground: '#ffffff',
           cursor: '#ffffff',
-          cursorAccent: '#101312',
+          cursorAccent: '#000000',
           selectionBackground: '#4a4a4a'
         };
       }
