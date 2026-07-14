@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { RefreshCw, FileText } from 'lucide-react';
+import { ViewSwitch, type ViewTab } from './ViewSwitch';
 import { DiffView, DiffModeEnum } from '@git-diff-view/react';
 import '@git-diff-view/react/styles/diff-view.css';
 // import { useAppStore } from '../store';
@@ -16,9 +17,11 @@ interface GitFile {
 interface GitDiffViewProps {
   worktreePath: string;
   theme?: 'light' | 'dark';
+  viewTab: ViewTab;
+  onViewTabChange: (tab: ViewTab) => void;
 }
 
-export function GitDiffView({ worktreePath, theme = 'light' }: GitDiffViewProps) {
+export function GitDiffView({ worktreePath, theme = 'light' , viewTab, onViewTabChange }: GitDiffViewProps) {
   const [files, setFiles] = useState<GitFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [diffText, setDiffText] = useState<string>('');
@@ -133,31 +136,31 @@ export function GitDiffView({ worktreePath, theme = 'light' }: GitDiffViewProps)
 
   return (
     <div className="flex-1 flex flex-col h-full">
-      {/* Header */}
-      <div className="h-14 px-4 border-b flex items-center justify-between flex-shrink-0">
-        <div className="min-w-0 flex-1">
-          <h3 className="font-semibold">Git Changes</h3>
-          <p className="text-xs text-muted-foreground truncate">
-            {worktreePath.split('/').slice(-2).join('/')}
-          </p>
+      {/* Single toolbar: view switch, worktree identity, diff controls */}
+      <div className="h-9 px-3 border-b flex items-center justify-between gap-2 flex-shrink-0 bg-background">
+        <div className="flex items-center gap-2 min-w-0">
+          <ViewSwitch active={viewTab} onChange={onViewTabChange} />
+          <span className="font-mono text-xs text-muted-foreground truncate min-w-0">
+            {worktreePath.split('/').slice(-1)[0]}
+          </span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex border rounded-md">
+        <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 rounded-md bg-muted p-0.5">
             <button
-              className={`px-3 py-1 text-sm rounded-l-md transition-colors ${
+              className={`px-2.5 h-6 text-xs font-medium rounded transition-colors ${
                 viewMode === 'unstaged'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-background hover:bg-muted'
+                  ? 'bg-background text-foreground border shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
               onClick={() => setViewMode('unstaged')}
             >
               Unstaged
             </button>
             <button
-              className={`px-3 py-1 text-sm rounded-r-md border-l transition-colors ${
+              className={`px-2.5 h-6 text-xs font-medium rounded transition-colors ${
                 viewMode === 'staged'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-background hover:bg-muted'
+                  ? 'bg-background text-foreground border shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
               onClick={() => setViewMode('staged')}
             >
@@ -167,7 +170,8 @@ export function GitDiffView({ worktreePath, theme = 'light' }: GitDiffViewProps)
           <button
             onClick={loadGitStatus}
             disabled={loading}
-            className="p-2 hover:bg-accent rounded transition-colors disabled:opacity-50"
+            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors disabled:opacity-50"
+            aria-label="Refresh changes"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -177,10 +181,10 @@ export function GitDiffView({ worktreePath, theme = 'light' }: GitDiffViewProps)
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* File List */}
         <div className="w-80 border-r flex flex-col min-w-0">
-          <div className="p-3 border-b bg-muted/50">
-            <h4 className="text-sm font-medium">
-              {viewMode === 'staged' ? 'Staged Changes' : 'Unstaged Changes'} (
-              {filteredFiles.length})
+          <div className="h-9 px-3 border-b flex items-center">
+            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {viewMode === 'staged' ? 'Staged' : 'Unstaged'}
+              <span className="ml-1.5 font-normal">{filteredFiles.length}</span>
             </h4>
           </div>
           <div className="flex-1 overflow-auto">

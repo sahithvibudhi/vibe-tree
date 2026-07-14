@@ -1,34 +1,26 @@
 import { useAppStore } from '../store';
 
+/**
+ * Connection pill: state is encoded in the dot, the label stays neutral so
+ * the header does not fight the accent color.
+ */
 export function ConnectionStatus() {
   const { connected, connecting, error } = useAppStore();
 
-  if (connecting) {
-    return (
-      <div className="flex items-center gap-2">
-        <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
-        <span className="text-xs text-muted-foreground">Connecting...</span>
-      </div>
-    );
-  }
+  const state = connecting
+    ? { dot: 'bg-yellow-500 animate-pulse', label: 'Connecting' }
+    : error
+      ? { dot: 'bg-destructive', label: 'Disconnected' }
+      : connected
+        ? { dot: 'bg-green-500', label: 'Connected' }
+        : null;
 
-  if (error) {
-    return (
-      <div className="flex items-center gap-2">
-        <div className="w-2 h-2 bg-red-500 rounded-full" />
-        <span className="text-xs text-red-500">Disconnected</span>
-      </div>
-    );
-  }
+  if (!state) return null;
 
-  if (connected) {
-    return (
-      <div className="flex items-center gap-2">
-        <div className="w-2 h-2 bg-green-500 rounded-full" />
-        <span className="text-xs text-green-500">Connected</span>
-      </div>
-    );
-  }
-
-  return null;
+  return (
+    <div className="flex items-center gap-1.5 h-6 px-2 rounded-full border text-[11px] text-muted-foreground">
+      <span className={`w-1.5 h-1.5 rounded-full ${state.dot}`} />
+      {state.label}
+    </div>
+  );
 }

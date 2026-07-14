@@ -1,15 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { TerminalView } from './TerminalView';
+import type { ViewTab } from './ViewSwitch';
 
 interface TerminalManagerProps {
   worktrees: Array<{ path: string; branch?: string; head: string }>;
   selectedWorktree: string | null;
+  viewTab: ViewTab;
+  onViewTabChange: (tab: ViewTab) => void;
 }
 
 // Component cache to maintain terminal instances
 // const terminalComponents = new Map<string, React.ComponentType>();
 
-export function TerminalManager({ worktrees, selectedWorktree }: TerminalManagerProps) {
+export function TerminalManager({
+  worktrees,
+  selectedWorktree,
+  viewTab,
+  onViewTabChange
+}: TerminalManagerProps) {
   const [mountedTerminals, setMountedTerminals] = useState<Set<string>>(new Set());
 
   // Track which terminals have been created
@@ -46,10 +54,12 @@ export function TerminalManager({ worktrees, selectedWorktree }: TerminalManager
 
   if (!selectedWorktree) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        <div className="text-center">
-          <p className="text-lg mb-2">Select a worktree to start</p>
-          <p className="text-sm">Choose from the panel on the left</p>
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center max-w-xs">
+          <p className="text-sm font-medium mb-1">Pick a worktree to open its terminal</p>
+          <p className="text-xs text-muted-foreground">
+            Each worktree is an isolated checkout with its own branch and session.
+          </p>
         </div>
       </div>
     );
@@ -71,7 +81,7 @@ export function TerminalManager({ worktrees, selectedWorktree }: TerminalManager
             height: '100%'
           }}
         >
-          <TerminalView worktreePath={worktreePath} />
+          <TerminalView worktreePath={worktreePath} viewTab={viewTab} onViewTabChange={onViewTabChange} />
         </div>
       ))}
     </div>

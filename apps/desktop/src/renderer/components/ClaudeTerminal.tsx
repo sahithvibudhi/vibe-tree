@@ -1195,7 +1195,7 @@ export function ClaudeTerminal({
       {/* Terminal container */}
       <div
         ref={terminalRef}
-        className={`terminal-xterm-container flex-1 h-full ${theme === 'light' ? 'bg-white' : 'bg-black'}`}
+        className="terminal-xterm-container flex-1 h-full bg-background"
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}

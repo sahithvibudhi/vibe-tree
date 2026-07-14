@@ -9,7 +9,7 @@ import { OnboardingHint } from './components/OnboardingHint';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@vibetree/ui';
 import { useAppStore } from './store';
 import { useWebSocket } from './hooks/useWebSocket';
-import { Sun, Moon, Plus, X, Terminal, GitBranch, CheckCircle } from 'lucide-react';
+import { Sun, Moon, Plus, X, CheckCircle } from 'lucide-react';
 import { autoLoadProjects } from './services/projectValidation';
 
 function App() {
@@ -175,20 +175,19 @@ function App() {
     return (
       <div className="h-screen flex flex-col bg-background">
         {/* Header */}
-        <header className="h-14 border-b flex items-center justify-between px-4 flex-shrink-0">
+        <header className="h-12 border-b flex items-center justify-between px-3 flex-shrink-0">
           <div className="flex items-center gap-2">
-            <h1 className="text-lg font-semibold">VibeTree</h1>
-            <span className="text-xs text-muted-foreground hidden sm:inline">Web Terminal</span>
+            <h1 className="text-sm font-semibold tracking-tight">VibeTree</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <ConnectionStatus />
             <button
               onClick={toggleTheme}
-              className="p-2 hover:bg-accent rounded-md transition-colors"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
               aria-label="Toggle theme"
             >
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
-            <ConnectionStatus />
           </div>
         </header>
 
@@ -204,13 +203,14 @@ function App() {
     <div className="h-screen flex flex-col bg-background">
       {/* Success Notification Banner */}
       {showSuccessNotification && (
-        <div className="bg-green-50 dark:bg-green-900/20 border-b border-green-200 dark:border-green-800 px-4 py-2">
-          <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
-            <CheckCircle className="h-4 w-4" />
-            <span className="text-sm font-medium">{successMessage}</span>
+        <div className="border-b bg-muted/40 px-4 py-1.5">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <CheckCircle className="h-3.5 w-3.5" />
+            <span>{successMessage}</span>
             <button
               onClick={() => setShowSuccessNotification(false)}
-              className="ml-auto hover:bg-green-100 dark:hover:bg-green-800/30 rounded p-1"
+              className="ml-auto hover:bg-accent rounded p-1"
+              aria-label="Dismiss"
             >
               <X className="h-3 w-3" />
             </button>
@@ -219,20 +219,19 @@ function App() {
       )}
 
       {/* Header */}
-      <header className="h-14 border-b flex items-center justify-between px-4 flex-shrink-0">
+      <header className="h-12 border-b flex items-center justify-between px-3 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <h1 className="text-lg font-semibold">VibeTree</h1>
-          <span className="text-xs text-muted-foreground hidden sm:inline">Web Terminal</span>
+          <h1 className="text-sm font-semibold tracking-tight">VibeTree</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          <ConnectionStatus />
           <button
             onClick={toggleTheme}
-            className="p-2 hover:bg-accent rounded-md transition-colors"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
             aria-label="Toggle theme"
           >
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
-          <ConnectionStatus />
         </div>
       </header>
 
@@ -244,17 +243,17 @@ function App() {
         onValueChange={setActiveProject}
         className="flex-1 flex flex-col"
       >
-        <div className="border-b flex items-center gap-2 bg-muted/50 h-10">
-          <TabsList className="h-full bg-transparent p-0 rounded-none">
+        <div className="border-b flex items-center gap-1 h-9 px-2">
+          <TabsList className="h-full bg-transparent p-0 rounded-none gap-1">
             {projects.map((project) => (
               <TabsTrigger
                 key={project.id}
                 value={project.id}
-                className="relative pr-8 h-full data-[state=active]:bg-background data-[state=active]:rounded-t-md data-[state=active]:border-t data-[state=active]:border-x data-[state=active]:border-b-0"
+                className="relative my-1 h-7 rounded-md px-2.5 pr-7 text-xs font-medium text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:border data-[state=active]:shadow-sm"
               >
                 {project.name}
                 <span
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-5 w-5 p-0.5 hover:bg-muted rounded cursor-pointer inline-flex items-center justify-center"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-4 w-4 p-0.5 hover:bg-muted rounded cursor-pointer inline-flex items-center justify-center"
                   onClick={(e) => handleCloseProject(e, project.id)}
                 >
                   <X className="h-3 w-3" />
@@ -264,7 +263,7 @@ function App() {
           </TabsList>
           <button
             onClick={() => setShowProjectSelector(true)}
-            className="h-8 w-8 p-0 hover:bg-accent rounded transition-colors inline-flex items-center justify-center"
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors inline-flex items-center justify-center"
             aria-label="Add project"
           >
             <Plus className="h-4 w-4" />
@@ -284,63 +283,41 @@ function App() {
                 <WorktreePanel projectId={project.id} />
               </div>
 
-              {/* Main Content Area with Tabs - Only shown when worktree is selected */}
+              {/* Main content; the Terminal/Changes switch lives in each view's toolbar */}
               {project.selectedWorktree ? (
-                <div className="flex-1 flex flex-col h-full">
-                  {/* Tab Navigation */}
-                  <div className="h-10 border-b flex items-center px-2 bg-muted/30 flex-shrink-0">
-                    <div className="flex">
-                      <button
-                        className={`px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5 ${
-                          project.selectedTab === 'terminal'
-                            ? 'bg-background text-foreground border shadow-sm'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                        }`}
-                        onClick={() => setSelectedTab(project.id, 'terminal')}
-                      >
-                        <Terminal className="h-3.5 w-3.5" />
-                        Terminal
-                      </button>
-                      <button
-                        className={`px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5 ml-1 ${
-                          project.selectedTab === 'changes'
-                            ? 'bg-background text-foreground border shadow-sm'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                        }`}
-                        onClick={() => setSelectedTab(project.id, 'changes')}
-                      >
-                        <GitBranch className="h-3.5 w-3.5" />
-                        Changes
-                      </button>
-                    </div>
+                <div className="flex-1 overflow-hidden relative">
+                  <div
+                    className={`absolute inset-0 ${project.selectedTab === 'terminal' ? 'block' : 'hidden'}`}
+                  >
+                    <TerminalManager
+                      worktrees={project.worktrees || []}
+                      selectedWorktree={project.selectedWorktree}
+                      viewTab={project.selectedTab === 'changes' ? 'changes' : 'terminal'}
+                      onViewTabChange={(tab) => setSelectedTab(project.id, tab)}
+                    />
                   </div>
 
-                  {/* Tab Content */}
-                  <div className="flex-1 overflow-hidden relative">
-                    {/* Terminal Tab - Managed terminals with lifecycle control */}
-                    <div
-                      className={`absolute inset-0 ${project.selectedTab === 'terminal' ? 'block' : 'hidden'}`}
-                    >
-                      <TerminalManager
-                        worktrees={project.worktrees || []}
-                        selectedWorktree={project.selectedWorktree}
-                      />
-                    </div>
-
-                    {/* Keep GitDiffView mounted but hidden to preserve state */}
-                    <div
-                      className={`absolute inset-0 ${project.selectedTab === 'changes' ? 'block' : 'hidden'}`}
-                    >
-                      <GitDiffView worktreePath={project.selectedWorktree} theme={theme} />
-                    </div>
+                  {/* Keep GitDiffView mounted but hidden to preserve state */}
+                  <div
+                    className={`absolute inset-0 ${project.selectedTab === 'changes' ? 'block' : 'hidden'}`}
+                  >
+                    <GitDiffView
+                      worktreePath={project.selectedWorktree}
+                      theme={theme}
+                      viewTab={project.selectedTab === 'changes' ? 'changes' : 'terminal'}
+                      onViewTabChange={(tab) => setSelectedTab(project.id, tab)}
+                    />
                   </div>
                 </div>
               ) : (
                 /* Empty state when no worktree selected */
-                <div className="hidden md:flex flex-1 items-center justify-center text-muted-foreground">
-                  <div className="text-center">
-                    <p className="text-lg mb-2">Select a worktree to start</p>
-                    <p className="text-sm">Choose from the panel on the left</p>
+                <div className="hidden md:flex flex-1 items-center justify-center">
+                  <div className="text-center max-w-xs">
+                    <p className="text-sm font-medium mb-1">Pick a worktree to open its terminal</p>
+                    <p className="text-xs text-muted-foreground">
+                      Each worktree is an isolated checkout with its own branch and session. Create
+                      one per task or agent with the + button.
+                    </p>
                   </div>
                 </div>
               )}
