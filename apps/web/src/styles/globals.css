@@ -2,50 +2,53 @@
 @tailwind components;
 @tailwind utilities;
 
+/* VibeTree palette: neutrals carry a slight green cast (the tool is a tree),
+   with one emerald accent reserved for primary actions and active state.
+   Both themes share the same token names; components never hardcode colors. */
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 168 15% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 168 15% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --popover-foreground: 168 15% 12%;
+    --primary: 156 65% 30%;
+    --primary-foreground: 150 40% 98%;
+    --secondary: 150 12% 96%;
+    --secondary-foreground: 168 15% 15%;
+    --muted: 150 12% 96%;
+    --muted-foreground: 160 6% 42%;
+    --accent: 150 12% 94%;
+    --accent-foreground: 168 15% 12%;
+    --destructive: 0 74% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 155 10% 89%;
+    --input: 155 10% 85%;
+    --ring: 156 65% 30%;
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
-    --card: 0 0% 0%;
-    --card-foreground: 0 0% 100%;
-    --popover: 0 0% 0%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 0 0% 100%;
-    --primary-foreground: 0 0% 0%;
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 10%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 0 0% 10%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 0% 100%;
-    --destructive-foreground: 0 0% 0%;
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 0 0% 100%;
+    --background: 165 8% 7%;
+    --foreground: 150 10% 92%;
+    --card: 165 8% 9%;
+    --card-foreground: 150 10% 92%;
+    --popover: 165 8% 9%;
+    --popover-foreground: 150 10% 92%;
+    --primary: 152 55% 52%;
+    --primary-foreground: 165 30% 8%;
+    --secondary: 165 7% 12%;
+    --secondary-foreground: 150 10% 92%;
+    --muted: 165 7% 12%;
+    --muted-foreground: 155 6% 58%;
+    --accent: 165 7% 15%;
+    --accent-foreground: 150 10% 92%;
+    --destructive: 0 62% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 165 6% 16%;
+    --input: 165 6% 20%;
+    --ring: 152 55% 52%;
   }
 }
 

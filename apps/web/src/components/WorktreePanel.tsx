@@ -128,39 +128,49 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
   return (
     <div className="flex flex-col h-full w-full">
       {/* Panel Header */}
-      <div className="h-14 px-4 border-b flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2">
+      <div className="h-10 px-3 border-b flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
           {/* Back button on mobile when terminal is selected */}
           {project.selectedWorktree && (
-            <button onClick={handleBack} className="md:hidden p-1 hover:bg-accent rounded">
+            <button
+              onClick={handleBack}
+              className="md:hidden p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded"
+              aria-label="Back"
+            >
               <ChevronLeft className="h-4 w-4" />
             </button>
           )}
-          <h2 className="font-semibold">Worktrees</h2>
+          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Worktrees
+            <span className="ml-1.5 font-normal">{project.worktrees.length}</span>
+          </h2>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-0.5">
           <button
             onClick={handleRefresh}
             disabled={!connected || loading}
-            className="p-1 hover:bg-accent rounded disabled:opacity-50"
+            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded disabled:opacity-50"
+            aria-label="Refresh worktrees"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
           <button
             onClick={() => setShowNewBranchDialog(true)}
             disabled={!connected}
-            className="p-1 hover:bg-accent rounded disabled:opacity-50"
+            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded disabled:opacity-50"
             aria-label="Create worktree"
             data-testid="create-worktree"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
 
       {/* Project Path */}
-      <div className="px-4 py-2 border-b bg-muted/50">
-        <p className="text-xs text-muted-foreground truncate">{project.path}</p>
+      <div className="px-3 py-1.5 border-b">
+        <p className="font-mono text-[11px] text-muted-foreground truncate" title={project.path}>
+          {project.path}
+        </p>
       </div>
 
       {/* Worktree List */}
@@ -175,7 +185,7 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
             <p className="text-xs mt-2">Click the + button to create worktrees</p>
           </div>
         ) : (
-          <div className="p-2">
+          <div className="p-2 space-y-0.5">
             {[...project.worktrees]
               .sort((a, b) => {
                 // Extract branch names, handling refs/heads/ prefix and detached HEAD
@@ -200,29 +210,25 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
                   path: worktree.path,
                   isSelected: project.selectedWorktree === worktree.path
                 });
+                const isSelected = project.selectedWorktree === worktree.path;
                 return (
                   <button
                     key={worktree.path}
                     onClick={() => handleSelectWorktree(worktree.path)}
-                    className={`
-                    w-full text-left p-3 rounded-md mb-1 transition-colors
-                    ${
-                      project.selectedWorktree === worktree.path
-                        ? 'bg-accent'
-                        : 'hover:bg-accent/50'
-                    }
-                  `}
+                    className={`w-full text-left px-2 py-1.5 rounded-md transition-colors flex items-center gap-2 ${
+                      isSelected
+                        ? 'bg-accent text-foreground'
+                        : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+                    }`}
                   >
-                    <div className="flex items-start gap-2">
-                      <GitBranch className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="truncate" style={{ fontSize: '21px', fontWeight: 'bold' }}>
-                          {worktree.branch
-                            ? worktree.branch.replace('refs/heads/', '')
-                            : `Detached HEAD (${worktree.head.substring(0, 8)})`}
-                        </div>
-                      </div>
-                    </div>
+                    <GitBranch
+                      className={`h-3.5 w-3.5 flex-shrink-0 ${isSelected ? 'text-primary' : ''}`}
+                    />
+                    <span className="font-mono text-[13px] font-medium truncate">
+                      {worktree.branch
+                        ? worktree.branch.replace('refs/heads/', '')
+                        : `detached (${worktree.head.substring(0, 8)})`}
+                    </span>
                   </button>
                 );
               })}
@@ -232,12 +238,12 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
 
       {/* Create New Branch Dialog */}
       {showNewBranchDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-background border rounded-lg shadow-lg w-full max-w-md">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold mb-2">Create New Feature Branch</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                This will create a new git worktree for parallel development
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-popover text-popover-foreground border rounded-lg shadow-lg w-full max-w-sm">
+            <div className="p-5">
+              <h3 className="text-sm font-semibold">New worktree</h3>
+              <p className="text-xs text-muted-foreground mt-1 mb-4">
+                Creates a branch and an isolated checkout next to your project.
               </p>
 
               <input
@@ -254,24 +260,25 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
                     setNewBranchName('');
                   }
                 }}
-                className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
+                className="w-full h-9 px-3 font-mono border border-input bg-background rounded-md text-[13px] placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                 autoFocus
+                spellCheck={false}
               />
 
-              <div className="flex justify-end gap-2 mt-6">
+              <div className="flex justify-end gap-2 mt-5">
                 <button
                   onClick={() => {
                     setShowNewBranchDialog(false);
                     setNewBranchName('');
                   }}
-                  className="px-4 py-2 text-sm border border-border rounded-md hover:bg-accent"
+                  className="h-8 px-3 text-xs font-medium border rounded-md hover:bg-accent transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreateBranch}
                   disabled={!newBranchName.trim() || loading}
-                  className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50"
+                  className="h-8 px-3 text-xs font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   {loading ? 'Creating...' : 'Create Branch'}
                 </button>

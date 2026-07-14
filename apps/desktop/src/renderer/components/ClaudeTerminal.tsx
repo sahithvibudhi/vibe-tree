@@ -463,10 +463,10 @@ export function ClaudeTerminal({
         };
       } else {
         return {
-          background: '#000000',
-          foreground: '#ffffff',
+          background: '#101312',
+          foreground: '#e6ebe9',
           cursor: '#ffffff',
-          cursorAccent: '#000000',
+          cursorAccent: '#101312',
           selectionBackground: '#4a4a4a',
           black: '#000000',
           red: '#cd3131',
@@ -877,10 +877,10 @@ export function ClaudeTerminal({
         };
       } else {
         return {
-          background: '#000000',
-          foreground: '#ffffff',
+          background: '#101312',
+          foreground: '#e6ebe9',
           cursor: '#ffffff',
-          cursorAccent: '#000000',
+          cursorAccent: '#101312',
           selectionBackground: '#4a4a4a'
         };
       }
@@ -1195,7 +1195,7 @@ export function ClaudeTerminal({
       {/* Terminal container */}
       <div
         ref={terminalRef}
-        className={`terminal-xterm-container flex-1 h-full ${theme === 'light' ? 'bg-white' : 'bg-black'}`}
+        className="terminal-xterm-container flex-1 h-full bg-background"
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}

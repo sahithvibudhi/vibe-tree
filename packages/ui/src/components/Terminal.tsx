@@ -89,10 +89,10 @@ const getTerminalTheme = (theme: 'light' | 'dark') => {
       brightWhite: '#e5e5e5'
     },
     dark: {
-      background: '#000000',
-      foreground: '#ffffff',
+      background: '#101312',
+      foreground: '#e6ebe9',
       cursor: '#ffffff',
-      cursorAccent: '#000000',
+      cursorAccent: '#101312',
       selectionBackground: '#4a4a4a',
       black: '#000000',
       red: '#cd3131',
