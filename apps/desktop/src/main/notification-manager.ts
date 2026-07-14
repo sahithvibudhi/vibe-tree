@@ -2,6 +2,11 @@ import { Notification, BrowserWindow, app, shell } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
+import {
+  stripAnsiAndSplitLines,
+  COMPLETION_PATTERNS,
+  QUESTION_PATTERNS
+} from '@vibetree/core';
 import { notificationSettingsManager } from './notification-settings';
 
 // macOS notification flags - bit 25 controls "Allow Notifications"
@@ -37,43 +42,6 @@ interface SessionNotificationState {
   // Reset when user types (new prompt), not when terminal outputs
   hasNotifiedForCurrentCompletion: boolean;
 }
-
-/**
- * Strip ANSI escape codes from terminal output
- */
-/* eslint-disable no-control-regex */
-const ANSI_REGEX = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><~]/g;
-const OSC_REGEX = /\u001b\].*?(?:\u0007|\u001b\\)/g;
-const CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000b\u000c\u000e-\u001a]/g;
-/* eslint-enable no-control-regex */
-
-function stripAnsi(str: string): string {
-  if (typeof str !== 'string') return '';
-  return str.replace(OSC_REGEX, '').replace(ANSI_REGEX, '').replace(CONTROL_CHARS_REGEX, '');
-}
-
-function stripAnsiAndSplitLines(str: string): string[] {
-  const cleaned = stripAnsi(str);
-  return cleaned
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-}
-
-/**
- * Patterns for state detection
- */
-const COMPLETION_PATTERNS: RegExp[] = [/send\s*$/i, /↵\s*send/i];
-
-const QUESTION_PATTERNS: RegExp[] = [
-  /Enter to select.*Tab\/Arrow keys to navigate.*Esc to cancel/i,
-  /Tab\/Arrow keys to navigate/i,
-  /\[Y\/n\]/,
-  /\[y\/N\]/,
-  /\(yes\/no\)/i,
-  /Do you want to proceed\?/i,
-  />\s*\d+\.\s*Yes/i
-];
 
 /**
  * Manager for Claude Code CLI native OS notifications

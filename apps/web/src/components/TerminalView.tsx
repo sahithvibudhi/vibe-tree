@@ -1,13 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
 import { Terminal } from '@vibetree/ui';
+import { AgentActivityMonitor } from '@vibetree/core';
 import { useAppStore } from '../store';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { ChevronLeft, Maximize2, Minimize2, Columns2, X } from 'lucide-react';
 import type { Terminal as XTerm } from '@xterm/xterm';
 import { ViewSwitch, type ViewTab } from './ViewSwitch';
+import { playDing } from '../services/sound';
 
 // Cache for terminal states per session ID (like desktop app)
 const terminalStateCache = new Map<string, string>();
+
+// One activity monitor per session; buffer replays bypass these listeners,
+// so replayed "done" prompts cannot ring the bell
+const activityMonitors = new Map<string, AgentActivityMonitor>();
+
+function getActivityMonitor(sessionId: string): AgentActivityMonitor {
+  let monitor = activityMonitors.get(sessionId);
+  if (!monitor) {
+    monitor = new AgentActivityMonitor();
+    activityMonitors.set(sessionId, monitor);
+  }
+  return monitor;
+}
 
 interface TerminalViewProps {
   worktreePath: string;
@@ -57,6 +72,8 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
         if (terminalRef.current) {
           terminalRef.current.write(data);
         }
+        const activity = getActivityMonitor(existingSessionId).processOutput(data);
+        if (activity) playDing(activity);
       });
 
       const unsubscribeExit = adapter.onShellExit(existingSessionId, (code) => {
@@ -65,6 +82,7 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
         }
         // Clear cached state when session exits
         terminalStateCache.delete(existingSessionId);
+        activityMonitors.delete(existingSessionId);
         removeTerminalSession(selectedWorktree);
         setSessionId(null);
       });
@@ -112,6 +130,8 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
             if (terminalRef.current) {
               terminalRef.current.write(data);
             }
+            const activity = getActivityMonitor(actualSessionId).processOutput(data);
+            if (activity) playDing(activity);
           });
 
           const unsubscribeExit = adapter.onShellExit(actualSessionId, (code) => {
@@ -120,6 +140,7 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
             }
             // Clear cached state when session exits
             terminalStateCache.delete(actualSessionId);
+            activityMonitors.delete(actualSessionId);
             removeTerminalSession(selectedWorktree);
             setSessionId(null);
           });
@@ -311,6 +332,11 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
       return;
     }
 
+    // Enter submits a prompt; that is when a completion becomes worth a ding
+    if (data.includes('\r') || data.includes('\n')) {
+      getActivityMonitor(sessionId).markUserInput();
+    }
+
     try {
       await adapter.writeToShell(sessionId, data);
     } catch (error) {
@@ -340,6 +366,10 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
 
     const adapter = getAdapter();
     if (!adapter) return;
+
+    if (data.includes('\r') || data.includes('\n')) {
+      getActivityMonitor(splitSessionId).markUserInput();
+    }
 
     try {
       await adapter.writeToShell(splitSessionId, data);
@@ -404,6 +434,8 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
             if (splitTerminalRef.current) {
               splitTerminalRef.current.write(data);
             }
+            const activity = getActivityMonitor(actualSessionId).processOutput(data);
+            if (activity) playDing(activity);
           });
 
           const unsubscribeExit = adapter.onShellExit(actualSessionId, (code) => {
@@ -411,6 +443,7 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
               splitTerminalRef.current.write(`\r\n[Process exited with code ${code}]\r\n`);
             }
             terminalStateCache.delete(actualSessionId);
+            activityMonitors.delete(actualSessionId);
             removeTerminalSession(`${selectedWorktree}_split`);
             setSplitSessionId(null);
             setIsSplit(false);

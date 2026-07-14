@@ -13,5 +13,8 @@ export type { IPty } from './utils/shell';
 // Export shell escape utility (no Node.js dependencies)
 export { escapeShellPath } from './utils/shell-escape';
 
+// Agent activity detection (pure string processing, browser-safe)
+export * from './utils/agent-activity';
+
 // Version info
 export const VERSION = '0.0.1';

@@ -12,8 +12,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@vibetree/ui';
 import { useAppStore } from './store';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import { Sun, Moon, Plus, X, Keyboard } from 'lucide-react';
+import { Sun, Moon, Plus, X, Keyboard, Volume2, VolumeX } from 'lucide-react';
 import { autoLoadProjects } from './services/projectValidation';
+import { isSoundEnabled, setSoundEnabled } from './services/sound';
 
 function App() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -35,8 +36,15 @@ function App() {
   const [autoLoadAttempted, setAutoLoadAttempted] = useState(false);
   const [hasConnectedOnce, setHasConnectedOnce] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [soundOn, setSoundOn] = useState(isSoundEnabled());
 
   useKeyboardShortcuts(() => setShowShortcuts(true));
+
+  const toggleSound = () => {
+    const next = !soundOn;
+    setSoundOn(next);
+    setSoundEnabled(next);
+  };
 
   useEffect(() => {
     if (connected) {
@@ -227,6 +235,14 @@ function App() {
         </div>
         <div className="flex items-center gap-1">
           <ConnectionStatus />
+          <button
+            onClick={toggleSound}
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+            aria-label={soundOn ? 'Mute agent notifications' : 'Unmute agent notifications'}
+            title={soundOn ? 'Agent sound on' : 'Agent sound off'}
+          >
+            {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+          </button>
           <button
             onClick={() => setShowShortcuts(true)}
             className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
