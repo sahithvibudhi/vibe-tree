@@ -7,6 +7,10 @@ export interface ServerConfig {
   jwtSecret: string;
   projectPath: string;
   defaultProjects: string[];
+  /**
+   * Roots scanned by repo discovery and used as the browse starting point.
+   */
+  projectsRoots: string[];
   sessionIdleTimeoutMs: number;
   allowInsecureLan: boolean;
   nodeEnv: string;
@@ -31,6 +35,10 @@ export function loadConfigFromEnv(env: NodeJS.ProcessEnv = process.env): ServerC
     jwtSecret: env.JWT_SECRET || 'vibetree-dev-secret-change-in-production',
     projectPath: env.PROJECT_PATH || process.cwd(),
     defaultProjects: (env.DEFAULT_PROJECTS || '')
+      .split(',')
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0),
+    projectsRoots: (env.VIBETREE_PROJECTS_ROOT || '')
       .split(',')
       .map((p) => p.trim())
       .filter((p) => p.length > 0),

@@ -7,8 +7,10 @@ import {
   removeWorktree,
   validateProjects
 } from '@vibetree/core';
+import os from 'os';
 import { ShellManager } from '../services/ShellManager';
 import { AuthService } from '../auth/AuthService';
+import { listDirectory, discoverRepos } from '../services/fs-browse';
 import type { ServerConfig } from '../config';
 
 interface Services {
@@ -153,6 +155,30 @@ export function setupRestRoutes(app: Express, services: Services) {
       res.json(
         await removeWorktree(req.body.projectPath, req.body.worktreePath, req.body.branchName)
       );
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  // Directory browsing for the project picker. Lists directories only,
+  // never file contents; the same authenticated audience already has full
+  // shell access, so this exposes nothing a terminal does not.
+  app.get('/api/fs/list', authService.requireAuth, async (req, res) => {
+    try {
+      const requestedPath = typeof req.query.path === 'string' ? req.query.path : '';
+      const showHidden = req.query.hidden === '1';
+      res.json(await listDirectory(requestedPath, { showHidden }));
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      const status = code === 'ENOENT' || code === 'ENOTDIR' ? 404 : code === 'EACCES' ? 403 : 500;
+      res.status(status).json({ error: (error as Error).message });
+    }
+  });
+
+  app.get('/api/projects/discover', authService.requireAuth, async (req, res) => {
+    try {
+      const roots = config.projectsRoots.length > 0 ? config.projectsRoots : [os.homedir()];
+      res.json({ roots, repos: await discoverRepos(roots) });
     } catch (error) {
       res.status(500).json({ error: (error as Error).message });
     }

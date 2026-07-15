@@ -8,3 +8,5 @@ export { AuthService } from './auth/AuthService';
 export { setupWebSocketHandlers } from './api/websocket';
 export type { SessionHooks } from './api/websocket';
 export { setupRestRoutes } from './api/rest';
+export { listDirectory, discoverRepos } from './services/fs-browse';
+export type { DirectoryListing, DirectoryEntry, DiscoveredRepo } from './services/fs-browse';
