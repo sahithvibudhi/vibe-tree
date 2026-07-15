@@ -177,8 +177,8 @@ export function ProjectSelector({ onSelectProject, onSelectProjects }: ProjectSe
         </div>
       </div>
 
-      {/* Shortcuts strip */}
-      <div className="border-t px-8 py-3">
+      {/* Shortcuts strip; pointless on touch screens, so desktop only */}
+      <div className="hidden md:block border-t px-8 py-3">
         <ul className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2">
           {SHORTCUTS.map((shortcut) => (
             <li key={shortcut.action} className="flex items-center gap-2 text-xs text-muted-foreground">
