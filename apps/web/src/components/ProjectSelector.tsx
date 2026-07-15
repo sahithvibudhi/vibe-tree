@@ -1,8 +1,10 @@
-import { useState } from 'react';
-import { FolderGit2, Plus, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { FolderGit2, FolderSearch, Plus, X } from 'lucide-react';
 import { useAppStore } from '../store';
 import { SHORTCUTS } from '../hooks/useKeyboardShortcuts';
 import { KeyChips } from './ShortcutsHelp';
+import { DirectoryPicker } from './DirectoryPicker';
+import { discoverServerRepos, type DiscoveredRepo } from '../services/fsBrowse';
 
 interface ProjectSelectorProps {
   onSelectProject: (path: string) => void;
@@ -20,6 +22,24 @@ export function ProjectSelector({ onSelectProject, onSelectProjects }: ProjectSe
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [checkedPaths, setCheckedPaths] = useState<string[]>([]);
+  const [showBrowser, setShowBrowser] = useState(false);
+  const [discovered, setDiscovered] = useState<DiscoveredRepo[] | null>(null);
+
+  // Repos the server found near its configured roots; best-effort, the
+  // landing page works fine without it
+  useEffect(() => {
+    let cancelled = false;
+    discoverServerRepos()
+      .then((repos) => {
+        if (!cancelled) setDiscovered(repos);
+      })
+      .catch(() => {
+        if (!cancelled) setDiscovered([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,14 +110,25 @@ export function ProjectSelector({ onSelectProject, onSelectProjects }: ProjectSe
                 disabled={isLoading}
               />
               {error && <p className="text-xs text-destructive">{error}</p>}
-              <button
-                type="submit"
-                disabled={isLoading || !projectPath.trim()}
-                className="w-full h-9 flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                {isLoading ? 'Adding Project...' : 'Add Project'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={isLoading || !projectPath.trim()}
+                  className="flex-1 h-9 flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  {isLoading ? 'Adding Project...' : 'Add Project'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowBrowser(true)}
+                  className="h-9 px-3 flex items-center justify-center gap-2 border rounded-md text-sm font-medium hover:bg-accent transition-colors"
+                  data-testid="browse-server"
+                >
+                  <FolderSearch className="h-4 w-4" />
+                  Browse...
+                </button>
+              </div>
               <p className="text-xs text-muted-foreground">
                 The path must point to a git repository the server can reach
               </p>
@@ -173,9 +204,49 @@ export function ProjectSelector({ onSelectProject, onSelectProjects }: ProjectSe
                 Click a project to open it, or select several and open them together
               </p>
             )}
+
+            {/* Repos the server discovered near its roots, minus ones
+                already in recents */}
+            {discovered && discovered.filter((r) => !recentProjects.includes(r.path)).length > 0 && (
+              <div className="pt-4 space-y-2" data-testid="discovered-repos">
+                <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  On this server
+                </span>
+                <div className="border rounded-md divide-y">
+                  {discovered
+                    .filter((repo) => !recentProjects.includes(repo.path))
+                    .slice(0, 5)
+                    .map((repo) => (
+                      <button
+                        key={repo.path}
+                        onClick={() => onSelectProject(repo.path)}
+                        className="w-full flex items-center gap-3 px-3 h-12 hover:bg-accent/50 transition-colors text-left"
+                        title={`Open ${repo.path}`}
+                      >
+                        <FolderGit2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-sm font-medium truncate">{repo.name}</span>
+                          <span className="block text-[11px] font-mono text-muted-foreground truncate">
+                            {repo.path}
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      <DirectoryPicker
+        open={showBrowser}
+        onClose={() => setShowBrowser(false)}
+        onSelect={(path) => {
+          setShowBrowser(false);
+          onSelectProject(path);
+        }}
+      />
 
       {/* Shortcuts strip; pointless on touch screens, so desktop only */}
       <div className="hidden md:block border-t px-8 py-3">

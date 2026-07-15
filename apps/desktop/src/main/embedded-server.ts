@@ -37,6 +37,8 @@ class EmbeddedServer {
         jwtSecret: crypto.randomBytes(32).toString('hex'),
         projectPath: process.cwd(),
         defaultProjects: [],
+        // Empty means the browse endpoints fall back to the home directory
+        projectsRoots: [],
         // Desktop sessions live until the app quits
         sessionIdleTimeoutMs: 0,
         allowInsecureLan: false,
