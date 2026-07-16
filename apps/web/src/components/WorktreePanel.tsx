@@ -2,9 +2,12 @@ import { useAppStore } from '../store';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useWorktreeStatuses } from '../hooks/useWorktreeStatuses';
 import { useLiveSessions } from '../hooks/useLiveSessions';
+import { useAgentStates } from '../hooks/useAgentStates';
+import { AgentStateDot } from './AgentStateBadge';
 import { SkeletonRows } from './Skeleton';
-import { ChevronLeft, GitBranch, RefreshCw, Plus, Check } from 'lucide-react';
+import { ChevronLeft, GitBranch, RefreshCw, Plus, Check, Settings2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { getProjectConfig, updateProjectConfig } from '../services/projectConfig';
 
 interface WorktreePanelProps {
   projectId: string;
@@ -43,6 +46,8 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
   const [loading, setLoading] = useState(false);
   const [showNewBranchDialog, setShowNewBranchDialog] = useState(false);
   const [newBranchName, setNewBranchName] = useState('');
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [agentCommand, setAgentCommand] = useState('');
 
   const branchNameError = newBranchName.trim() ? validateBranchName(newBranchName.trim()) : null;
 
@@ -50,6 +55,7 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
   const adapter = getAdapter(); // Get adapter once per render
   const { changeCounts, refreshStatuses } = useWorktreeStatuses(project?.worktrees ?? []);
   const sessionCounts = useLiveSessions();
+  const { byWorktree: agentStates } = useAgentStates();
 
   const handleRefresh = async () => {
     const adapter = getAdapter();
@@ -121,6 +127,38 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openSettings = async () => {
+    if (!project) return;
+    setShowSettingsDialog(true);
+    try {
+      const config = await getProjectConfig(project.path);
+      setAgentCommand(config.agentCommand ?? '');
+    } catch {
+      // Leave the field as typed; saving still works
+    }
+  };
+
+  const saveSettings = async () => {
+    if (!project) return;
+    try {
+      await updateProjectConfig(project.path, { agentCommand: agentCommand.trim() });
+      setShowSettingsDialog(false);
+      addToast(
+        agentCommand.trim()
+          ? `Agent command set to "${agentCommand.trim()}"`
+          : 'Agent command cleared',
+        'success'
+      );
+      // Terminals read the preset on mount; nudge them to refresh
+      window.dispatchEvent(new CustomEvent('vibetree:project-config-changed'));
+    } catch (error) {
+      addToast(
+        `Failed to save settings: ${error instanceof Error ? error.message : 'unknown error'}`,
+        'error'
+      );
     }
   };
 
@@ -199,6 +237,14 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
           </h2>
         </div>
         <div className="flex gap-0.5">
+          <button
+            onClick={openSettings}
+            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded"
+            aria-label="Project settings"
+            data-testid="project-settings"
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+          </button>
           <button
             onClick={handleRefresh}
             disabled={!connected || loading}
@@ -281,11 +327,9 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
                     </span>
                     <span className="ml-auto flex items-center gap-1.5 flex-shrink-0">
                       {liveSessions > 0 && (
-                        <span
-                          className="w-1.5 h-1.5 rounded-full bg-green-500"
-                          title={`${liveSessions} live terminal session${liveSessions === 1 ? '' : 's'}`}
-                          data-testid="live-session-dot"
-                        />
+                        <span data-testid="live-session-dot">
+                          <AgentStateDot state={agentStates[worktree.path] ?? 'idle'} />
+                        </span>
                       )}
                       {changeCount !== undefined &&
                         (changeCount > 0 ? (
@@ -305,6 +349,55 @@ export function WorktreePanel({ projectId }: WorktreePanelProps) {
           </div>
         )}
       </div>
+
+      {/* Project Settings Dialog */}
+      {showSettingsDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-background border rounded-lg shadow-lg w-full max-w-md">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold mb-2">Project Settings</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                The agent command gets a one-click launch button in every terminal of this
+                project. Stored in .vibetree/config.json, so it can be committed for the team.
+              </p>
+              <label
+                htmlFor="agentCommand"
+                className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2"
+              >
+                Agent command
+              </label>
+              <input
+                id="agentCommand"
+                type="text"
+                placeholder="claude"
+                value={agentCommand}
+                onChange={(e) => setAgentCommand(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveSettings();
+                  if (e.key === 'Escape') setShowSettingsDialog(false);
+                }}
+                className="w-full px-3 py-2 font-mono border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2 mt-6">
+                <button
+                  onClick={() => setShowSettingsDialog(false)}
+                  className="px-4 py-2 text-sm border border-border rounded-md hover:bg-accent"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveSettings}
+                  className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                  data-testid="save-project-settings"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create New Branch Dialog */}
       {showNewBranchDialog && (

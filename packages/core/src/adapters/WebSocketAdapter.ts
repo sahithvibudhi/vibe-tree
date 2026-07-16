@@ -186,6 +186,23 @@ export class WebSocketAdapter extends BaseAdapter {
     return this.addEventListener('shell:sessions-changed', callback);
   }
 
+  async getAgentStates(): Promise<
+    Record<string, { worktreePath: string; state: 'idle' | 'working' | 'needs-input' | 'done' }>
+  > {
+    return this.sendMessage('shell:get-agent-states', {});
+  }
+
+  onAgentStatesChanged(
+    callback: (
+      states: Record<
+        string,
+        { worktreePath: string; state: 'idle' | 'working' | 'needs-input' | 'done' }
+      >
+    ) => void
+  ): () => void {
+    return this.addEventListener('shell:agent-states-changed', callback);
+  }
+
   async listWorktrees(projectPath: string): Promise<Worktree[]> {
     return this.sendMessage('git:worktree:list', { projectPath });
   }

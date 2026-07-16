@@ -3,10 +3,11 @@ import { Terminal } from '@vibetree/ui';
 import { AgentActivityMonitor } from '@vibetree/core';
 import { useAppStore } from '../store';
 import { useWebSocket } from '../hooks/useWebSocket';
-import { ChevronLeft, Maximize2, Minimize2, Columns2, X } from 'lucide-react';
+import { ChevronLeft, Maximize2, Minimize2, Columns2, X, Play } from 'lucide-react';
 import type { Terminal as XTerm } from '@xterm/xterm';
 import { ViewSwitch, type ViewTab } from './ViewSwitch';
 import { playDing } from '../services/sound';
+import { getProjectConfig } from '../services/projectConfig';
 
 // Cache for terminal states per session ID (like desktop app)
 const terminalStateCache = new Map<string, string>();
@@ -46,6 +47,7 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [splitSessionId, setSplitSessionId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [agentCommand, setAgentCommand] = useState<string | null>(null);
   const [isSplit, setIsSplit] = useState(false);
   const terminalRef = useRef<XTerm | null>(null);
   const splitTerminalRef = useRef<XTerm | null>(null);
@@ -53,6 +55,25 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
   const splitCleanupRef = useRef<(() => void)[]>([]);
   const saveIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const splitSaveIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Agent preset for this project powers the Launch button
+  useEffect(() => {
+    const projectPath = activeProject?.path;
+    if (!projectPath) return;
+    let cancelled = false;
+    const load = () =>
+      getProjectConfig(projectPath)
+        .then((config) => {
+          if (!cancelled) setAgentCommand(config.agentCommand ?? null);
+        })
+        .catch(() => {});
+    load();
+    window.addEventListener('vibetree:project-config-changed', load);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('vibetree:project-config-changed', load);
+    };
+  }, [activeProject?.path]);
 
   useEffect(() => {
     if (!selectedWorktree) {
@@ -405,6 +426,14 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
     setIsFullscreen(!isFullscreen);
   };
 
+  const launchAgent = async () => {
+    if (!sessionId || !agentCommand) return;
+    const adapter = getAdapter();
+    if (!adapter) return;
+    getActivityMonitor(sessionId).markUserInput();
+    await adapter.writeToShell(sessionId, `${agentCommand}\r`);
+  };
+
   const toggleSplit = async () => {
     if (isSplit) {
       // Close split terminal
@@ -494,6 +523,17 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
           </span>
         </div>
         <div className="flex items-center gap-0.5">
+          {agentCommand && (
+            <button
+              onClick={launchAgent}
+              className="h-6 px-2 mr-1 inline-flex items-center gap-1.5 text-xs font-medium border rounded hover:bg-accent transition-colors"
+              title={`Launch ${agentCommand} in this terminal`}
+              data-testid="launch-agent"
+            >
+              <Play className="h-3 w-3" />
+              {agentCommand}
+            </button>
+          )}
           <button
             onClick={toggleSplit}
             className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded"

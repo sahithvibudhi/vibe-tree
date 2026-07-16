@@ -10,3 +10,5 @@ export type { SessionHooks } from './api/websocket';
 export { setupRestRoutes } from './api/rest';
 export { listDirectory, discoverRepos } from './services/fs-browse';
 export type { DirectoryListing, DirectoryEntry, DiscoveredRepo } from './services/fs-browse';
+export { AgentStateTracker } from './services/AgentStateTracker';
+export type { AgentState, AgentStateEntry } from './services/AgentStateTracker';

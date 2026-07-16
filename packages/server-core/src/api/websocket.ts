@@ -9,6 +9,7 @@ import {
   removeWorktree
 } from '@vibetree/core';
 import { ShellManager } from '../services/ShellManager';
+import { AgentStateTracker } from '../services/AgentStateTracker';
 import { AuthService } from '../auth/AuthService';
 import type { ServerConfig } from '../config';
 
@@ -22,6 +23,7 @@ interface Services {
   authService: AuthService;
   config: ServerConfig;
   hooks?: SessionHooks;
+  agentStateTracker: AgentStateTracker;
 }
 
 interface WSMessage {
@@ -31,7 +33,7 @@ interface WSMessage {
 }
 
 export function setupWebSocketHandlers(wss: WebSocketServer, services: Services) {
-  const { shellManager, authService, config, hooks } = services;
+  const { shellManager, authService, config, hooks, agentStateTracker } = services;
 
   function broadcastSessionsChanged() {
     const message = JSON.stringify({
@@ -45,6 +47,15 @@ export function setupWebSocketHandlers(wss: WebSocketServer, services: Services)
     });
   }
 
+  agentStateTracker.onChange((states) => {
+    const message = JSON.stringify({ type: 'shell:agent-states-changed', payload: states });
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  });
+
   /**
    * One server-level exit listener per session (listener id is stable) so
    * exits are observed exactly once regardless of how many clients attach.
@@ -52,6 +63,7 @@ export function setupWebSocketHandlers(wss: WebSocketServer, services: Services)
   function watchSessionExit(sessionId: string) {
     shellManager.addExitListener(sessionId, 'server:lifecycle', () => {
       hooks?.onSessionExited?.(sessionId);
+      agentStateTracker.unregister(sessionId);
       broadcastSessionsChanged();
     });
   }
@@ -232,6 +244,14 @@ export function setupWebSocketHandlers(wss: WebSocketServer, services: Services)
 
               if (result.isNew) {
                 watchSessionExit(result.processId);
+                agentStateTracker.register(result.processId, message.payload.worktreePath);
+                const trackedId = result.processId;
+                shellManager.addOutputListener(
+                  trackedId,
+                  'server:agent-state',
+                  (data) => agentStateTracker.handleOutput(trackedId, data),
+                  true
+                );
               } else {
                 buffer = shellManager.getBuffer(result.processId) ?? undefined;
               }
@@ -251,11 +271,17 @@ export function setupWebSocketHandlers(wss: WebSocketServer, services: Services)
           }
 
           case 'shell:write': {
+            agentStateTracker.handleInput(message.payload.sessionId, message.payload.data);
             const result = await shellManager.writeToShell(
               message.payload.sessionId,
               message.payload.data
             );
             respond('shell:write:response', result);
+            break;
+          }
+
+          case 'shell:get-agent-states': {
+            respond('shell:get-agent-states:response', agentStateTracker.getStates());
             break;
           }
 

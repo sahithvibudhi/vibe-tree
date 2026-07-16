@@ -12,6 +12,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@vibetree/ui';
 import { useAppStore } from './store';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useAgentStates } from './hooks/useAgentStates';
+import { AgentStateLabel } from './components/AgentStateBadge';
 import { Sun, Moon, Plus, X, Keyboard, Volume2, VolumeX } from 'lucide-react';
 import { autoLoadProjects } from './services/projectValidation';
 import { isSoundEnabled, setSoundEnabled } from './services/sound';
@@ -39,6 +41,7 @@ function App() {
   const [soundOn, setSoundOn] = useState(isSoundEnabled());
 
   useKeyboardShortcuts(() => setShowShortcuts(true));
+  const { byWorktree: agentStates, counts: agentCounts } = useAgentStates();
 
   const toggleSound = () => {
     const next = !soundOn;
@@ -230,8 +233,18 @@ function App() {
 
       {/* Header */}
       <header className="h-12 border-b flex items-center justify-between px-3 flex-shrink-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 min-w-0">
           <h1 className="text-sm font-semibold tracking-tight">VibeTree</h1>
+          {(agentCounts.working > 0 || agentCounts.needsInput > 0) && (
+            <span className="text-[11px] text-muted-foreground truncate" data-testid="fleet-summary">
+              {[
+                agentCounts.working > 0 ? `${agentCounts.working} working` : null,
+                agentCounts.needsInput > 0 ? `${agentCounts.needsInput} needs input` : null
+              ]
+                .filter(Boolean)
+                .join(' \u00b7 ')}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <ConnectionStatus />
@@ -336,14 +349,35 @@ function App() {
                   </div>
                 </div>
               ) : (
-                /* Empty state when no worktree selected */
+                /* Empty state doubles as the fleet view: what is every
+                   agent in this project doing right now */
                 <div className="hidden md:flex flex-1 items-center justify-center">
-                  <div className="text-center max-w-xs">
-                    <p className="text-sm font-medium mb-1">Pick a worktree to open its terminal</p>
-                    <p className="text-xs text-muted-foreground">
+                  <div className="w-full max-w-sm px-6">
+                    <p className="text-sm font-medium mb-1 text-center">
+                      Pick a worktree to open its terminal
+                    </p>
+                    <p className="text-xs text-muted-foreground text-center">
                       Each worktree is an isolated checkout with its own branch and session. Create
                       one per task or agent with the + button.
                     </p>
+                    {project.worktrees.length > 0 && (
+                      <div className="mt-6 border rounded-md divide-y" data-testid="fleet-list">
+                        {project.worktrees.map((worktree) => (
+                          <button
+                            key={worktree.path}
+                            onClick={() => useAppStore.getState().setSelectedWorktree(project.id, worktree.path)}
+                            className="w-full flex items-center justify-between gap-3 px-3 h-10 hover:bg-accent/50 transition-colors text-left"
+                          >
+                            <span className="font-mono text-xs truncate">
+                              {worktree.branch
+                                ? worktree.branch.replace('refs/heads/', '')
+                                : worktree.head.substring(0, 8)}
+                            </span>
+                            <AgentStateLabel state={agentStates[worktree.path] ?? 'idle'} />
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
