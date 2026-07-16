@@ -42,7 +42,9 @@ export function TitleBar({ theme, onThemeToggle, onToggleSidebar, children }: Ti
         </Button>
       )}
 
-      <span className="text-sm font-semibold tracking-tight flex-shrink-0">VibeTree</span>
+      {/* h1 keeps the app title as the page's top-level heading for
+          accessibility (and the e2e suite locates the app by it) */}
+      <h1 className="text-sm font-semibold tracking-tight flex-shrink-0">VibeTree</h1>
 
       {/* Project tabs (and the add button) live inside the drag region;
           each interactive element opts out individually */}
