@@ -22,7 +22,18 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    titleBarStyle: 'hiddenInset',
+    // One unified titlebar drawn by the renderer; native window controls
+    // overlay it on Windows/Linux, traffic lights inset into it on macOS
+    ...(process.platform === 'darwin'
+      ? { titleBarStyle: 'hiddenInset' as const }
+      : {
+          titleBarStyle: 'hidden' as const,
+          titleBarOverlay: {
+            color: nativeTheme.shouldUseDarkColors ? '#000000' : '#ffffff',
+            symbolColor: nativeTheme.shouldUseDarkColors ? '#ffffff' : '#000000',
+            height: 44
+          }
+        }),
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#000000' : '#ffffff',
     icon: path.join(__dirname, '../../assets/icons/VibeTree.png'),
     title: windowTitle,

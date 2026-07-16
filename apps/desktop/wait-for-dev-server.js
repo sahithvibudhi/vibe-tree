@@ -38,7 +38,11 @@ async function main() {
   const port = await waitForPortFile();
   console.log(`Dev server port: ${port}, waiting for server to be ready...`);
 
-  const waitOn = spawn('npx', ['wait-on', `tcp:${port}`], { stdio: 'inherit' });
+  // Use the locally installed wait-on through the current node binary:
+  // going through npx breaks on machines whose global npx shim is not
+  // executable, and wait-on is already a devDependency of this package
+  const waitOnBin = require.resolve('wait-on/bin/wait-on');
+  const waitOn = spawn(process.execPath, [waitOnBin, `tcp:${port}`], { stdio: 'inherit' });
   waitOn.on('close', (code) => {
     if (code === 0) {
       console.log('Dev server is ready!');

@@ -7,6 +7,7 @@ import path from 'path';
 import { setupWebSocketHandlers, type SessionHooks } from './api/websocket';
 import { setupRestRoutes } from './api/rest';
 import { ShellManager, type PtySpawn, type ShellSettings } from './services/ShellManager';
+import { AgentStateTracker } from './services/AgentStateTracker';
 import { AuthService } from './auth/AuthService';
 import type { ServerConfig } from './config';
 
@@ -42,13 +43,14 @@ export function createVibeTreeServer(options: CreateServerOptions): VibeTreeServ
 
   const shellManager = new ShellManager(spawn, getShellSettings);
   const authService = new AuthService(config);
+  const agentStateTracker = new AgentStateTracker();
 
   if (config.sessionIdleTimeoutMs > 0) {
     shellManager.startIdleCleanup(config.sessionIdleTimeoutMs);
   }
 
-  setupRestRoutes(app, { shellManager, authService, config });
-  setupWebSocketHandlers(wss, { shellManager, authService, config, hooks });
+  setupRestRoutes(app, { shellManager, authService, config, agentStateTracker });
+  setupWebSocketHandlers(wss, { shellManager, authService, config, hooks, agentStateTracker });
 
   app.get('/health', (req, res) => {
     res.json({ status: 'ok', version: '0.0.1' });

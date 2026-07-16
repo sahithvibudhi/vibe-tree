@@ -20,6 +20,7 @@ export * from './utils/system-diagnostics';
 export * from './utils/process';
 export * from './utils/worktree-hooks';
 export * from './utils/agent-activity';
+export * from './utils/project-config';
 
 // Version info
 export const VERSION = '0.0.1';

@@ -207,13 +207,9 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
       // Force a new grid reference to ensure React detects the change
       worktreeGridCache.set(worktreePath, { ...grid });
 
-      // Update state to trigger re-render
+      // Update state to trigger re-render; each terminal's ResizeObserver
+      // refits it when its pane changes size
       setWorktreeGrids(new Map(worktreeGridCache));
-
-      // Force a resize event after a short delay to ensure DOM is updated
-      setTimeout(() => {
-        window.dispatchEvent(new Event('resize'));
-      }, 50);
     },
     [worktreePath]
   );
@@ -339,6 +335,41 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
     }
   }, []);
 
+  // Divider dragging: mutate the split's ratio and re-render; each pane's
+  // ResizeObserver refits its terminal as the sizes change
+  const startDividerDrag = useCallback((e: React.MouseEvent, node: SplitContainer) => {
+    e.preventDefault();
+    const container = (e.currentTarget as HTMLElement).parentElement;
+    if (!container) return;
+
+    const isHorizontal = node.direction === 'horizontal';
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = isHorizontal ? 'row-resize' : 'col-resize';
+
+    let frame = 0;
+    const onMove = (ev: MouseEvent) => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const rect = container.getBoundingClientRect();
+        const ratio = isHorizontal
+          ? (ev.clientY - rect.top) / rect.height
+          : (ev.clientX - rect.left) / rect.width;
+        // Clamp so neither pane can collapse below a usable size
+        node.splitRatio = Math.min(0.85, Math.max(0.15, ratio));
+        setWorktreeGrids(new Map(worktreeGridCache));
+      });
+    };
+    const onUp = () => {
+      cancelAnimationFrame(frame);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, []);
+
   // Get current grid
   const currentGrid = useMemo(() => {
     return worktreeGrids.get(worktreePath);
@@ -387,69 +418,29 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
           className={`relative ${isHorizontal ? 'min-h-0 flex-shrink-0' : 'min-w-0 flex-shrink-0'} overflow-hidden`}
           style={
             isHorizontal
-              ? {
-                  height: `${splitRatio * 100}%`,
-                  maxHeight: `${splitRatio * 100}%`,
-                  borderBottom: '1px solid var(--border)'
-                }
-              : {
-                  width: `${splitRatio * 100}%`,
-                  maxWidth: `${splitRatio * 100}%`,
-                  borderRight: '1px solid var(--border)'
-                }
+              ? { height: `calc(${splitRatio * 100}% - 2px)` }
+              : { width: `calc(${splitRatio * 100}% - 2px)` }
           }
         >
           {renderGridNode(node.children[0])}
         </div>
         <div
+          role="separator"
+          aria-orientation={isHorizontal ? 'horizontal' : 'vertical'}
+          onMouseDown={(e) => startDividerDrag(e, node)}
+          className={`flex-shrink-0 bg-border hover:bg-foreground/40 transition-colors ${
+            isHorizontal ? 'h-1 w-full cursor-row-resize' : 'w-1 h-full cursor-col-resize'
+          }`}
+          data-testid="split-divider"
+        />
+        <div
           className={`relative ${isHorizontal ? 'min-h-0 flex-grow' : 'min-w-0 flex-grow'} overflow-hidden`}
-          style={
-            isHorizontal
-              ? {
-                  height: `${(1 - splitRatio) * 100}%`,
-                  maxHeight: `${(1 - splitRatio) * 100}%`
-                }
-              : {
-                  width: `${(1 - splitRatio) * 100}%`,
-                  maxWidth: `${(1 - splitRatio) * 100}%`
-                }
-          }
         >
           {renderGridNode(node.children[1])}
         </div>
       </div>
     );
-  }, []);
-
-  // Watch for DOM changes and trigger resize when terminals are added/removed
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    // Create a MutationObserver to watch for DOM changes
-    const observer = new MutationObserver((mutations) => {
-      // Check if any terminals were added or removed
-      const hasStructuralChange = mutations.some(
-        (mutation) =>
-          mutation.type === 'childList' &&
-          (mutation.addedNodes.length > 0 || mutation.removedNodes.length > 0)
-      );
-
-      if (hasStructuralChange) {
-        // Trigger a resize event to ensure all terminals fit properly
-        setTimeout(() => {
-          window.dispatchEvent(new Event('resize'));
-        }, 100);
-      }
-    });
-
-    // Start observing the container for child changes
-    observer.observe(containerRef.current, {
-      childList: true,
-      subtree: true
-    });
-
-    return () => observer.disconnect();
-  }, []);
+  }, [startDividerDrag]);
 
   return (
     <div

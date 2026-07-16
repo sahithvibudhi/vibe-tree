@@ -349,6 +349,25 @@ importers:
         specifier: ^5.3.3
         version: 5.9.2
 
+  packages/cli:
+    dependencies:
+      '@vibetree/core':
+        specifier: workspace:*
+        version: link:../core
+      ws:
+        specifier: ^8.18.0
+        version: 8.18.3
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.5
+        version: 20.19.11
+      '@types/ws':
+        specifier: ^8.5.10
+        version: 8.18.1
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.2
+
   packages/core:
     devDependencies:
       '@types/node':

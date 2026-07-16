@@ -28,16 +28,13 @@ async function navigateToWorktree(electronApp: ElectronApplication, page: Page, 
   // Click the open button which will trigger the mocked dialog
   await openButton.click();
 
-  // Wait for worktree list to appear
-  await page.waitForTimeout(3000);
-
-  // Find and click the worktree button
+  // Wait for the worktree list to appear
   const worktreeButton = page.locator('button[data-worktree-branch="main"]');
-  expect(await worktreeButton.count()).toBeGreaterThan(0);
-  await worktreeButton.click();
+  await expect(worktreeButton.first()).toBeVisible({ timeout: 15000 });
+  await worktreeButton.first().click();
 
   // Wait for the terminal to load
-  await page.waitForTimeout(3000);
+  await expect(page.locator('.xterm-screen').first()).toBeVisible({ timeout: 15000 });
 }
 
 test.describe('Terminal Split Feature', () => {
@@ -102,11 +99,7 @@ test.describe('Terminal Split Feature', () => {
     await splitButton.click();
 
     // Wait for the new terminal to appear
-    await page.waitForTimeout(2000);
-
-    // Verify we now have 2 terminals
-    const splitTerminalCount = await page.locator('.claude-terminal-root').count();
-    expect(splitTerminalCount).toBe(2);
+    await expect(page.locator('.claude-terminal-root')).toHaveCount(2, { timeout: 10000 });
 
     // Verify both terminals are visible
     const terminals = page.locator('.claude-terminal-root');
@@ -119,33 +112,22 @@ test.describe('Terminal Split Feature', () => {
     await firstTerminalScreen.click();
     await page.keyboard.type('echo "Terminal 1"');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
+    await expect(firstTerminalScreen).toContainText('Terminal 1', { timeout: 10000 });
 
     // Test typing in the second terminal
     const secondTerminalScreen = page.locator('.xterm-screen').nth(1);
     await secondTerminalScreen.click();
     await page.keyboard.type('echo "Terminal 2"');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
-
-    // Verify the outputs in both terminals
-    const firstTerminalContent = await firstTerminalScreen.textContent();
-    expect(firstTerminalContent).toContain('Terminal 1');
-
-    const secondTerminalContent = await secondTerminalScreen.textContent();
-    expect(secondTerminalContent).toContain('Terminal 2');
+    await expect(secondTerminalScreen).toContainText('Terminal 2', { timeout: 10000 });
 
     // Test closing a terminal
     const closeButton = page.locator('button[title="Close Terminal"]').first();
     await expect(closeButton).toBeVisible();
     await closeButton.click();
 
-    // Wait for terminal to be closed
-    await page.waitForTimeout(1000);
-
-    // Verify we're back to 1 terminal
-    const afterCloseCount = await page.locator('.claude-terminal-root').count();
-    expect(afterCloseCount).toBe(1);
+    // Wait for the terminal to be closed
+    await expect(page.locator('.claude-terminal-root')).toHaveCount(1, { timeout: 10000 });
 
     // Verify the close button is visible but disabled when only one terminal remains
     const closeButtonAfter = page.locator('button[title="Cannot close last terminal"]').first();
@@ -181,11 +163,7 @@ test.describe('Terminal Split Feature', () => {
     await horizontalSplitButton.click();
 
     // Wait for the new terminal to appear
-    await page.waitForTimeout(2000);
-
-    // Verify we now have 2 terminals
-    const splitTerminalCount = await page.locator('.claude-terminal-root').count();
-    expect(splitTerminalCount).toBe(2);
+    await expect(page.locator('.claude-terminal-root')).toHaveCount(2, { timeout: 10000 });
 
     // Verify both terminals are visible and stacked vertically
     const terminals = page.locator('.claude-terminal-root');
@@ -202,31 +180,32 @@ test.describe('Terminal Split Feature', () => {
     expect(firstWrapperBox?.x).toBeCloseTo(secondWrapperBox?.x || 0, 1);
     expect(firstWrapperBox?.y).toBeLessThan(secondWrapperBox?.y || 0);
 
-    // Each should take approximately 50% height
+    // Each should take approximately 50% height; the draggable divider
+    // between the panes takes a few pixels of its own
     const containerBox = await page.locator('.terminal-manager-root').boundingBox();
-    const expectedHeight = (containerBox?.height || 0) / 2;
-    expect(firstWrapperBox?.height).toBeCloseTo(expectedHeight, expectedHeight * 0.2); // Allow 20% tolerance
-    expect(secondWrapperBox?.height).toBeCloseTo(expectedHeight, expectedHeight * 0.2);
+    const dividerBox = await page.locator('[data-testid="split-divider"]').boundingBox();
+    const expectedHeight = ((containerBox?.height || 0) - (dividerBox?.height || 0)) / 2;
+    // toBeCloseTo's second argument is decimal digits, not a tolerance, so
+    // assert the difference directly (allow 10% for rounding and borders)
+    expect(Math.abs((firstWrapperBox?.height || 0) - expectedHeight)).toBeLessThanOrEqual(
+      expectedHeight * 0.1
+    );
+    expect(Math.abs((secondWrapperBox?.height || 0) - expectedHeight)).toBeLessThanOrEqual(
+      expectedHeight * 0.1
+    );
 
     // Test typing in both terminals
     const firstTerminalScreen = page.locator('.xterm-screen').first();
     await firstTerminalScreen.click();
     await page.keyboard.type('echo "Terminal Top"');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
+    await expect(firstTerminalScreen).toContainText('Terminal Top', { timeout: 10000 });
 
     const secondTerminalScreen = page.locator('.xterm-screen').nth(1);
     await secondTerminalScreen.click();
     await page.keyboard.type('echo "Terminal Bottom"');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
-
-    // Verify the outputs
-    const firstTerminalContent = await firstTerminalScreen.textContent();
-    expect(firstTerminalContent).toContain('Terminal Top');
-
-    const secondTerminalContent = await secondTerminalScreen.textContent();
-    expect(secondTerminalContent).toContain('Terminal Bottom');
+    await expect(secondTerminalScreen).toContainText('Terminal Bottom', { timeout: 10000 });
   });
 
   test('should maintain independent PTY sessions for split terminals', async () => {
@@ -237,57 +216,44 @@ test.describe('Terminal Split Feature', () => {
     // Navigate to worktree terminal
     await navigateToWorktree(electronApp, page, dummyRepoPath);
 
-    // Create a variable in the first terminal
+    // Create a variable in the first terminal; the DONE marker signals the
+    // shell processed the line, replacing arbitrary sleeps
     const firstTerminalScreen = page.locator('.xterm-screen').first();
     await firstTerminalScreen.click();
-    await page.keyboard.type('export TEST_VAR_1="First Terminal"');
+    await page.keyboard.type('export TEST_VAR_1="First Terminal"; echo SET_DONE_1');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(500);
+    await expect(firstTerminalScreen).toContainText('SET_DONE_1', { timeout: 10000 });
 
     // Split the terminal
     const splitButton = page.locator('button[title="Split Terminal Vertically"]').first();
     await splitButton.click();
-    await page.waitForTimeout(2000);
+    await expect(page.locator('.claude-terminal-root')).toHaveCount(2, { timeout: 10000 });
 
     // Create a different variable in the second terminal
     const secondTerminalScreen = page.locator('.xterm-screen').nth(1);
     await secondTerminalScreen.click();
-    await page.keyboard.type('export TEST_VAR_2="Second Terminal"');
+    await page.keyboard.type('export TEST_VAR_2="Second Terminal"; echo SET_DONE_2');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(500);
+    await expect(secondTerminalScreen).toContainText('SET_DONE_2', { timeout: 10000 });
 
     // Verify first terminal has its variable but not the second one
     await firstTerminalScreen.click();
-    await page.keyboard.type('echo $TEST_VAR_1');
+    await page.keyboard.type('echo "V1=$TEST_VAR_1"; echo "V2=$TEST_VAR_2"; echo PROBE_DONE_1');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
+    await expect(firstTerminalScreen).toContainText('PROBE_DONE_1', { timeout: 10000 });
 
-    let firstContent = await firstTerminalScreen.textContent();
-    expect(firstContent).toContain('First Terminal');
-
-    await firstTerminalScreen.click();
-    await page.keyboard.type('echo $TEST_VAR_2');
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
-
-    firstContent = await firstTerminalScreen.textContent();
-    expect(firstContent).not.toContain('Second Terminal');
+    const firstContent = (await firstTerminalScreen.textContent()) || '';
+    expect(firstContent).toContain('V1=First Terminal');
+    expect(firstContent).not.toContain('V2=Second Terminal');
 
     // Verify second terminal has its variable but not the first one
     await secondTerminalScreen.click();
-    await page.keyboard.type('echo $TEST_VAR_2');
+    await page.keyboard.type('echo "V1=$TEST_VAR_1"; echo "V2=$TEST_VAR_2"; echo PROBE_DONE_2');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
+    await expect(secondTerminalScreen).toContainText('PROBE_DONE_2', { timeout: 10000 });
 
-    let secondContent = await secondTerminalScreen.textContent();
-    expect(secondContent).toContain('Second Terminal');
-
-    await secondTerminalScreen.click();
-    await page.keyboard.type('echo $TEST_VAR_1');
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
-
-    secondContent = await secondTerminalScreen.textContent();
-    expect(secondContent).not.toContain('First Terminal');
+    const secondContent = (await secondTerminalScreen.textContent()) || '';
+    expect(secondContent).toContain('V2=Second Terminal');
+    expect(secondContent).not.toContain('V1=First Terminal');
   });
 });

@@ -71,6 +71,7 @@ export interface ElectronAPI {
     onNewWorktree: (callback: () => void) => () => void;
     onToggleView: (callback: () => void) => () => void;
     onSelectWorktreeDelta: (callback: (delta: number) => void) => () => void;
+    onToggleSidebar: (callback: () => void) => () => void;
   };
   utils: {
     getPathForFile: (file: File) => string;

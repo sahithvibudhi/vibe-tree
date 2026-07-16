@@ -1,0 +1,28 @@
+{
+  "name": "@vibetree/cli",
+  "version": "0.0.1",
+  "description": "Command-line client for a VibeTree server: script worktrees, watch the agent fleet, dispatch prompts",
+  "license": "MIT",
+  "bin": {
+    "vibetree": "./dist/index.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@vibetree/core": "workspace:*",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "@types/ws": "^8.5.10",
+    "typescript": "^5.3.3"
+  }
+}

@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
-import { RefreshCw, FileText } from 'lucide-react';
+import { RefreshCw, FileText, Send } from 'lucide-react';
 import { ViewSwitch, type ViewTab } from './ViewSwitch';
 import { Skeleton, SkeletonRows } from './Skeleton';
 import { DiffView, DiffModeEnum } from '@git-diff-view/react';
 import '@git-diff-view/react/styles/diff-view.css';
 // import { useAppStore } from '../store';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { useAppStore } from '../store';
 import type { GitStatus } from '@vibetree/core';
 
 interface GitFile {
@@ -29,8 +30,33 @@ export function GitDiffView({ worktreePath, theme = 'light' , viewTab, onViewTab
   const [viewMode, setViewMode] = useState<'unstaged' | 'staged'>('unstaged');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState('');
 
   const { getAdapter } = useWebSocket();
+  const { terminalSessions, addToast } = useAppStore();
+
+  // Sends a review note about the selected file straight into this
+  // worktree's terminal, so pointing the agent at a problem does not
+  // require leaving the diff
+  const sendNoteToAgent = async () => {
+    const adapter = getAdapter();
+    const sessionId = terminalSessions.get(worktreePath);
+    if (!note.trim() || !adapter || !selectedFile) return;
+    if (!sessionId) {
+      addToast('Open this worktree\'s terminal first, then send the note', 'error');
+      return;
+    }
+    try {
+      await adapter.writeToShell(sessionId, `In ${selectedFile}: ${note.trim()}\r`);
+      addToast('Note sent to the agent', 'success');
+      setNote('');
+    } catch (err) {
+      addToast(
+        `Failed to send note: ${err instanceof Error ? err.message : 'unknown error'}`,
+        'error'
+      );
+    }
+  };
 
   const loadGitStatus = useCallback(async () => {
     const adapter = getAdapter();
@@ -221,6 +247,30 @@ export function GitDiffView({ worktreePath, theme = 'light' , viewTab, onViewTab
 
         {/* Diff View */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {selectedFile && (
+            <div className="border-b px-3 h-11 flex items-center gap-2 flex-shrink-0">
+              <input
+                type="text"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') sendNoteToAgent();
+                }}
+                placeholder={`Tell the agent about ${selectedFile.split('/').pop()}...`}
+                className="flex-1 h-7 px-2.5 text-xs border border-input bg-background rounded focus:outline-none focus:ring-2 focus:ring-ring/15 focus:border-foreground/30"
+                data-testid="diff-note-input"
+              />
+              <button
+                onClick={sendNoteToAgent}
+                disabled={!note.trim()}
+                className="h-7 px-2.5 inline-flex items-center gap-1.5 text-xs font-medium border rounded hover:bg-accent disabled:opacity-50 transition-colors"
+                data-testid="diff-note-send"
+              >
+                <Send className="h-3 w-3" />
+                Send to agent
+              </button>
+            </div>
+          )}
           {error ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">

@@ -5,9 +5,10 @@ import { useProjects } from '../contexts/ProjectContext';
 interface ProjectWorkspaceProps {
   projectId: string;
   theme?: 'light' | 'dark';
+  sidebarCollapsed?: boolean;
 }
 
-export function ProjectWorkspace({ projectId, theme }: ProjectWorkspaceProps) {
+export function ProjectWorkspace({ projectId, theme, sidebarCollapsed }: ProjectWorkspaceProps) {
   const { getProject, setSelectedWorktree, updateProjectWorktrees } = useProjects();
   const project = getProject(projectId);
 
@@ -21,13 +22,16 @@ export function ProjectWorkspace({ projectId, theme }: ProjectWorkspaceProps) {
 
   return (
     <div className="flex h-full overflow-hidden">
-      <WorktreePanel
-        projectPath={project.path}
-        selectedWorktree={project.selectedWorktree}
-        onSelectWorktree={(worktree) => setSelectedWorktree(projectId, worktree)}
-        onWorktreesChange={(worktrees) => updateProjectWorktrees(projectId, worktrees)}
-        initialWorktrees={project.worktrees}
-      />
+      {/* Hidden, not unmounted, so the panel keeps its state while collapsed */}
+      <div className={sidebarCollapsed ? 'hidden' : 'contents'}>
+        <WorktreePanel
+          projectPath={project.path}
+          selectedWorktree={project.selectedWorktree}
+          onSelectWorktree={(worktree) => setSelectedWorktree(projectId, worktree)}
+          onWorktreesChange={(worktrees) => updateProjectWorktrees(projectId, worktrees)}
+          initialWorktrees={project.worktrees}
+        />
+      </div>
       {project.selectedWorktree ? (
         <RightPaneView
           worktreePath={project.selectedWorktree}

@@ -5,22 +5,26 @@ import {
   getGitDiff,
   addWorktree,
   removeWorktree,
-  validateProjects
+  validateProjects,
+  readProjectConfig,
+  writeProjectConfig
 } from '@vibetree/core';
 import os from 'os';
 import { ShellManager } from '../services/ShellManager';
 import { AuthService } from '../auth/AuthService';
 import { listDirectory, discoverRepos } from '../services/fs-browse';
+import { AgentStateTracker } from '../services/AgentStateTracker';
 import type { ServerConfig } from '../config';
 
 interface Services {
   shellManager: ShellManager;
   authService: AuthService;
   config: ServerConfig;
+  agentStateTracker: AgentStateTracker;
 }
 
 export function setupRestRoutes(app: Express, services: Services) {
-  const { shellManager, authService, config } = services;
+  const { shellManager, authService, config, agentStateTracker } = services;
 
   app.get('/api/config', (req, res) => {
     res.json({
@@ -94,6 +98,10 @@ export function setupRestRoutes(app: Express, services: Services) {
     } else {
       res.status(404).json({ error: 'Device not found' });
     }
+  });
+
+  app.get('/api/agent/states', authService.requireAuth, (req, res) => {
+    res.json(agentStateTracker.getStates());
   });
 
   app.get('/api/shells', authService.requireAuth, (req, res) => {
@@ -179,6 +187,30 @@ export function setupRestRoutes(app: Express, services: Services) {
     try {
       const roots = config.projectsRoots.length > 0 ? config.projectsRoots : [os.homedir()];
       res.json({ roots, repos: await discoverRepos(roots) });
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  // Per-project settings (.vibetree/config.json), currently the agent
+  // command preset used by the terminal launch button
+  app.get('/api/projects/config', authService.requireAuth, async (req, res) => {
+    try {
+      const projectPath = typeof req.query.path === 'string' ? req.query.path : '';
+      if (!projectPath) return res.status(400).json({ error: 'path is required' });
+      res.json(await readProjectConfig(projectPath));
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  app.put('/api/projects/config', authService.requireAuth, async (req, res) => {
+    try {
+      const { path: projectPath, agentCommand } = req.body;
+      if (typeof projectPath !== 'string' || !projectPath) {
+        return res.status(400).json({ error: 'path is required' });
+      }
+      res.json(await writeProjectConfig(projectPath, { agentCommand }));
     } catch (error) {
       res.status(500).json({ error: (error as Error).message });
     }

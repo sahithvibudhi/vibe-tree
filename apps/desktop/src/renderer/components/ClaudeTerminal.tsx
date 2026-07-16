@@ -103,6 +103,10 @@ export function ClaudeTerminal({
   const serializeAddonRef = useRef<SerializeAddon | null>(null);
   const searchAddonRef = useRef<SearchAddon | null>(null);
   const removeListenersRef = useRef<Array<() => void>>([]);
+  // Guards startShell against concurrent runs (StrictMode double-invoke,
+  // fast worktree switches): a stale run must not register listeners, or
+  // every keystroke gets written to the PTY once per leaked listener
+  const startEpochRef = useRef(0);
   const [detectedIDEs, setDetectedIDEs] = useState<Array<{ name: string; command: string }>>([]);
   const [searchVisible, setSearchVisible] = useState(false);
   const searchVisibleRef = useRef(false);
@@ -110,6 +114,9 @@ export function ClaudeTerminal({
   const [searchQuery, setSearchQuery] = useState('');
   const [terminalSettings, setTerminalSettings] = useState<TerminalSettings | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  // Which pane owns the keyboard: with several terminals in a grid this is
+  // otherwise only visible by cursor blink
+  const [isFocused, setIsFocused] = useState(false);
   const { toast } = useToast();
 
   // Scheduler state - only UI state in component, actual scheduler state in cache
@@ -612,18 +619,24 @@ export function ClaudeTerminal({
       }
     });
 
-    // Handle resize (both window resize and container resize)
+    // Refit when this terminal's container changes size. The observer sees
+    // window resizes, splits, and divider drags alike, so no window-level
+    // listener or synthetic resize events are needed. The debounce timer is
+    // per instance: a shared timer would let terminals cancel each other's
+    // pending refits, leaving all but one pane mis-sized after a split.
+    let resizeDebounceTimer: ReturnType<typeof setTimeout> | undefined;
     const handleResize = () => {
-      // Only fit if the terminal container has dimensions
       if (
         terminalRef.current &&
         terminalRef.current.offsetWidth > 0 &&
         terminalRef.current.offsetHeight > 0
       ) {
         try {
+          const prevCols = term.cols;
+          const prevRows = term.rows;
           fitAddon.fit();
-          // Resize the PTY to match terminal dimensions
-          if (processIdRef.current) {
+          // Only bother the PTY when the grid actually changed
+          if (processIdRef.current && (term.cols !== prevCols || term.rows !== prevRows)) {
             backend.shell.resize(processIdRef.current, term.cols, term.rows);
           }
         } catch (err) {
@@ -632,19 +645,9 @@ export function ClaudeTerminal({
       }
     };
 
-    // Listen to window resize
-    window.addEventListener('resize', handleResize);
-
-    // Create ResizeObserver to watch for container size changes (e.g., when splitting terminals)
     const resizeObserver = new ResizeObserver(() => {
-      // Debounce resize to avoid excessive calls
-      clearTimeout(
-        (window as unknown as { resizeDebounceTimer?: NodeJS.Timeout }).resizeDebounceTimer
-      );
-      (window as unknown as { resizeDebounceTimer?: NodeJS.Timeout }).resizeDebounceTimer =
-        setTimeout(() => {
-          handleResize();
-        }, 100);
+      clearTimeout(resizeDebounceTimer);
+      resizeDebounceTimer = setTimeout(handleResize, 50);
     });
 
     // Observe the terminal container
@@ -654,7 +657,7 @@ export function ClaudeTerminal({
 
     return () => {
       console.log(`[ClaudeTerminal] Cleanup for: ${worktreePath}`);
-      window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeDebounceTimer);
       resizeObserver.disconnect();
       // Restore original window.open
       window.open = originalWindowOpen;
@@ -692,6 +695,8 @@ export function ClaudeTerminal({
   useEffect(() => {
     if (!terminal || !worktreePath) return;
 
+    const epoch = ++startEpochRef.current;
+
     // Clean up old listeners first
     removeListenersRef.current.forEach((remove) => remove());
     removeListenersRef.current = [];
@@ -709,6 +714,12 @@ export function ClaudeTerminal({
           false,
           terminalId
         );
+
+        // A newer run started while we awaited: registering listeners now
+        // would leak them past this run's cleanup and duplicate input
+        if (epoch !== startEpochRef.current) {
+          return;
+        }
 
         if (!result.success) {
           terminal.writeln(`\r\nError: ${result.error || 'Failed to start shell'}\r\n`);
@@ -830,7 +841,9 @@ export function ClaudeTerminal({
           }
         }, 5000); // Save every 5 seconds
 
-        // Store listeners for cleanup
+        // Dispose anything already registered before storing the new set;
+        // plain assignment here is how listeners used to leak
+        removeListenersRef.current.forEach((remove) => remove());
         removeListenersRef.current = [
           () => disposable.dispose(),
           removeOutputListener,
@@ -855,7 +868,7 @@ export function ClaudeTerminal({
       removeListenersRef.current.forEach((remove) => remove());
       removeListenersRef.current = [];
     };
-  }, [terminal, worktreePath]);
+  }, [terminal, worktreePath, terminalId]);
 
   // Detect available IDEs
   useEffect(() => {
@@ -1043,7 +1056,19 @@ export function ClaudeTerminal({
   }, []);
 
   return (
-    <div className="claude-terminal-root flex-1 flex flex-col h-full overflow-hidden">
+    <div
+      className={`claude-terminal-root flex-1 flex flex-col h-full overflow-hidden ${
+        isFocused ? 'ring-1 ring-inset ring-foreground/25' : ''
+      }`}
+      onFocusCapture={() => setIsFocused(true)}
+      onBlurCapture={(e) => {
+        // Focus moving between elements inside this pane is not a blur
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+          setIsFocused(false);
+        }
+      }}
+      data-focused={isFocused || undefined}
+    >
       {/* Header */}
       <div className="terminal-header h-[57px] px-4 border-b flex items-center justify-between flex-shrink-0">
         <div className="min-w-0 flex-1">
