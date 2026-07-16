@@ -55,6 +55,11 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
   const splitCleanupRef = useRef<(() => void)[]>([]);
   const saveIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const splitSaveIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Guards listener attachment against concurrent effect runs (the effect
+  // re-fires whenever the sessions map changes identity): a stale async run
+  // must not register listeners, or every output chunk renders once per
+  // leaked listener and input looks duplicated
+  const attachEpochRef = useRef(0);
 
   // Agent preset for this project powers the Launch button
   useEffect(() => {
@@ -85,6 +90,8 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
       return;
     }
 
+    const epoch = ++attachEpochRef.current;
+
     // Check if we already have a session for this worktree
     const existingSessionId = terminalSessions.get(selectedWorktree);
     if (existingSessionId) {
@@ -108,6 +115,8 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
         setSessionId(null);
       });
 
+      // Dispose anything already attached before storing the new set
+      cleanupRef.current.forEach((cleanup) => cleanup());
       cleanupRef.current = [unsubscribeOutput, unsubscribeExit];
       setSessionId(existingSessionId);
 
@@ -142,6 +151,11 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
         // Call server directly and wait for actual session ID (like desktop app)
         const result = await adapter.startShell(selectedWorktree);
 
+        // A newer effect run attached its own listeners while we awaited
+        if (epoch !== attachEpochRef.current) {
+          return;
+        }
+
         if (result.success && result.processId) {
           // Use the actual session ID returned by server
           const actualSessionId = result.processId;
@@ -166,6 +180,7 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
             setSessionId(null);
           });
 
+          cleanupRef.current.forEach((cleanup) => cleanup());
           cleanupRef.current = [unsubscribeOutput, unsubscribeExit];
           // Check if this is a different session ID than what we had cached
           const cachedSessionId = terminalSessions.get(selectedWorktree);
