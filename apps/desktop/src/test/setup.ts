@@ -1,6 +1,14 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
+// jsdom does not implement ResizeObserver, which terminals rely on for fit
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+window.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+
 // Mock matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

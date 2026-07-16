@@ -207,13 +207,9 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
       // Force a new grid reference to ensure React detects the change
       worktreeGridCache.set(worktreePath, { ...grid });
 
-      // Update state to trigger re-render
+      // Update state to trigger re-render; each terminal's ResizeObserver
+      // refits it when its pane changes size
       setWorktreeGrids(new Map(worktreeGridCache));
-
-      // Force a resize event after a short delay to ensure DOM is updated
-      setTimeout(() => {
-        window.dispatchEvent(new Event('resize'));
-      }, 50);
     },
     [worktreePath]
   );
@@ -419,36 +415,6 @@ export function TerminalGrid({ worktreePath, projectId, theme }: TerminalManager
         </div>
       </div>
     );
-  }, []);
-
-  // Watch for DOM changes and trigger resize when terminals are added/removed
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    // Create a MutationObserver to watch for DOM changes
-    const observer = new MutationObserver((mutations) => {
-      // Check if any terminals were added or removed
-      const hasStructuralChange = mutations.some(
-        (mutation) =>
-          mutation.type === 'childList' &&
-          (mutation.addedNodes.length > 0 || mutation.removedNodes.length > 0)
-      );
-
-      if (hasStructuralChange) {
-        // Trigger a resize event to ensure all terminals fit properly
-        setTimeout(() => {
-          window.dispatchEvent(new Event('resize'));
-        }, 100);
-      }
-    });
-
-    // Start observing the container for child changes
-    observer.observe(containerRef.current, {
-      childList: true,
-      subtree: true
-    });
-
-    return () => observer.disconnect();
   }, []);
 
   return (
