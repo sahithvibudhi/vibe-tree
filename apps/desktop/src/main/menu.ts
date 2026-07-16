@@ -115,6 +115,14 @@ export function createMenu(mainWindow: BrowserWindow | null) {
     {
       label: 'View',
       submenu: [
+        {
+          label: 'Toggle Sidebar',
+          accelerator: 'CmdOrCtrl+B',
+          click: () => {
+            mainWindow?.webContents.send('menu:toggle-sidebar');
+          }
+        },
+        { type: 'separator' },
         { role: 'toggleDevTools' },
         { type: 'separator' },
         { role: 'resetZoom' },

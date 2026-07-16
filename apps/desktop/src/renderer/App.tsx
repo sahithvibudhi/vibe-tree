@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AppHeader } from './components/AppHeader';
+import { TitleBar } from './components/TitleBar';
 import { ProjectSelector } from './components/ProjectSelector';
 import { ProjectWorkspace } from './components/ProjectWorkspace';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs';
@@ -23,6 +23,7 @@ function AppContent() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [projectToClose, setProjectToClose] = useState<{ id: string; name: string } | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const {
     projects,
     activeProjectId,
@@ -45,6 +46,9 @@ function AppContent() {
       }),
       menu.onToggleView?.(() => {
         window.dispatchEvent(new CustomEvent('vibetree:toggle-view'));
+      }),
+      menu.onToggleSidebar?.(() => {
+        setSidebarCollapsed((collapsed) => !collapsed);
       }),
       menu.onSelectWorktreeDelta?.((delta) => {
         const { projects, activeProjectId, setSelectedWorktree } = menuStateRef.current;
@@ -152,27 +156,32 @@ function AppContent() {
 
   return (
     <div className="h-screen flex flex-col bg-background">
-      <AppHeader theme={theme} onThemeToggle={toggleTheme} />
-
       {projects.length === 0 ? (
-        <ProjectSelector onSelectProject={handleSelectProject} />
+        <>
+          <TitleBar theme={theme} onThemeToggle={toggleTheme} />
+          <ProjectSelector onSelectProject={handleSelectProject} />
+        </>
       ) : (
         <Tabs
           value={activeProjectId || ''}
           onValueChange={setActiveProject}
           className="flex-1 flex flex-col overflow-hidden"
         >
-          <div className="border-b flex items-center gap-2 bg-muted/50 h-10">
-            <TabsList className="h-full bg-transparent p-0 rounded-none">
+          <TitleBar
+            theme={theme}
+            onThemeToggle={toggleTheme}
+            onToggleSidebar={() => setSidebarCollapsed((collapsed) => !collapsed)}
+          >
+            <TabsList className="h-full bg-transparent p-0 rounded-none gap-1">
               {projects.map((project) => (
                 <TabsTrigger
                   key={project.id}
                   value={project.id}
-                  className="relative pr-8 h-full data-[state=active]:bg-background data-[state=active]:rounded-t-md data-[state=active]:border-t data-[state=active]:border-x data-[state=active]:border-b-0"
+                  className="relative my-1.5 h-7 rounded-md px-2.5 pr-7 text-xs font-medium text-muted-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground"
                 >
                   {project.name}
                   <span
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-5 w-5 p-0.5 hover:bg-muted rounded cursor-pointer inline-flex items-center justify-center"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-4 w-4 p-0.5 hover:bg-muted rounded cursor-pointer inline-flex items-center justify-center"
                     onClick={(e) => handleCloseProject(e, project.id)}
                   >
                     <X className="h-3 w-3" />
@@ -184,11 +193,11 @@ function AppContent() {
               size="icon"
               variant="ghost"
               onClick={handleOpenProjectDialog}
-              className="h-8 w-8"
+              className="h-7 w-7"
             >
               <Plus className="h-4 w-4" />
             </Button>
-          </div>
+          </TitleBar>
 
           {projects.map((project) => (
             <TabsContent
@@ -196,7 +205,11 @@ function AppContent() {
               value={project.id}
               className="flex-1 m-0 h-0 overflow-hidden"
             >
-              <ProjectWorkspace projectId={project.id} theme={theme} />
+              <ProjectWorkspace
+                projectId={project.id}
+                theme={theme}
+                sidebarCollapsed={sidebarCollapsed}
+              />
             </TabsContent>
           ))}
         </Tabs>

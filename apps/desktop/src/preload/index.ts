@@ -100,6 +100,11 @@ const api = {
       const listener = (_: unknown, delta: number) => callback(delta);
       ipcRenderer.on('menu:select-worktree-delta', listener);
       return () => ipcRenderer.removeListener('menu:select-worktree-delta', listener);
+    },
+    onToggleSidebar: (callback: () => void) => {
+      const listener = () => callback();
+      ipcRenderer.on('menu:toggle-sidebar', listener);
+      return () => ipcRenderer.removeListener('menu:toggle-sidebar', listener);
     }
   },
   utils: {
