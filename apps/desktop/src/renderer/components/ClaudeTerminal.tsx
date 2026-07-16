@@ -114,6 +114,9 @@ export function ClaudeTerminal({
   const [searchQuery, setSearchQuery] = useState('');
   const [terminalSettings, setTerminalSettings] = useState<TerminalSettings | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  // Which pane owns the keyboard: with several terminals in a grid this is
+  // otherwise only visible by cursor blink
+  const [isFocused, setIsFocused] = useState(false);
   const { toast } = useToast();
 
   // Scheduler state - only UI state in component, actual scheduler state in cache
@@ -1053,7 +1056,19 @@ export function ClaudeTerminal({
   }, []);
 
   return (
-    <div className="claude-terminal-root flex-1 flex flex-col h-full overflow-hidden">
+    <div
+      className={`claude-terminal-root flex-1 flex flex-col h-full overflow-hidden ${
+        isFocused ? 'ring-1 ring-inset ring-foreground/25' : ''
+      }`}
+      onFocusCapture={() => setIsFocused(true)}
+      onBlurCapture={(e) => {
+        // Focus moving between elements inside this pane is not a blur
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+          setIsFocused(false);
+        }
+      }}
+      data-focused={isFocused || undefined}
+    >
       {/* Header */}
       <div className="terminal-header h-[57px] px-4 border-b flex items-center justify-between flex-shrink-0">
         <div className="min-w-0 flex-1">
