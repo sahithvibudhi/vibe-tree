@@ -14,7 +14,7 @@ export interface ShortcutDescription {
 // Single source for the help overlay, the welcome screen, and the handler
 export const SHORTCUTS: ShortcutDescription[] = [
   { keys: [MOD_LABEL, 'Shift', 'K'], action: 'New worktree' },
-  { keys: [MOD_LABEL, 'Shift', 'E'], action: 'Toggle Terminal / Changes' },
+  { keys: [MOD_LABEL, 'Shift', 'E'], action: 'Toggle the Changes drawer' },
   { keys: [MOD_LABEL, 'Alt', 'Up/Down'], action: 'Previous / next worktree' },
   { keys: ['?'], action: 'Show keyboard shortcuts' }
 ];

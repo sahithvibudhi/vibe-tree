@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { RefreshCw, FileText, Send } from 'lucide-react';
-import { ViewSwitch, type ViewTab } from './ViewSwitch';
+import { RefreshCw, FileText, Send, Maximize2, Minimize2, X } from 'lucide-react';
 import { Skeleton, SkeletonRows } from './Skeleton';
 import { DiffView, DiffModeEnum } from '@git-diff-view/react';
 import '@git-diff-view/react/styles/diff-view.css';
@@ -19,11 +18,12 @@ interface GitFile {
 interface GitDiffViewProps {
   worktreePath: string;
   theme?: 'light' | 'dark';
-  viewTab: ViewTab;
-  onViewTabChange: (tab: ViewTab) => void;
+  maximized: boolean;
+  onToggleMaximize: () => void;
+  onClose: () => void;
 }
 
-export function GitDiffView({ worktreePath, theme = 'light' , viewTab, onViewTabChange }: GitDiffViewProps) {
+export function GitDiffView({ worktreePath, theme = 'light', maximized, onToggleMaximize, onClose }: GitDiffViewProps) {
   const [files, setFiles] = useState<GitFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [diffText, setDiffText] = useState<string>('');
@@ -163,14 +163,15 @@ export function GitDiffView({ worktreePath, theme = 'light' , viewTab, onViewTab
 
   return (
     <div className="flex-1 flex flex-col h-full">
-      {/* Single toolbar: view switch, worktree identity, diff controls */}
+      {/* Drawer header: identity, staged toggle, and pane controls */}
       <div className="h-9 px-3 border-b flex items-center justify-between gap-2 flex-shrink-0 bg-background">
-        <div className="flex items-center gap-2 min-w-0">
-          <ViewSwitch active={viewTab} onChange={onViewTabChange} />
-          <span className="font-mono text-xs text-muted-foreground truncate min-w-0">
-            {worktreePath.split('/').slice(-1)[0]}
-          </span>
-        </div>
+        <h3
+          className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate"
+          title={worktreePath}
+        >
+          Changes
+          <span className="ml-1.5 font-normal">{filteredFiles.length}</span>
+        </h3>
         <div className="flex items-center gap-1">
           <div className="flex items-center gap-0.5 rounded-md bg-muted p-0.5">
             <button
@@ -200,20 +201,37 @@ export function GitDiffView({ worktreePath, theme = 'light' , viewTab, onViewTab
             className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors disabled:opacity-50"
             aria-label="Refresh changes"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          <button
+            onClick={onToggleMaximize}
+            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors"
+            title={maximized ? 'Restore drawer' : 'Maximize changes'}
+            aria-label={maximized ? 'Restore drawer' : 'Maximize changes'}
+            data-testid="changes-maximize"
+          >
+            {maximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors"
+            title="Close changes"
+            aria-label="Close changes"
+            data-testid="changes-close"
+          >
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
 
-      <div className="flex-1 flex min-h-0 overflow-hidden">
-        {/* File List */}
-        <div className="w-80 border-r flex flex-col min-w-0">
-          <div className="h-9 px-3 border-b flex items-center">
-            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {viewMode === 'staged' ? 'Staged' : 'Unstaged'}
-              <span className="ml-1.5 font-normal">{filteredFiles.length}</span>
-            </h4>
-          </div>
+      <div className={`flex-1 flex min-h-0 overflow-hidden ${maximized ? 'flex-row' : 'flex-col'}`}>
+        {/* File List: a column beside the diff when maximized, a compact
+            band above it in the drawer */}
+        <div
+          className={`flex flex-col min-w-0 ${
+            maximized ? 'w-80 border-r' : 'max-h-48 border-b flex-shrink-0'
+          }`}
+        >
           <div className="flex-1 overflow-auto">
             <div className="p-2 space-y-1">
               {loading && filteredFiles.length === 0 ? (

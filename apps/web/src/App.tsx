@@ -38,6 +38,7 @@ function App() {
   const [autoLoadAttempted, setAutoLoadAttempted] = useState(false);
   const [hasConnectedOnce, setHasConnectedOnce] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [changesMaximized, setChangesMaximized] = useState(false);
   const [soundOn, setSoundOn] = useState(isSoundEnabled());
 
   useKeyboardShortcuts(() => setShowShortcuts(true));
@@ -322,29 +323,44 @@ function App() {
                 <WorktreePanel projectId={project.id} />
               </div>
 
-              {/* Main content; the Terminal/Changes switch lives in each view's toolbar */}
+              {/* Main content: Changes is a drawer beside the terminal,
+                  not a mode on top of it */}
               {project.selectedWorktree ? (
-                <div className="flex-1 overflow-hidden relative">
-                  <div
-                    className={`absolute inset-0 ${project.selectedTab === 'terminal' ? 'block' : 'hidden'}`}
-                  >
+                <div className="flex-1 overflow-hidden flex min-w-0">
+                  {project.selectedTab === 'changes' && (
+                    <div
+                      className={
+                        changesMaximized
+                          ? 'flex flex-1 min-w-0'
+                          : 'hidden md:flex md:w-[480px] xl:w-[560px] flex-shrink-0 border-r'
+                      }
+                    >
+                      <GitDiffView
+                        worktreePath={project.selectedWorktree}
+                        theme={theme}
+                        maximized={changesMaximized}
+                        onToggleMaximize={() => setChangesMaximized((m) => !m)}
+                        onClose={() => {
+                          setChangesMaximized(false);
+                          setSelectedTab(project.id, 'terminal');
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  <div className={`flex-1 min-w-0 ${changesMaximized ? 'hidden' : ''}`}>
                     <TerminalManager
                       worktrees={project.worktrees || []}
                       selectedWorktree={project.selectedWorktree}
                       viewTab={project.selectedTab === 'changes' ? 'changes' : 'terminal'}
-                      onViewTabChange={(tab) => setSelectedTab(project.id, tab)}
-                    />
-                  </div>
-
-                  {/* Keep GitDiffView mounted but hidden to preserve state */}
-                  <div
-                    className={`absolute inset-0 ${project.selectedTab === 'changes' ? 'block' : 'hidden'}`}
-                  >
-                    <GitDiffView
-                      worktreePath={project.selectedWorktree}
-                      theme={theme}
-                      viewTab={project.selectedTab === 'changes' ? 'changes' : 'terminal'}
-                      onViewTabChange={(tab) => setSelectedTab(project.id, tab)}
+                      onViewTabChange={(tab) => {
+                        // Small screens cannot fit a drawer; open Changes
+                        // maximized there instead
+                        if (tab === 'changes' && window.innerWidth < 768) {
+                          setChangesMaximized(true);
+                        }
+                        setSelectedTab(project.id, tab)
+                      }}
                     />
                   </div>
                 </div>

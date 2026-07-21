@@ -43,10 +43,9 @@ export function parseWorktrees(output: string): Worktree[] {
  * @returns Array of parsed git status objects
  */
 export function parseGitStatus(output: string): GitStatus[] {
-  const lines = output
-    .trim()
-    .split('\n')
-    .filter((line) => line.length > 0);
+  // No trim on the whole output: the XY status prefix is positional, and a
+  // leading space (unstaged-only change) on the first line is meaningful
+  const lines = output.split('\n').filter((line) => line.trim().length > 0);
 
   return lines.map((line) => {
     // Git status format: XY filename
