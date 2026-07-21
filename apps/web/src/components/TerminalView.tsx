@@ -3,11 +3,13 @@ import { Terminal } from '@vibetree/ui';
 import { AgentActivityMonitor } from '@vibetree/core';
 import { useAppStore } from '../store';
 import { useWebSocket } from '../hooks/useWebSocket';
-import { ChevronLeft, Maximize2, Minimize2, Columns2, X, Play } from 'lucide-react';
+import { ChevronLeft, Maximize2, Minimize2, Columns2, X, Play, Globe } from 'lucide-react';
 import type { Terminal as XTerm } from '@xterm/xterm';
 import { ViewSwitch, type ViewTab } from './ViewSwitch';
 import { playDing } from '../services/sound';
 import { getProjectConfig } from '../services/projectConfig';
+import { detectDevServerUrl, rewriteForViewer } from '../services/previewUrl';
+import { PreviewPane } from './PreviewPane';
 
 // Cache for terminal states per session ID (like desktop app)
 const terminalStateCache = new Map<string, string>();
@@ -38,7 +40,9 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
     terminalSessions,
     addTerminalSession,
     removeTerminalSession,
-    theme
+    theme,
+    detectedPreviewUrls,
+    setDetectedPreviewUrl
   } = useAppStore();
 
   const activeProject = getActiveProject();
@@ -48,6 +52,7 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
   const [splitSessionId, setSplitSessionId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [agentCommand, setAgentCommand] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isSplit, setIsSplit] = useState(false);
   const terminalRef = useRef<XTerm | null>(null);
   const splitTerminalRef = useRef<XTerm | null>(null);
@@ -102,6 +107,8 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
         }
         const activity = getActivityMonitor(existingSessionId).processOutput(data);
         if (activity) playDing(activity);
+        const devUrl = detectDevServerUrl(data);
+        if (devUrl) setDetectedPreviewUrl(selectedWorktree, devUrl);
       });
 
       const unsubscribeExit = adapter.onShellExit(existingSessionId, (code) => {
@@ -167,6 +174,8 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
             }
             const activity = getActivityMonitor(actualSessionId).processOutput(data);
             if (activity) playDing(activity);
+            const devUrl = detectDevServerUrl(data);
+            if (devUrl) setDetectedPreviewUrl(selectedWorktree, devUrl);
           });
 
           const unsubscribeExit = adapter.onShellExit(actualSessionId, (code) => {
@@ -550,6 +559,26 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
             </button>
           )}
           <button
+            onClick={() => setIsPreviewOpen((open) => !open)}
+            className={`relative p-1.5 rounded hover:bg-accent ${
+              isPreviewOpen ? 'text-foreground bg-accent' : 'text-muted-foreground hover:text-foreground'
+            }`}
+            title={
+              detectedPreviewUrls[selectedWorktree]
+                ? `Preview ${detectedPreviewUrls[selectedWorktree]}`
+                : 'Open app preview'
+            }
+            data-testid="toggle-preview"
+          >
+            <Globe className="h-4 w-4" />
+            {!isPreviewOpen && detectedPreviewUrls[selectedWorktree] && (
+              <span
+                className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-green-500"
+                data-testid="preview-url-detected"
+              />
+            )}
+          </button>
+          <button
             onClick={toggleSplit}
             className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded"
             title="Split Terminal"
@@ -576,9 +605,8 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
       </div>
 
       {/* Terminal Container */}
-      <div
-        className={`flex-1 flex ${isSplit ? 'flex-row' : ''} bg-background`}
-      >
+      <div className="flex-1 flex flex-row min-h-0 bg-background">
+        <div className={`flex-1 min-w-0 flex ${isSplit ? 'flex-row' : ''} bg-background`}>
         <div className={`${isSplit ? 'w-1/2 border-r' : 'w-full'} h-full`}>
           {sessionId && (
             <Terminal
@@ -620,6 +648,18 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
               </div>
             )}
           </div>
+        )}
+        </div>
+
+        {isPreviewOpen && (
+          <PreviewPane
+            initialUrl={
+              detectedPreviewUrls[selectedWorktree]
+                ? rewriteForViewer(detectedPreviewUrls[selectedWorktree])
+                : undefined
+            }
+            onClose={() => setIsPreviewOpen(false)}
+          />
         )}
       </div>
     </div>

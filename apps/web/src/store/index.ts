@@ -43,6 +43,11 @@ interface AppState {
   newWorktreeRequestId: number;
   requestNewWorktree: () => void;
 
+  // Latest dev-server URL seen in each worktree's terminal output, so the
+  // preview pane can open pointed at the app the agent just started
+  detectedPreviewUrls: Record<string, string>;
+  setDetectedPreviewUrl: (worktreePath: string, url: string) => void;
+
   // Paths of projects opened before, persisted so the welcome screen can
   // offer to reopen them
   recentProjects: string[];
@@ -118,6 +123,15 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   newWorktreeRequestId: 0,
   requestNewWorktree: () => set({ newWorktreeRequestId: Date.now() }),
+
+  detectedPreviewUrls: {},
+  setDetectedPreviewUrl: (worktreePath, url) => {
+    set((state) =>
+      state.detectedPreviewUrls[worktreePath] === url
+        ? state
+        : { detectedPreviewUrls: { ...state.detectedPreviewUrls, [worktreePath]: url } }
+    );
+  },
 
   recentProjects: loadRecentProjects(),
   removeRecentProject: (path) => {
