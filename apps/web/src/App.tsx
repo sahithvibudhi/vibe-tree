@@ -8,6 +8,8 @@ import { ProjectSelector } from './components/ProjectSelector';
 import { OnboardingHint } from './components/OnboardingHint';
 import { Toaster } from './components/Toaster';
 import { ShortcutsHelp } from './components/ShortcutsHelp';
+import { PreviewPane } from './components/PreviewPane';
+import { rewriteForViewer } from './services/previewUrl';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@vibetree/ui';
 import { useAppStore } from './store';
 import { useWebSocket } from './hooks/useWebSocket';
@@ -31,7 +33,8 @@ function App() {
     theme,
     setTheme,
     connected,
-    addToast
+    addToast,
+    detectedPreviewUrls
   } = useAppStore();
   const { connect } = useWebSocket();
   const [showProjectSelector, setShowProjectSelector] = useState(false);
@@ -352,7 +355,7 @@ function App() {
                     <TerminalManager
                       worktrees={project.worktrees || []}
                       selectedWorktree={project.selectedWorktree}
-                      viewTab={project.selectedTab === 'changes' ? 'changes' : 'terminal'}
+                      viewTab={project.selectedTab}
                       onViewTabChange={(tab) => {
                         // Small screens cannot fit a drawer; open Changes
                         // maximized there instead
@@ -363,6 +366,21 @@ function App() {
                       }}
                     />
                   </div>
+
+                  {/* One auxiliary pane at a time: Changes on the left OR
+                      the app preview on the right, never both */}
+                  {project.selectedTab === 'preview' && !changesMaximized && (
+                    <div className="hidden md:flex md:w-[480px] xl:w-[560px] flex-shrink-0 min-w-0">
+                      <PreviewPane
+                        initialUrl={
+                          detectedPreviewUrls[project.selectedWorktree]
+                            ? rewriteForViewer(detectedPreviewUrls[project.selectedWorktree])
+                            : undefined
+                        }
+                        onClose={() => setSelectedTab(project.id, 'terminal')}
+                      />
+                    </div>
+                  )}
                 </div>
               ) : (
                 /* Empty state doubles as the fleet view: what is every

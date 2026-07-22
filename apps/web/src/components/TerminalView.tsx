@@ -8,8 +8,7 @@ import type { Terminal as XTerm } from '@xterm/xterm';
 import type { ViewTab } from './ViewSwitch';
 import { playDing } from '../services/sound';
 import { getProjectConfig } from '../services/projectConfig';
-import { detectDevServerUrl, rewriteForViewer } from '../services/previewUrl';
-import { PreviewPane } from './PreviewPane';
+import { detectDevServerUrl } from '../services/previewUrl';
 import { useWorktreeStatuses } from '../hooks/useWorktreeStatuses';
 import type { Worktree } from '@vibetree/core';
 
@@ -54,7 +53,6 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
   const [splitSessionId, setSplitSessionId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [agentCommand, setAgentCommand] = useState<string | null>(null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   // Changed-file count for the drawer toggle's badge
   const { changeCounts } = useWorktreeStatuses(
     worktreePath ? [{ path: worktreePath } as Worktree] : []
@@ -583,9 +581,11 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
             </button>
           )}
           <button
-            onClick={() => setIsPreviewOpen((open) => !open)}
+            onClick={() => onViewTabChange(viewTab === 'preview' ? 'terminal' : 'preview')}
             className={`relative p-1.5 rounded hover:bg-accent ${
-              isPreviewOpen ? 'text-foreground bg-accent' : 'text-muted-foreground hover:text-foreground'
+              viewTab === 'preview'
+                ? 'text-foreground bg-accent'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
             title={
               detectedPreviewUrls[selectedWorktree]
@@ -595,7 +595,7 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
             data-testid="toggle-preview"
           >
             <Globe className="h-4 w-4" />
-            {!isPreviewOpen && detectedPreviewUrls[selectedWorktree] && (
+            {viewTab !== 'preview' && detectedPreviewUrls[selectedWorktree] && (
               <span
                 className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-green-500"
                 data-testid="preview-url-detected"
@@ -629,8 +629,7 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
       </div>
 
       {/* Terminal Container */}
-      <div className="flex-1 flex flex-row min-h-0 bg-background">
-        <div className={`flex-1 min-w-0 flex ${isSplit ? 'flex-row' : ''} bg-background`}>
+      <div className={`flex-1 min-h-0 overflow-hidden flex ${isSplit ? 'flex-row' : ''} bg-background`}>
         <div className={`${isSplit ? 'w-1/2 border-r' : 'w-full'} h-full`}>
           {sessionId && (
             <Terminal
@@ -672,18 +671,6 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
               </div>
             )}
           </div>
-        )}
-        </div>
-
-        {isPreviewOpen && (
-          <PreviewPane
-            initialUrl={
-              detectedPreviewUrls[selectedWorktree]
-                ? rewriteForViewer(detectedPreviewUrls[selectedWorktree])
-                : undefined
-            }
-            onClose={() => setIsPreviewOpen(false)}
-          />
         )}
       </div>
     </div>
