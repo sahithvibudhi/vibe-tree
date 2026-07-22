@@ -330,27 +330,6 @@ function App() {
                   not a mode on top of it */}
               {project.selectedWorktree ? (
                 <div className="flex-1 overflow-hidden flex min-w-0">
-                  {project.selectedTab === 'changes' && (
-                    <div
-                      className={
-                        changesMaximized
-                          ? 'flex flex-1 min-w-0'
-                          : 'hidden md:flex md:w-[480px] xl:w-[560px] flex-shrink-0 border-r'
-                      }
-                    >
-                      <GitDiffView
-                        worktreePath={project.selectedWorktree}
-                        theme={theme}
-                        maximized={changesMaximized}
-                        onToggleMaximize={() => setChangesMaximized((m) => !m)}
-                        onClose={() => {
-                          setChangesMaximized(false);
-                          setSelectedTab(project.id, 'terminal');
-                        }}
-                      />
-                    </div>
-                  )}
-
                   <div className={`flex-1 min-w-0 ${changesMaximized ? 'hidden' : ''}`}>
                     <TerminalManager
                       worktrees={project.worktrees || []}
@@ -367,8 +346,29 @@ function App() {
                     />
                   </div>
 
-                  {/* One auxiliary pane at a time: Changes on the left OR
-                      the app preview on the right, never both */}
+                  {/* One auxiliary pane at a time, both docking on the
+                      right so the terminal never moves: Changes or the
+                      app preview */}
+                  {project.selectedTab === 'changes' && (
+                    <div
+                      className={
+                        changesMaximized
+                          ? 'flex flex-1 min-w-0'
+                          : 'hidden md:flex md:w-[480px] xl:w-[560px] flex-shrink-0 border-l'
+                      }
+                    >
+                      <GitDiffView
+                        worktreePath={project.selectedWorktree}
+                        theme={theme}
+                        maximized={changesMaximized}
+                        onToggleMaximize={() => setChangesMaximized((m) => !m)}
+                        onClose={() => {
+                          setChangesMaximized(false);
+                          setSelectedTab(project.id, 'terminal');
+                        }}
+                      />
+                    </div>
+                  )}
                   {project.selectedTab === 'preview' && !changesMaximized && (
                     <div className="hidden md:flex md:w-[480px] xl:w-[560px] flex-shrink-0 min-w-0">
                       <PreviewPane
