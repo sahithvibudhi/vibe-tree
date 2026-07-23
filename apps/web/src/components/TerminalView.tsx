@@ -545,24 +545,6 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => onViewTabChange(viewTab === 'changes' ? 'terminal' : 'changes')}
-            className={`flex items-center gap-1.5 px-2 h-6 text-xs font-medium rounded transition-colors ${
-              viewTab === 'changes'
-                ? 'bg-accent text-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-            }`}
-            title={viewTab === 'changes' ? 'Close the changes drawer' : 'Open the changes drawer'}
-            data-testid="toggle-changes"
-          >
-            <GitCompareArrows className="h-3.5 w-3.5" />
-            Changes
-            {changeCount !== undefined && changeCount > 0 && (
-              <span className="min-w-4 h-4 px-1 inline-flex items-center justify-center rounded-full border text-[10px] tabular-nums">
-                {changeCount}
-              </span>
-            )}
-          </button>
           <span className="font-mono text-xs text-muted-foreground truncate min-w-0">
             {selectedWorktree?.split('/').slice(-1)[0]}
             {isSplit ? ' (split)' : ''}
@@ -580,28 +562,49 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
               {agentCommand}
             </button>
           )}
-          <button
-            onClick={() => onViewTabChange(viewTab === 'preview' ? 'terminal' : 'preview')}
-            className={`relative p-1.5 rounded hover:bg-accent ${
-              viewTab === 'preview'
-                ? 'text-foreground bg-accent'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-            title={
-              detectedPreviewUrls[selectedWorktree]
-                ? `Preview ${detectedPreviewUrls[selectedWorktree]}`
-                : 'Open app preview'
-            }
-            data-testid="toggle-preview"
-          >
-            <Globe className="h-4 w-4" />
-            {viewTab !== 'preview' && detectedPreviewUrls[selectedWorktree] && (
-              <span
-                className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-green-500"
-                data-testid="preview-url-detected"
-              />
-            )}
-          </button>
+          {/* Dock switch: which pane sits to the right of the terminal.
+              Clicking the active one closes the dock. */}
+          <div className="flex items-center gap-0.5 rounded-md bg-muted p-0.5 mr-1">
+            <button
+              onClick={() => onViewTabChange(viewTab === 'changes' ? 'terminal' : 'changes')}
+              className={`relative flex items-center gap-1 px-2 h-6 text-xs font-medium rounded transition-colors ${
+                viewTab === 'changes'
+                  ? 'bg-background text-foreground border shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title={viewTab === 'changes' ? 'Close changes' : 'Show changes'}
+              data-testid="toggle-changes"
+            >
+              <GitCompareArrows className="h-3.5 w-3.5" />
+              {changeCount !== undefined && changeCount > 0 && (
+                <span className="min-w-4 h-4 px-1 inline-flex items-center justify-center rounded-full border text-[10px] tabular-nums">
+                  {changeCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => onViewTabChange(viewTab === 'preview' ? 'terminal' : 'preview')}
+              className={`relative flex items-center px-2 h-6 rounded transition-colors ${
+                viewTab === 'preview'
+                  ? 'bg-background text-foreground border shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title={
+                detectedPreviewUrls[selectedWorktree]
+                  ? `Preview ${detectedPreviewUrls[selectedWorktree]}`
+                  : 'Show app preview'
+              }
+              data-testid="toggle-preview"
+            >
+              <Globe className="h-3.5 w-3.5" />
+              {viewTab !== 'preview' && detectedPreviewUrls[selectedWorktree] && (
+                <span
+                  className="absolute top-0 right-0.5 w-1.5 h-1.5 rounded-full bg-green-500"
+                  data-testid="preview-url-detected"
+                />
+              )}
+            </button>
+          </div>
           <button
             onClick={toggleSplit}
             className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded"
