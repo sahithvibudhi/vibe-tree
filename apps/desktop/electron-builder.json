@@ -56,5 +56,8 @@
   },
   "appImage": {
     "artifactName": "${productName}-${version}.${ext}"
+  },
+  "deb": {
+    "artifactName": "${productName}-${version}-${arch}.${ext}"
   }
 }

@@ -2,6 +2,7 @@
   "name": "@vibetree/desktop",
   "version": "0.2.0",
   "description": "VibeTree Desktop Application",
+  "homepage": "https://github.com/sahithvibudhi/vibe-tree",
   "main": "dist/main/index.js",
   "scripts": {
     "predev": "cd ../../packages/core && pnpm build && cd ../../apps/desktop && pnpm copy:assets",
@@ -39,7 +40,10 @@
     "ai",
     "claude"
   ],
-  "author": "",
+  "author": {
+    "name": "Sahith Vibudhi",
+    "email": "v.sahithkumar@gmail.com"
+  },
   "license": "MIT",
   "devDependencies": {
     "@electron/rebuild": "^4.0.1",
