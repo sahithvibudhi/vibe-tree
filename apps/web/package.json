@@ -1,6 +1,6 @@
 {
   "name": "@vibetree/web",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "description": "VibeTree Web - Mobile-friendly web client",
   "private": true,
   "scripts": {
