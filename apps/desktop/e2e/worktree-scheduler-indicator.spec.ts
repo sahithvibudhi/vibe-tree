@@ -231,11 +231,17 @@ test.describe('Worktree Scheduler Indicator Test', () => {
     const createButton = page.locator('button', { hasText: 'Create Branch' });
     await createButton.click();
 
+    // The dialog closes when the worktree add completes; git can be slow
+    // on loaded CI runners
+    await expect(page.locator('text=Create New Feature Branch')).not.toBeVisible({
+      timeout: 30000
+    });
+
     // Verify we now have two worktrees
     const mainWorktree = page.locator('button[data-worktree-branch="main"]');
     const testWorktree = page.locator('button[data-worktree-branch="test-branch"]');
-    await expect(mainWorktree).toBeVisible({ timeout: 10000 });
-    await expect(testWorktree).toBeVisible({ timeout: 10000 });
+    await expect(mainWorktree).toBeVisible({ timeout: 15000 });
+    await expect(testWorktree).toBeVisible({ timeout: 15000 });
 
     // Click on main worktree to select it
     await mainWorktree.click();

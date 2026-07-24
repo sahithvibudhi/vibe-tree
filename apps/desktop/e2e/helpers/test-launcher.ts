@@ -56,10 +56,24 @@ export async function closeElectronApp(electronApp: ElectronApplication | null):
     // evaluate might throw if app already closed - that's fine
   }
 
-  try {
-    // Wait for the app to close
-    await electronApp.close();
-  } catch {
-    // Already closed - that's fine
+  // A wedged shutdown (a PTY that will not die, a cleanup hook that never
+  // resolves) must not hang the Playwright worker teardown for its full
+  // 120s budget; force-kill after a grace period instead
+  const closed = electronApp.close().then(
+    () => true,
+    () => true
+  );
+  const graceMs = 15000;
+  const finishedInTime = await Promise.race([
+    closed,
+    new Promise<false>((resolve) => setTimeout(() => resolve(false), graceMs))
+  ]);
+  if (!finishedInTime) {
+    try {
+      electronApp.process().kill('SIGKILL');
+    } catch {
+      // Already gone - that's fine
+    }
+    await closed;
   }
 }
