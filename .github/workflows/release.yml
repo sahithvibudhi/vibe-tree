@@ -4,7 +4,18 @@ on:
   push:
     tags:
       - 'v*'
+  # Dispatch with a tag name to cut a release from environments that cannot
+  # push tags; the tag itself is created when the draft release is published
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to create on publish (e.g. v0.2.0)'
+        required: false
+        default: ''
+      notes:
+        description: 'Release notes body (markdown)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -91,7 +102,7 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
 
     steps:
       - name: Checkout code
@@ -107,8 +118,11 @@ jobs:
             mac-executables/*
             linux-executables/*
             win-executables/*
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          body: ${{ inputs.notes }}
           draft: true
           prerelease: false
-          generate_release_notes: true
+          generate_release_notes: ${{ inputs.notes == '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
