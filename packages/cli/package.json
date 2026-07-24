@@ -1,6 +1,6 @@
 {
   "name": "@vibetree/cli",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "description": "Command-line client for a VibeTree server: script worktrees, watch the agent fleet, dispatch prompts",
   "license": "MIT",
   "bin": {
