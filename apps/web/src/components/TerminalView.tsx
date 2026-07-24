@@ -3,11 +3,14 @@ import { Terminal } from '@vibetree/ui';
 import { AgentActivityMonitor } from '@vibetree/core';
 import { useAppStore } from '../store';
 import { useWebSocket } from '../hooks/useWebSocket';
-import { ChevronLeft, Maximize2, Minimize2, Columns2, X, Play } from 'lucide-react';
+import { ChevronLeft, Maximize2, Minimize2, Columns2, X, Play, Globe, GitCompareArrows } from 'lucide-react';
 import type { Terminal as XTerm } from '@xterm/xterm';
-import { ViewSwitch, type ViewTab } from './ViewSwitch';
+import type { ViewTab } from './ViewSwitch';
 import { playDing } from '../services/sound';
 import { getProjectConfig } from '../services/projectConfig';
+import { detectDevServerUrl } from '../services/previewUrl';
+import { useWorktreeStatuses } from '../hooks/useWorktreeStatuses';
+import type { Worktree } from '@vibetree/core';
 
 // Cache for terminal states per session ID (like desktop app)
 const terminalStateCache = new Map<string, string>();
@@ -38,7 +41,9 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
     terminalSessions,
     addTerminalSession,
     removeTerminalSession,
-    theme
+    theme,
+    detectedPreviewUrls,
+    setDetectedPreviewUrl
   } = useAppStore();
 
   const activeProject = getActiveProject();
@@ -48,6 +53,11 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
   const [splitSessionId, setSplitSessionId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [agentCommand, setAgentCommand] = useState<string | null>(null);
+  // Changed-file count for the drawer toggle's badge
+  const { changeCounts } = useWorktreeStatuses(
+    worktreePath ? [{ path: worktreePath } as Worktree] : []
+  );
+  const changeCount = changeCounts[worktreePath];
   const [isSplit, setIsSplit] = useState(false);
   const terminalRef = useRef<XTerm | null>(null);
   const splitTerminalRef = useRef<XTerm | null>(null);
@@ -102,6 +112,8 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
         }
         const activity = getActivityMonitor(existingSessionId).processOutput(data);
         if (activity) playDing(activity);
+        const devUrl = detectDevServerUrl(data);
+        if (devUrl) setDetectedPreviewUrl(selectedWorktree, devUrl);
       });
 
       const unsubscribeExit = adapter.onShellExit(existingSessionId, (code) => {
@@ -167,6 +179,8 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
             }
             const activity = getActivityMonitor(actualSessionId).processOutput(data);
             if (activity) playDing(activity);
+            const devUrl = detectDevServerUrl(data);
+            if (devUrl) setDetectedPreviewUrl(selectedWorktree, devUrl);
           });
 
           const unsubscribeExit = adapter.onShellExit(actualSessionId, (code) => {
@@ -531,7 +545,6 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <ViewSwitch active={viewTab} onChange={onViewTabChange} />
           <span className="font-mono text-xs text-muted-foreground truncate min-w-0">
             {selectedWorktree?.split('/').slice(-1)[0]}
             {isSplit ? ' (split)' : ''}
@@ -549,6 +562,49 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
               {agentCommand}
             </button>
           )}
+          {/* Dock switch: which pane sits to the right of the terminal.
+              Clicking the active one closes the dock. */}
+          <div className="flex items-center gap-0.5 rounded-md bg-muted p-0.5 mr-1">
+            <button
+              onClick={() => onViewTabChange(viewTab === 'changes' ? 'terminal' : 'changes')}
+              className={`relative flex items-center gap-1 px-2 h-6 text-xs font-medium rounded transition-colors ${
+                viewTab === 'changes'
+                  ? 'bg-background text-foreground border shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title={viewTab === 'changes' ? 'Close changes' : 'Show changes'}
+              data-testid="toggle-changes"
+            >
+              <GitCompareArrows className="h-3.5 w-3.5" />
+              {changeCount !== undefined && changeCount > 0 && (
+                <span className="min-w-4 h-4 px-1 inline-flex items-center justify-center rounded-full border text-[10px] tabular-nums">
+                  {changeCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => onViewTabChange(viewTab === 'preview' ? 'terminal' : 'preview')}
+              className={`relative flex items-center px-2 h-6 rounded transition-colors ${
+                viewTab === 'preview'
+                  ? 'bg-background text-foreground border shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title={
+                detectedPreviewUrls[selectedWorktree]
+                  ? `Preview ${detectedPreviewUrls[selectedWorktree]}`
+                  : 'Show app preview'
+              }
+              data-testid="toggle-preview"
+            >
+              <Globe className="h-3.5 w-3.5" />
+              {viewTab !== 'preview' && detectedPreviewUrls[selectedWorktree] && (
+                <span
+                  className="absolute top-0 right-0.5 w-1.5 h-1.5 rounded-full bg-green-500"
+                  data-testid="preview-url-detected"
+                />
+              )}
+            </button>
+          </div>
           <button
             onClick={toggleSplit}
             className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded"
@@ -576,9 +632,7 @@ export function TerminalView({ worktreePath, viewTab, onViewTabChange }: Termina
       </div>
 
       {/* Terminal Container */}
-      <div
-        className={`flex-1 flex ${isSplit ? 'flex-row' : ''} bg-background`}
-      >
+      <div className={`flex-1 min-h-0 overflow-hidden flex ${isSplit ? 'flex-row' : ''} bg-background`}>
         <div className={`${isSplit ? 'w-1/2 border-r' : 'w-full'} h-full`}>
           {sessionId && (
             <Terminal

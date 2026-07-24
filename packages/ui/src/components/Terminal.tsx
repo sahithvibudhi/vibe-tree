@@ -578,6 +578,12 @@ export const Terminal: React.FC<TerminalProps> = ({
           height: '100%',
           minHeight: '100px',
           position: 'relative',
+          // Breathing room so glyphs do not touch the pane borders; the
+          // background matches the xterm theme so the padding is invisible
+          padding: '8px 4px 4px 10px',
+          boxSizing: 'border-box',
+          overflow: 'hidden',
+          backgroundColor: config.theme === 'light' ? '#ffffff' : '#000000',
           ...(isDragOver
             ? {
                 outline: '2px dashed #007acc',

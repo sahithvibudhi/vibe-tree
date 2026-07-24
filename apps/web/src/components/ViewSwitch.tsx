@@ -1,6 +1,6 @@
 import { Terminal, GitBranch } from 'lucide-react';
 
-export type ViewTab = 'terminal' | 'changes';
+export type ViewTab = 'terminal' | 'changes' | 'preview';
 
 interface ViewSwitchProps {
   active: ViewTab;

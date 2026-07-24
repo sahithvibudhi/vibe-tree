@@ -15,7 +15,7 @@ interface Project {
   name: string;
   worktrees: Worktree[];
   selectedWorktree: string | null;
-  selectedTab: 'terminal' | 'changes';
+  selectedTab: 'terminal' | 'changes' | 'preview';
 }
 
 interface AppState {
@@ -43,6 +43,11 @@ interface AppState {
   newWorktreeRequestId: number;
   requestNewWorktree: () => void;
 
+  // Latest dev-server URL seen in each worktree's terminal output, so the
+  // preview pane can open pointed at the app the agent just started
+  detectedPreviewUrls: Record<string, string>;
+  setDetectedPreviewUrl: (worktreePath: string, url: string) => void;
+
   // Paths of projects opened before, persisted so the welcome screen can
   // offer to reopen them
   recentProjects: string[];
@@ -58,7 +63,7 @@ interface AppState {
   setActiveProject: (id: string) => void;
   updateProjectWorktrees: (id: string, worktrees: Worktree[]) => void;
   setSelectedWorktree: (projectId: string, worktreePath: string | null) => void;
-  setSelectedTab: (projectId: string, tab: 'terminal' | 'changes') => void;
+  setSelectedTab: (projectId: string, tab: 'terminal' | 'changes' | 'preview') => void;
   getProject: (id: string) => Project | undefined;
   getActiveProject: () => Project | undefined;
   addTerminalSession: (worktreePath: string, sessionId: string) => void;
@@ -118,6 +123,15 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   newWorktreeRequestId: 0,
   requestNewWorktree: () => set({ newWorktreeRequestId: Date.now() }),
+
+  detectedPreviewUrls: {},
+  setDetectedPreviewUrl: (worktreePath, url) => {
+    set((state) =>
+      state.detectedPreviewUrls[worktreePath] === url
+        ? state
+        : { detectedPreviewUrls: { ...state.detectedPreviewUrls, [worktreePath]: url } }
+    );
+  },
 
   recentProjects: loadRecentProjects(),
   removeRecentProject: (path) => {
@@ -231,7 +245,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
   },
 
-  setSelectedTab: (projectId: string, tab: 'terminal' | 'changes') => {
+  setSelectedTab: (projectId: string, tab: 'terminal' | 'changes' | 'preview') => {
     set((state) => ({
       projects: state.projects.map((project) =>
         project.id === projectId ? { ...project, selectedTab: tab } : project

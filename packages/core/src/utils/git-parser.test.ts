@@ -150,3 +150,16 @@ describe('isMainBranch', () => {
     expect(isMainBranch('refs/heads/feature')).toBe(false);
   });
 });
+
+describe('parseGitStatus leading-space preservation', () => {
+  it('keeps the unstaged marker on the first line', () => {
+    // A whole-output trim used to eat the first line's leading space,
+    // turning " M" (unstaged) into "M " (staged)
+    const output = ' M cart.js\n M index.html\n?? notes.md\n';
+    const result = parseGitStatus(output);
+    expect(result).toHaveLength(3);
+    expect(result[0]).toMatchObject({ path: 'cart.js', staged: false, modified: true });
+    expect(result[1]).toMatchObject({ path: 'index.html', staged: false, modified: true });
+    expect(result[2]).toMatchObject({ path: 'notes.md', staged: false, modified: false });
+  });
+});
