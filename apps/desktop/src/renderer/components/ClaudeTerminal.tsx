@@ -1217,10 +1217,11 @@ export function ClaudeTerminal({
         </div>
       )}
 
-      {/* Terminal container */}
+      {/* Terminal container. The padding matches the web terminal and the
+          background matches the xterm canvas so the gutter blends in */}
       <div
         ref={terminalRef}
-        className="terminal-xterm-container flex-1 h-full bg-background"
+        className="terminal-xterm-container flex-1 h-full"
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -1228,6 +1229,10 @@ export function ClaudeTerminal({
         style={{
           minHeight: '100px',
           position: 'relative',
+          padding: '8px 4px 4px 10px',
+          boxSizing: 'border-box',
+          overflow: 'hidden',
+          backgroundColor: theme === 'light' ? '#ffffff' : '#000000',
           ...(isDragOver
             ? {
                 outline: '2px dashed #007acc',
