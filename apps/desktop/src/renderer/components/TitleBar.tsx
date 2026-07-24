@@ -23,28 +23,29 @@ const noDrag = { WebkitAppRegion: 'no-drag' } as React.CSSProperties;
 export function TitleBar({ theme, onThemeToggle, onToggleSidebar, children }: TitleBarProps) {
   return (
     <div
-      className={`h-11 border-b flex items-center gap-2 flex-shrink-0 select-none ${
-        IS_MAC ? 'pl-[78px] pr-2' : 'pl-3 pr-[140px]'
+      className={`h-10 border-b border-border/60 flex items-center gap-1.5 flex-shrink-0 select-none ${
+        IS_MAC ? 'pl-[78px] pr-2' : 'pl-2 pr-[140px]'
       }`}
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       data-testid="titlebar"
     >
+      {/* The brand lives in the OS chrome (menu bar, dock, window title);
+          inside the window it is a screen-reader-only heading so the page
+          keeps a top-level h1 (the e2e suite also reads it) */}
+      <h1 className="sr-only">VibeTree</h1>
+
       {onToggleSidebar && (
         <Button
           size="icon"
           variant="ghost"
           onClick={onToggleSidebar}
           title="Toggle sidebar (Cmd/Ctrl+B)"
-          className="h-7 w-7"
+          className="h-6 w-6 text-muted-foreground"
           style={noDrag}
         >
-          <PanelLeft className="h-4 w-4" />
+          <PanelLeft className="h-3.5 w-3.5" />
         </Button>
       )}
-
-      {/* h1 keeps the app title as the page's top-level heading for
-          accessibility (and the e2e suite locates the app by it) */}
-      <h1 className="text-sm font-semibold tracking-tight flex-shrink-0">VibeTree</h1>
 
       {/* Project tabs (and the add button) live inside the drag region;
           each interactive element opts out individually */}
@@ -57,10 +58,10 @@ export function TitleBar({ theme, onThemeToggle, onToggleSidebar, children }: Ti
         variant="ghost"
         onClick={onThemeToggle}
         title="Toggle theme"
-        className="h-7 w-7"
+        className="h-6 w-6 text-muted-foreground"
         style={noDrag}
       >
-        {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
       </Button>
     </div>
   );

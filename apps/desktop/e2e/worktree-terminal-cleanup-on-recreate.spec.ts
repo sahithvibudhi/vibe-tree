@@ -74,38 +74,23 @@ test.describe('Worktree Terminal Cleanup on Recreate', () => {
     terminalIndex = 0,
     timeoutMs = 30000
   ): Promise<void> {
-    const startTime = Date.now();
-
-    while (Date.now() - startTime < timeoutMs) {
-      try {
-        const terminalContent = await page
-          .locator('.xterm-screen')
-          .nth(terminalIndex)
-          .textContent();
-
-        // Log what we found for debugging
-        console.log(
-          `[waitForTerminalReady] Terminal ${terminalIndex} content (last 200 chars): ${terminalContent?.slice(-200)}`
-        );
-
-        // Check for common shell prompt indicators - be more permissive
-        // Shell prompts typically end with $, %, >, ], or #
-        if (terminalContent && /[$%>\]#]\s*$/.test(terminalContent)) {
-          console.log(
-            `[waitForTerminalReady] Terminal ${terminalIndex} is ready (found shell prompt)`
-          );
-          return;
-        }
-      } catch {
-        // Terminal might not be visible yet, keep trying
-      }
-
-      await page.waitForTimeout(500);
+    try {
+      // Shell prompts typically end with $, %, >, ], or #
+      await page.waitForFunction(
+        (index) => {
+          const screens = document.querySelectorAll('.xterm-screen');
+          const content = screens[index]?.textContent ?? '';
+          return /[$%>\]#]\s*$/.test(content);
+        },
+        terminalIndex,
+        { timeout: timeoutMs }
+      );
+      console.log(`[waitForTerminalReady] Terminal ${terminalIndex} is ready (found shell prompt)`);
+    } catch {
+      console.log(
+        `[waitForTerminalReady] WARNING: Terminal ${terminalIndex} may not be ready after ${timeoutMs}ms, proceeding anyway`
+      );
     }
-
-    console.log(
-      `[waitForTerminalReady] WARNING: Terminal ${terminalIndex} may not be ready after ${timeoutMs}ms, proceeding anyway`
-    );
   }
 
   test('should clean up terminal DOM when worktree is deleted and recreated', async () => {
@@ -187,7 +172,10 @@ test.describe('Worktree Terminal Cleanup on Recreate', () => {
     console.log(`Terminal count after second split: ${terminalCount}`);
 
     // Now delete the worktree
-    const deleteButton = testWorktreeButton.locator('..').locator('button[class*="bg-red"]');
+    await testWorktreeButton.hover();
+    const deleteButton = testWorktreeButton
+      .locator('..')
+      .locator('[data-testid="delete-worktree-button"]');
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
 

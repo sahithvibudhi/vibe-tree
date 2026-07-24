@@ -1069,38 +1069,47 @@ export function ClaudeTerminal({
       }}
       data-focused={isFocused || undefined}
     >
-      {/* Header */}
-      <div className="terminal-header h-[57px] px-4 border-b flex items-center justify-between flex-shrink-0">
-        <div className="min-w-0 flex-1">
-          <h3 className="font-semibold">Terminal</h3>
-          <p className="text-xs text-muted-foreground truncate">{worktreePath}</p>
-        </div>
-        <div className="flex items-center gap-1">
+      {/* Header: one compact row; the full worktree path lives in the tooltip */}
+      <div className="terminal-header h-9 pl-3 pr-1.5 border-b border-border/60 flex items-center justify-between flex-shrink-0 gap-2">
+        <span
+          className="min-w-0 truncate font-mono text-xs text-muted-foreground"
+          title={worktreePath}
+        >
+          {worktreePath.split('/').pop() || worktreePath}
+        </span>
+        <div className="flex items-center gap-0.5 text-muted-foreground">
           <Button
             size="icon"
             variant="ghost"
             onClick={handleNotificationToggle}
             title={notificationsEnabled ? 'Disable Notifications' : 'Enable Notifications'}
-            className={notificationsEnabled ? 'text-green-500' : 'text-muted-foreground'}
+            className={`h-6 w-6 ${notificationsEnabled ? 'text-green-500' : ''}`}
           >
-            {notificationsEnabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+            {notificationsEnabled ? (
+              <Bell className="h-3.5 w-3.5" />
+            ) : (
+              <BellOff className="h-3.5 w-3.5" />
+            )}
           </Button>
           <Button
             size="icon"
             variant="ghost"
             onClick={() => setSchedulerDialogOpen(true)}
             title="Schedule Command"
-            className={getSchedulerState()?.isRunning ? 'text-blue-500' : ''}
+            className={`h-6 w-6 ${getSchedulerState()?.isRunning ? 'text-blue-500' : ''}`}
           >
-            <Clock className={`h-4 w-4 ${getSchedulerState()?.isRunning ? 'animate-pulse' : ''}`} />
+            <Clock
+              className={`h-3.5 w-3.5 ${getSchedulerState()?.isRunning ? 'animate-pulse' : ''}`}
+            />
           </Button>
           <Button
             size="icon"
             variant="ghost"
             onClick={() => setSearchVisible(!searchVisible)}
             title="Search Terminal (Ctrl+F)"
+            className="h-6 w-6"
           >
-            <Search className="h-4 w-4" />
+            <Search className="h-3.5 w-3.5" />
           </Button>
           {onSplitVertical && (
             <Button
@@ -1108,8 +1117,9 @@ export function ClaudeTerminal({
               variant="ghost"
               onClick={onSplitVertical}
               title="Split Terminal Vertically"
+              className="h-6 w-6"
             >
-              <Columns2 className="h-4 w-4" />
+              <Columns2 className="h-3.5 w-3.5" />
             </Button>
           )}
           {onSplitHorizontal && (
@@ -1118,20 +1128,9 @@ export function ClaudeTerminal({
               variant="ghost"
               onClick={onSplitHorizontal}
               title="Split Terminal Horizontally"
+              className="h-6 w-6"
             >
-              <Rows2 className="h-4 w-4" />
-            </Button>
-          )}
-          {onClose && (
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={canClose ? onClose : undefined}
-              title={canClose ? 'Close Terminal' : 'Cannot close last terminal'}
-              disabled={!canClose}
-              className={!canClose ? 'opacity-50 cursor-not-allowed' : ''}
-            >
-              <X className="h-4 w-4" />
+              <Rows2 className="h-3.5 w-3.5" />
             </Button>
           )}
           {detectedIDEs.length > 0 &&
@@ -1141,14 +1140,15 @@ export function ClaudeTerminal({
                 variant="ghost"
                 onClick={() => handleOpenInIDE(detectedIDEs[0].name)}
                 title={`Open in ${detectedIDEs[0].name}`}
+                className="h-6 w-6"
               >
-                <Code2 className="h-4 w-4" />
+                <Code2 className="h-3.5 w-3.5" />
               </Button>
             ) : (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="icon" variant="ghost">
-                    <Code2 className="h-4 w-4" />
+                  <Button size="icon" variant="ghost" className="h-6 w-6">
+                    <Code2 className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
@@ -1160,6 +1160,18 @@ export function ClaudeTerminal({
                 </DropdownMenuContent>
               </DropdownMenu>
             ))}
+          {onClose && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={canClose ? onClose : undefined}
+              title={canClose ? 'Close Terminal' : 'Cannot close last terminal'}
+              disabled={!canClose}
+              className={`h-6 w-6 ${!canClose ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -1217,10 +1229,11 @@ export function ClaudeTerminal({
         </div>
       )}
 
-      {/* Terminal container */}
+      {/* Terminal container. The padding matches the web terminal and the
+          background matches the xterm canvas so the gutter blends in */}
       <div
         ref={terminalRef}
-        className="terminal-xterm-container flex-1 h-full bg-background"
+        className="terminal-xterm-container flex-1 h-full"
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -1228,6 +1241,10 @@ export function ClaudeTerminal({
         style={{
           minHeight: '100px',
           position: 'relative',
+          padding: '8px 4px 4px 10px',
+          boxSizing: 'border-box',
+          overflow: 'hidden',
+          backgroundColor: theme === 'light' ? '#ffffff' : '#000000',
           ...(isDragOver
             ? {
                 outline: '2px dashed #007acc',

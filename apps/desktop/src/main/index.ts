@@ -11,6 +11,12 @@ import { registerIpcHandlers } from './ipc-handlers';
 import { createMenu } from './menu';
 import { quitManager } from './quit-manager';
 
+// Menus, dock, and notifications should say VibeTree even in dev runs,
+// where the default name would be Electron. The macOS menu bar app name
+// still reads Electron in dev because it comes from Electron's own
+// Info.plist; packaged builds show VibeTree everywhere
+app.setName('VibeTree');
+
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow() {
@@ -31,7 +37,7 @@ function createWindow() {
           titleBarOverlay: {
             color: nativeTheme.shouldUseDarkColors ? '#000000' : '#ffffff',
             symbolColor: nativeTheme.shouldUseDarkColors ? '#ffffff' : '#000000',
-            height: 44
+            height: 40
           }
         }),
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#000000' : '#ffffff',

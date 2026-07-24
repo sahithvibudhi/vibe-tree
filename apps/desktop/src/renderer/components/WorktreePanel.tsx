@@ -10,11 +10,10 @@ import {
 } from './ui/dialog';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
-import { GitBranch, Plus, RefreshCw, Trash2, Clock } from 'lucide-react';
+import { Check, GitBranch, Plus, RefreshCw, Trash2, Clock } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 import { isProtectedBranch } from '../utils/worktree';
 import { DeletionReportingDialog } from './DeletionReportingDialog';
-import type { TerminalSettings } from '../types/terminal-settings';
 import { activeSchedulersByWorktree, SCHEDULER_STATE_CHANGED_EVENT } from './ClaudeTerminal';
 import { cleanupWorktreeTerminals } from './TerminalGrid';
 import { backend } from '../services/backend';
@@ -41,7 +40,6 @@ export function WorktreePanel({
   initialWorktrees
 }: WorktreePanelProps) {
   const [worktrees, setWorktrees] = useState<Worktree[]>(initialWorktrees || []);
-  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showNewBranchDialog, setShowNewBranchDialog] = useState(false);
   const [newBranchName, setNewBranchName] = useState('');
@@ -58,7 +56,7 @@ export function WorktreePanel({
     }>
   >([]);
   const [isDeletionComplete, setIsDeletionComplete] = useState(false);
-  const [terminalSettings, setTerminalSettings] = useState<TerminalSettings | null>(null);
+  const [changeCounts, setChangeCounts] = useState<Record<string, number>>({});
   const [panelWidth, setPanelWidth] = useState<number>(320); // Default 320px (w-80)
   const [isResizing, setIsResizing] = useState(false);
   const [worktreeSessionCounts, setWorktreeSessionCounts] = useState<Record<string, number>>({});
@@ -83,89 +81,6 @@ export function WorktreePanel({
     setRefreshing(false);
   }, [projectPath, toast, onWorktreesChange]);
 
-  const handleCreateStressTest = async () => {
-    setLoading(true);
-    try {
-      toast({
-        title: 'Stress test started!',
-        description: 'Creating worktrees and opening terminals until we hit errors...'
-      });
-
-      let index = 1;
-      let consecutiveFailures = 0;
-
-      // Keep creating worktrees and opening terminals until we hit errors
-      while (consecutiveFailures < 3) {
-        try {
-          // Create one worktree using the same method as the regular add button
-          const branchName = `stress-test-${String(index).padStart(4, '0')}`;
-          const wtResult = await backend.git.addWorktree(projectPath, branchName);
-
-          consecutiveFailures = 0; // Reset on success
-
-          // Switch to this worktree to activate it and show the terminal
-          onSelectWorktree(wtResult.path);
-
-          // Open terminal for this worktree immediately
-          const shellResult = await backend.shell.start(wtResult.path, 80, 30, true);
-
-          if (!shellResult.success) {
-            console.error(`Failed to open terminal for worktree ${index}:`, shellResult.error);
-            toast({
-              title: 'PTY spawn error detected!',
-              description: `Hit spawn error after ${index} terminals. Test complete.`,
-              variant: 'destructive'
-            });
-            setLoading(false);
-            await loadWorktrees();
-            return;
-          }
-
-          // Update toast and reload worktrees every 10 worktrees
-          if (index % 10 === 0) {
-            toast({
-              title: 'Stress test in progress...',
-              description: `Created ${index} worktrees with terminals`
-            });
-            // Reload worktree list to show progress
-            await loadWorktrees();
-          }
-
-          index++;
-
-          // Small delay to let UI breathe
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        } catch (error) {
-          console.error(`Error creating worktree ${index}:`, error);
-          consecutiveFailures++;
-          if (consecutiveFailures >= 3) {
-            toast({
-              title: 'Worktree creation stopped',
-              description: `Hit errors after creating ${index - 1} worktrees`,
-              variant: 'destructive'
-            });
-            break;
-          }
-          index++;
-        }
-      }
-
-      toast({
-        title: 'Stress test complete!',
-        description: `Created ${index - 1} worktrees with terminals`
-      });
-
-      await loadWorktrees();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to run stress test',
-        variant: 'destructive'
-      });
-    }
-    setLoading(false);
-  };
-
   useEffect(() => {
     loadWorktrees();
   }, [loadWorktrees]);
@@ -184,18 +99,42 @@ export function WorktreePanel({
     }
   }, [initialWorktrees]);
 
-  // Load terminal settings to calculate worktree font size
+  // Changed-file counts per worktree, mirroring the web sidebar's
+  // clean/dirty indicator; refreshed with the worktree list and when the
+  // window regains visibility since agents keep editing in the background
   useEffect(() => {
-    window.electronAPI.terminalSettings.get().then(setTerminalSettings);
+    let cancelled = false;
 
-    const unsubscribe = window.electronAPI.terminalSettings.onChange((newSettings) => {
-      setTerminalSettings(newSettings);
-    });
-
-    return () => {
-      unsubscribe();
+    const refreshStatuses = async () => {
+      const entries = await Promise.all(
+        worktrees.map(async (worktree) => {
+          try {
+            const status = await backend.git.status(worktree.path);
+            return [worktree.path, status.length] as const;
+          } catch {
+            // Leave unknown rather than falsely reporting clean
+            return [worktree.path, -1] as const;
+          }
+        })
+      );
+      if (cancelled) return;
+      const next: Record<string, number> = {};
+      for (const [path, count] of entries) {
+        if (count >= 0) next[path] = count;
+      }
+      setChangeCounts(next);
     };
-  }, []);
+
+    refreshStatuses();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refreshStatuses();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [worktrees]);
 
   // Listen for terminal session changes
   useEffect(() => {
@@ -449,40 +388,40 @@ export function WorktreePanel({
     }
   };
 
-  // Calculate worktree font size as 150% of terminal font size
-  const worktreeFontSize = terminalSettings ? terminalSettings.fontSize * 1.5 : 21; // Default to 21px (150% of 14px)
-
   return (
-    <div className="border-r flex flex-col h-full relative" style={{ width: `${panelWidth}px` }}>
-      <div className="h-[57px] px-4 border-b flex-shrink-0 flex flex-col justify-center">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold">Worktrees</h3>
-          <div className="flex gap-2">
-            {/* DEBUG only: Stress test button to create worktrees until hitting errors */}
-            {process.env.NODE_ENV === 'development' && (
-              <Button
-                variant="default"
-                onClick={handleCreateStressTest}
-                disabled={loading}
-                title="Create stress test repo and open all terminals until we hit errors"
-              >
-                [Explode]
-              </Button>
-            )}
-            <Button size="icon" variant="ghost" onClick={loadWorktrees} disabled={refreshing}>
-              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => setShowNewBranchDialog(true)}
-              data-testid="add-worktree-button"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
+    <div
+      className="border-r border-border/60 bg-muted/30 flex flex-col h-full relative"
+      style={{ width: `${panelWidth}px` }}
+    >
+      {/* Single slim row aligned with the pane headers; the project path
+          lives in the tooltip instead of a second line */}
+      <div className="h-10 pl-3 pr-1.5 border-b border-border/60 flex-shrink-0 flex items-center justify-between gap-2">
+        <h3
+          className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate"
+          title={projectPath}
+        >
+          Worktrees
+        </h3>
+        <div className="flex gap-0.5 text-muted-foreground">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6"
+            onClick={loadWorktrees}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6"
+            onClick={() => setShowNewBranchDialog(true)}
+            data-testid="add-worktree-button"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
         </div>
-        <p className="text-xs text-muted-foreground truncate">{projectPath}</p>
       </div>
 
       <ScrollArea className="flex-1 h-0">
@@ -505,53 +444,74 @@ export function WorktreePanel({
               // Sort alphabetically for the rest
               return branchA.localeCompare(branchB);
             })
-            .map((worktree) => (
-              <div
-                key={worktree.path}
-                className={`relative group rounded-md transition-colors ${
-                  selectedWorktree === worktree.path ? 'bg-accent' : 'hover:bg-accent/50'
-                }`}
-              >
-                {worktrees.length > 1 && worktree.branch && !isProtectedBranch(worktree.branch) && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="absolute left-2 top-1/2 -translate-y-1/2 h-6 w-6 opacity-60 hover:opacity-100 group-hover:opacity-100 transition-opacity bg-red-50 hover:bg-red-100 border border-red-200 hover:border-red-300"
-                    onClick={(e) => handleDeleteWorktree(worktree, e)}
+            .map((worktree) => {
+              const isSelected = selectedWorktree === worktree.path;
+              const canDelete =
+                worktrees.length > 1 && !!worktree.branch && !isProtectedBranch(worktree.branch);
+              const changeCount = changeCounts[worktree.path];
+              return (
+                <div key={worktree.path} className="relative group">
+                  <button
+                    onClick={() => onSelectWorktree(worktree.path)}
+                    className={`w-full text-left px-2 py-1.5 rounded-md transition-colors flex items-center gap-2 ${
+                      isSelected
+                        ? 'bg-accent text-foreground'
+                        : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+                    }`}
+                    data-worktree-branch={
+                      worktree.branch
+                        ? worktree.branch.replace('refs/heads/', '')
+                        : worktree.head.substring(0, 8)
+                    }
                   >
-                    <Trash2 className="h-3 w-3 text-red-600" />
-                  </Button>
-                )}
-                <button
-                  onClick={() => onSelectWorktree(worktree.path)}
-                  className="w-full text-left p-3 flex items-center gap-1.5 pl-10"
-                  data-worktree-branch={
-                    worktree.branch
-                      ? worktree.branch.replace('refs/heads/', '')
-                      : worktree.head.substring(0, 8)
-                  }
-                >
-                  {worktreesWithSchedulers.has(worktree.path) && (
-                    <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                  )}
-                  <GitBranch className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div
-                      className="truncate"
-                      style={{
-                        fontSize: `${worktreeFontSize}px`,
-                        fontWeight: 'bold',
-                        color: worktreeSessionCounts[worktree.path] > 0 ? '#60a5fa' : undefined
-                      }}
-                    >
+                    <GitBranch className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span className="font-mono text-[13px] font-medium truncate">
                       {worktree.branch
                         ? worktree.branch.replace('refs/heads/', '')
-                        : `Detached HEAD (${worktree.head.substring(0, 8)})`}
-                    </div>
-                  </div>
-                </button>
-              </div>
-            ))}
+                        : `detached (${worktree.head.substring(0, 8)})`}
+                    </span>
+                    <span
+                      className={`ml-auto flex items-center gap-1.5 flex-shrink-0 transition-opacity ${
+                        canDelete ? 'group-hover:opacity-0' : ''
+                      }`}
+                    >
+                      {worktreesWithSchedulers.has(worktree.path) && (
+                        <Clock className="h-3 w-3 opacity-60" aria-label="Scheduler active" />
+                      )}
+                      {worktreeSessionCounts[worktree.path] > 0 && (
+                        <span
+                          className="w-1.5 h-1.5 rounded-full bg-green-500"
+                          data-testid="live-session-dot"
+                          aria-label="Live session"
+                        />
+                      )}
+                      {changeCount !== undefined &&
+                        (changeCount > 0 ? (
+                          <span
+                            className="min-w-5 h-4 px-1 inline-flex items-center justify-center rounded-full border text-[10px] font-medium tabular-nums"
+                            title={`${changeCount} changed file${changeCount === 1 ? '' : 's'}`}
+                          >
+                            {changeCount}
+                          </span>
+                        ) : (
+                          <Check className="h-3 w-3 opacity-40" aria-label="Clean worktree" />
+                        ))}
+                    </span>
+                  </button>
+                  {canDelete && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-500"
+                      onClick={(e) => handleDeleteWorktree(worktree, e)}
+                      data-testid="delete-worktree-button"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
         </div>
       </ScrollArea>
 
@@ -560,7 +520,7 @@ export function WorktreePanel({
           <DialogHeader>
             <DialogTitle>Create New Feature Branch</DialogTitle>
             <DialogDescription>
-              This will create a new git worktree for parallel development with Claude
+              Creates a git worktree on its own branch, so an agent can work there in isolation
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">

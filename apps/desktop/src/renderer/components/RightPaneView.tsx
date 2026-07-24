@@ -21,23 +21,23 @@ export function RightPaneView({ worktreePath, projectId, theme }: RightPaneViewP
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col h-full">
+    <div className="flex-1 flex flex-col h-full min-w-0">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <div className="border-b flex items-center bg-muted/50 h-12">
-          <TabsList className="h-full bg-transparent p-0 rounded-none ml-4">
+        <div className="border-b border-border/60 flex items-center h-10 px-2 flex-shrink-0">
+          <TabsList className="h-7 bg-muted p-0.5 rounded-md gap-0.5">
             <TabsTrigger
               value="terminal"
-              className="h-full data-[state=active]:bg-background data-[state=active]:rounded-t-md data-[state=active]:border-t data-[state=active]:border-x data-[state=active]:border-b-0 flex items-center gap-2"
+              className="h-6 rounded px-2.5 text-xs font-medium text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm flex items-center gap-1.5"
             >
-              <Terminal className="h-4 w-4" />
+              <Terminal className="h-3.5 w-3.5" />
               Terminal
             </TabsTrigger>
             <TabsTrigger
               value="git-diff"
-              className="h-full data-[state=active]:bg-background data-[state=active]:rounded-t-md data-[state=active]:border-t data-[state=active]:border-x data-[state=active]:border-b-0 flex items-center gap-2"
+              className="h-6 rounded px-2.5 text-xs font-medium text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm flex items-center gap-1.5"
             >
-              <GitBranch className="h-4 w-4" />
-              Git Diff
+              <GitBranch className="h-3.5 w-3.5" />
+              Changes
             </TabsTrigger>
           </TabsList>
         </div>
