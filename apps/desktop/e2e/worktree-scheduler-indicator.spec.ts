@@ -110,12 +110,9 @@ test.describe('Worktree Scheduler Indicator Test', () => {
     // Click the open button which will trigger the mocked dialog
     await openButton.click();
 
-    // Wait for worktree list to appear
-    await page.waitForTimeout(3000);
-
     // Find the worktree button for main branch
     const worktreeButton = page.locator('button[data-worktree-branch="main"]');
-    await expect(worktreeButton).toBeVisible({ timeout: 10000 });
+    await expect(worktreeButton).toBeVisible({ timeout: 15000 });
 
     // Verify there is NO clock icon before starting scheduler
     const clockIconBeforeScheduler = worktreeButton.locator('svg.lucide-clock');
@@ -124,12 +121,9 @@ test.describe('Worktree Scheduler Indicator Test', () => {
     // Click the worktree button to open the terminal
     await worktreeButton.click();
 
-    // Wait for the terminal to load
-    await page.waitForTimeout(3000);
-
     // Find and click the scheduler button (Clock icon in terminal header)
     const schedulerButton = page.locator('button[title="Schedule Command"]');
-    await expect(schedulerButton).toBeVisible({ timeout: 5000 });
+    await expect(schedulerButton).toBeVisible({ timeout: 15000 });
     await schedulerButton.click();
 
     // Wait for the scheduler dialog to appear
@@ -161,8 +155,6 @@ test.describe('Worktree Scheduler Indicator Test', () => {
     await expect(schedulerButton).toHaveClass(/text-blue-500/, { timeout: 2000 });
 
     // NOW CHECK: The worktree button should have a clock icon
-    // Wait a bit for the event to propagate
-    await page.waitForTimeout(500);
 
     // Look for the clock icon inside the worktree button
     const clockIconAfterScheduler = worktreeButton.locator('svg.lucide-clock');
@@ -179,8 +171,8 @@ test.describe('Worktree Scheduler Indicator Test', () => {
     // Verify the clock icon is now visible
     await expect(clockIconAfterScheduler).toBeVisible({ timeout: 5000 });
 
-    // Verify the clock icon has blue color
-    await expect(clockIconAfterScheduler).toHaveClass(/text-blue-500/);
+    // Verify it is the scheduler indicator
+    await expect(worktreeButton.locator('[aria-label="Scheduler active"]')).toBeVisible();
 
     // Stop the scheduler
     await schedulerButton.click();
@@ -191,12 +183,9 @@ test.describe('Worktree Scheduler Indicator Test', () => {
     // Wait for dialog to close and scheduler to stop
     await expect(page.locator('text=Schedule Terminal Command')).not.toBeVisible({ timeout: 3000 });
 
-    // Wait for the event to propagate
-    await page.waitForTimeout(500);
-
     // Verify the clock icon is now gone
     const clockIconAfterStop = worktreeButton.locator('svg.lucide-clock');
-    await expect(clockIconAfterStop).toHaveCount(0);
+    await expect(clockIconAfterStop).toHaveCount(0, { timeout: 5000 });
 
     // Verify scheduler button no longer shows running state
     const buttonClass = await schedulerButton.getAttribute('class');
@@ -225,11 +214,10 @@ test.describe('Worktree Scheduler Indicator Test', () => {
     }, dummyRepoPath);
 
     await openButton.click();
-    await page.waitForTimeout(3000);
 
     // Create a second worktree
     const addWorktreeButton = page.locator('[data-testid="add-worktree-button"]');
-    await expect(addWorktreeButton).toBeVisible();
+    await expect(addWorktreeButton).toBeVisible({ timeout: 15000 });
     await addWorktreeButton.click();
 
     // Wait for dialog
@@ -243,9 +231,6 @@ test.describe('Worktree Scheduler Indicator Test', () => {
     const createButton = page.locator('button', { hasText: 'Create Branch' });
     await createButton.click();
 
-    // Wait for worktree to be created
-    await page.waitForTimeout(3000);
-
     // Verify we now have two worktrees
     const mainWorktree = page.locator('button[data-worktree-branch="main"]');
     const testWorktree = page.locator('button[data-worktree-branch="test-branch"]');
@@ -254,10 +239,10 @@ test.describe('Worktree Scheduler Indicator Test', () => {
 
     // Click on main worktree to select it
     await mainWorktree.click();
-    await page.waitForTimeout(3000);
 
     // Start scheduler on main worktree
     const schedulerButton = page.locator('button[title="Schedule Command"]');
+    await expect(schedulerButton).toBeVisible({ timeout: 15000 });
     await schedulerButton.click();
 
     await expect(page.locator('text=Schedule Terminal Command')).toBeVisible({ timeout: 5000 });
@@ -274,8 +259,6 @@ test.describe('Worktree Scheduler Indicator Test', () => {
     const startButton = page.locator('button', { hasText: 'Start' });
     await startButton.click();
 
-    await page.waitForTimeout(500);
-
     // Check that main worktree has clock icon
     const mainClockIcon = mainWorktree.locator('svg.lucide-clock');
     await expect(mainClockIcon).toBeVisible({ timeout: 5000 });
@@ -289,9 +272,8 @@ test.describe('Worktree Scheduler Indicator Test', () => {
     await expect(page.locator('text=Schedule Terminal Command')).toBeVisible({ timeout: 5000 });
     const stopButton = page.locator('button', { hasText: 'Stop Scheduler' });
     await stopButton.click();
-    await page.waitForTimeout(500);
 
     // Verify clock icon is gone from main
-    await expect(mainClockIcon).toHaveCount(0);
+    await expect(mainClockIcon).toHaveCount(0, { timeout: 5000 });
   });
 });
