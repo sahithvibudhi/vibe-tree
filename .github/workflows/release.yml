@@ -55,11 +55,12 @@ jobs:
           version: 8
 
       # The node-gyp bundled with pnpm 8 does not recognize the Visual Studio
-      # version on current windows-latest images; use an up-to-date one
+      # version on current windows-latest images. Pinned to 11: node-gyp 12+
+      # requires Node 22, and this workflow builds with Node 20
       - name: Use current node-gyp (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          npm install -g node-gyp@latest
+          npm install -g node-gyp@11
           "npm_config_node_gyp=$(npm root -g)\node-gyp\bin\node-gyp.js" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Install setuptools for Python (macOS)
