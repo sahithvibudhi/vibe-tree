@@ -4,7 +4,7 @@
   "description": "VibeTree Desktop Application",
   "main": "dist/main/index.js",
   "scripts": {
-    "predev": "cd ../../packages/core && pnpm build && cd ../../apps/desktop && pnpm copy:assets",
+    "predev": "rm -f .dev-port && cd ../../packages/core && pnpm build && cd ../../apps/desktop && pnpm copy:assets",
     "dev": "concurrently \"pnpm dev:main\" \"pnpm dev:preload\" \"pnpm dev:renderer\" \"pnpm dev:electron\"",
     "dev:debug": "DEBUG_LAYOUT=true concurrently \"pnpm dev:main\" \"pnpm dev:preload\" \"DEBUG_LAYOUT=true pnpm dev:renderer\" \"pnpm dev:electron:debug\"",
     "dev:main": "tsc -w -p tsconfig.main.json",

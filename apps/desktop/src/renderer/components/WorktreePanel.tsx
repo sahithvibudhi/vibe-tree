@@ -389,34 +389,39 @@ export function WorktreePanel({
   };
 
   return (
-    <div className="border-r flex flex-col h-full relative" style={{ width: `${panelWidth}px` }}>
-      <div className="h-[57px] px-4 border-b flex-shrink-0 flex flex-col justify-center">
-        <div className="flex items-center justify-between">
-          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Worktrees
-          </h3>
-          <div className="flex gap-1">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7"
-              onClick={loadWorktrees}
-              disabled={refreshing}
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7"
-              onClick={() => setShowNewBranchDialog(true)}
-              data-testid="add-worktree-button"
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+    <div
+      className="border-r border-border/60 bg-muted/30 flex flex-col h-full relative"
+      style={{ width: `${panelWidth}px` }}
+    >
+      {/* Single slim row aligned with the pane headers; the project path
+          lives in the tooltip instead of a second line */}
+      <div className="h-10 pl-3 pr-1.5 border-b border-border/60 flex-shrink-0 flex items-center justify-between gap-2">
+        <h3
+          className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate"
+          title={projectPath}
+        >
+          Worktrees
+        </h3>
+        <div className="flex gap-0.5 text-muted-foreground">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6"
+            onClick={loadWorktrees}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6"
+            onClick={() => setShowNewBranchDialog(true)}
+            data-testid="add-worktree-button"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
         </div>
-        <p className="text-xs text-muted-foreground truncate">{projectPath}</p>
       </div>
 
       <ScrollArea className="flex-1 h-0">

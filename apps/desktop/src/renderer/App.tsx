@@ -177,11 +177,11 @@ function AppContent() {
                 <TabsTrigger
                   key={project.id}
                   value={project.id}
-                  className="relative my-1.5 h-7 rounded-md px-2.5 pr-7 text-xs font-medium text-muted-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground"
+                  className="group relative h-6 rounded-md px-2.5 pr-6 text-xs font-medium text-muted-foreground hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground"
                 >
                   {project.name}
                   <span
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-4 w-4 p-0.5 hover:bg-muted rounded cursor-pointer inline-flex items-center justify-center"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-4 w-4 p-0.5 rounded cursor-pointer inline-flex items-center justify-center opacity-0 group-hover:opacity-100 group-data-[state=active]:opacity-60 hover:!opacity-100 hover:bg-muted transition-opacity"
                     onClick={(e) => handleCloseProject(e, project.id)}
                   >
                     <X className="h-3 w-3" />
@@ -193,9 +193,9 @@ function AppContent() {
               size="icon"
               variant="ghost"
               onClick={handleOpenProjectDialog}
-              className="h-7 w-7"
+              className="h-6 w-6 text-muted-foreground"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
             </Button>
           </TitleBar>
 
