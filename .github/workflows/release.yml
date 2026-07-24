@@ -74,9 +74,10 @@ jobs:
         run: pnpm build
         timeout-minutes: 10
 
+      # Runs where electron and @electron/rebuild are installed; a bare npx
+      # at the repo root cannot find electron's version under pnpm
       - name: Rebuild native dependencies
-        run: |
-          npx electron-rebuild
+        run: pnpm --filter @vibetree/desktop exec electron-rebuild
         shell: bash
 
       - name: Build executables
