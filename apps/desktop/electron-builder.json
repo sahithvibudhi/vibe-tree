@@ -6,6 +6,7 @@
   },
   "files": ["dist/**/*", "package.json", "assets/icons/**/*"],
   "publish": null,
+  "npmRebuild": false,
   "mac": {
     "category": "public.app-category.developer-tools",
     "hardenedRuntime": true,

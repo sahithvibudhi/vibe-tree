@@ -23,6 +23,9 @@ permissions:
 jobs:
   build:
     strategy:
+      # Every platform runs to completion so one failure cannot hide the
+      # others' results
+      fail-fast: false
       matrix:
         # windows-2022 rather than windows-latest: the 2025 image only has
         # Visual Studio 2026, which no node-gyp release recognizes yet, so
@@ -88,18 +91,22 @@ jobs:
         run: pnpm package:desktop
         timeout-minutes: 20
 
+      # Output lands in apps/desktop/release since the monorepo move; an
+      # empty upload must fail loudly instead of shipping an assetless
+      # release
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}-executables
+          if-no-files-found: error
           path: |
-            release/*.dmg
-            release/*.AppImage
-            release/*.exe
-            release/*.deb
-            release/*.rpm
-            release/*.zip
-            release/*.tar.gz
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.deb
+            apps/desktop/release/*.rpm
+            apps/desktop/release/*.zip
+            apps/desktop/release/*.tar.gz
 
   release:
     needs: build
@@ -114,12 +121,13 @@ jobs:
         uses: actions/download-artifact@v4
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             mac-executables/*
             linux-executables/*
             win-executables/*
+          fail_on_unmatched_files: true
           tag_name: ${{ inputs.tag || github.ref_name }}
           target_commitish: ${{ github.sha }}
           body: ${{ inputs.notes }}
