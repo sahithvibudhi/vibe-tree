@@ -73,21 +73,22 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     }, dummyRepoPath);
 
     await openButton.click();
-    await page.waitForTimeout(3000);
+    await expect(page.locator('button[data-worktree-branch="main"]')).toBeVisible({
+      timeout: 15000
+    });
 
     // Click on the test-branch worktree
     const testWorktreeButton = page.locator('button[data-worktree-branch="test-branch"]');
     await expect(testWorktreeButton).toBeVisible({ timeout: 5000 });
     await testWorktreeButton.click();
-    await page.waitForTimeout(3000);
 
     // Wait for terminal to be ready and type a command to ensure PTY is active
     const terminalScreen = page.locator('.xterm-screen').first();
-    await expect(terminalScreen).toBeVisible({ timeout: 5000 });
+    await expect(terminalScreen).toBeVisible({ timeout: 15000 });
     await terminalScreen.click();
     await page.keyboard.type('echo "Terminal is active"');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(2000);
+    await expect(terminalScreen).toContainText('Terminal is active', { timeout: 15000 });
 
     // Verify the terminal output
     const terminalContent = await terminalScreen.textContent();
@@ -97,7 +98,7 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     const splitButton = page.locator('button[title="Split Terminal Vertically"]').first();
     await expect(splitButton).toBeVisible();
     await splitButton.click();
-    await page.waitForTimeout(2000);
+    await expect(page.locator('.claude-terminal-root')).toHaveCount(2, { timeout: 10000 });
 
     // Verify we have 2 terminals
     const terminalCount = await page.locator('.claude-terminal-root').count();
@@ -108,10 +109,16 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     await secondTerminalScreen.click();
     await page.keyboard.type('echo "Second terminal active"');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(2000);
+    await expect(secondTerminalScreen).toContainText('Second terminal active', {
+      timeout: 15000
+    });
 
-    // Now find and click the delete button for test-branch worktree
-    const deleteButton = testWorktreeButton.locator('..').locator('button[class*="bg-red"]');
+    // Now find and click the delete button for test-branch worktree; it is
+    // revealed on row hover
+    await testWorktreeButton.hover();
+    const deleteButton = testWorktreeButton
+      .locator('..')
+      .locator('[data-testid="delete-worktree-button"]');
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
 
@@ -127,8 +134,6 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     await expect(deletePermanentlyButton).toBeVisible();
     await deletePermanentlyButton.click();
 
-    // Wait for deletion reporting dialog to appear
-    await page.waitForTimeout(500);
 
     // Check for either "Deleting Worktree" or "Deletion Complete" title
     const deletionDialog = page
@@ -149,11 +154,9 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
       page.locator('h2').filter({ hasText: /Deletion Complete|Deletion Failed/ })
     ).toBeVisible({ timeout: 10000 });
 
-    // Wait a bit more to see all steps
-    await page.waitForTimeout(1000);
-
     // Verify success indicators (green checkmarks)
     const successIcons = page.locator('svg.lucide-check-circle');
+    await expect(successIcons.first()).toBeVisible({ timeout: 5000 });
     const successCount = await successIcons.count();
     expect(successCount).toBeGreaterThanOrEqual(1); // At least one step should succeed
 
@@ -164,7 +167,6 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
 
     // Click close to dismiss the dialog
     await closeButton.click();
-    await page.waitForTimeout(500);
 
     // Verify deletion reporting dialog is closed
     await expect(
@@ -179,8 +181,8 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     const mainWorktreeButton = page.locator('button[data-worktree-branch="main"]');
     await expect(mainWorktreeButton).toBeVisible();
 
-    // Check if main is selected (has bg-accent class)
-    const mainButtonClasses = await mainWorktreeButton.locator('..').getAttribute('class');
+    // Check if main is selected (has bg-accent class on the row button)
+    const mainButtonClasses = await mainWorktreeButton.getAttribute('class');
     expect(mainButtonClasses).toContain('bg-accent');
 
     // Verify the worktree directory was actually deleted
@@ -213,7 +215,9 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     }, dummyRepoPath);
 
     await openButton.click();
-    await page.waitForTimeout(3000);
+    await expect(page.locator('button[data-worktree-branch="main"]')).toBeVisible({
+      timeout: 15000
+    });
 
     // Verify both worktrees are visible
     const mainWorktreeButton = page.locator('button[data-worktree-branch="main"]');
@@ -223,10 +227,13 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
 
     // Click on test-branch but don't open terminal (no PTY to kill)
     await testWorktreeButton.click();
-    await page.waitForTimeout(2000);
+    await expect(testWorktreeButton).toHaveClass(/bg-accent/);
 
     // Find and click the delete button
-    const deleteButton = testWorktreeButton.locator('..').locator('button[class*="bg-red"]');
+    await testWorktreeButton.hover();
+    const deleteButton = testWorktreeButton
+      .locator('..')
+      .locator('[data-testid="delete-worktree-button"]');
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
 
@@ -235,8 +242,6 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     const deletePermanentlyButton = page.locator('button', { hasText: 'Delete Permanently' });
     await deletePermanentlyButton.click();
 
-    // Wait for deletion reporting dialog
-    await page.waitForTimeout(500);
     const deletionDialog = page
       .locator('h2')
       .filter({ hasText: /Deleting Worktree|Deletion Complete/ });
@@ -281,13 +286,18 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     }, dummyRepoPath);
 
     await openButton.click();
-    await page.waitForTimeout(3000);
+    await expect(page.locator('button[data-worktree-branch="main"]')).toBeVisible({
+      timeout: 15000
+    });
 
     // Find and click the delete button for test-branch
     const testWorktreeButton = page.locator('button[data-worktree-branch="test-branch"]');
     await expect(testWorktreeButton).toBeVisible({ timeout: 5000 });
 
-    const deleteButton = testWorktreeButton.locator('..').locator('button[class*="bg-red"]');
+    await testWorktreeButton.hover();
+    const deleteButton = testWorktreeButton
+      .locator('..')
+      .locator('[data-testid="delete-worktree-button"]');
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
 
@@ -331,17 +341,18 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     }, dummyRepoPath);
 
     await openButton.click();
-    await page.waitForTimeout(3000);
+    await expect(page.locator('button[data-worktree-branch="main"]')).toBeVisible({
+      timeout: 15000
+    });
 
     // Click on the test-branch worktree to create a terminal
     const testWorktreeButton = page.locator('button[data-worktree-branch="test-branch"]');
     await expect(testWorktreeButton).toBeVisible({ timeout: 5000 });
     await testWorktreeButton.click();
-    await page.waitForTimeout(3000);
 
     // Wait for terminal to be ready
     const terminalScreen = page.locator('.xterm-screen').first();
-    await expect(terminalScreen).toBeVisible({ timeout: 5000 });
+    await expect(terminalScreen).toBeVisible({ timeout: 15000 });
 
     // Lock the worktree so 'git worktree remove --force' genuinely fails.
     // (Git operations now run in the embedded server, so there is no IPC
@@ -349,7 +360,10 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     execSync(`git worktree lock "${testWorktreePath}"`, { cwd: dummyRepoPath });
 
     // Now find and click the delete button
-    const deleteButton = testWorktreeButton.locator('..').locator('button[class*="bg-red"]');
+    await testWorktreeButton.hover();
+    const deleteButton = testWorktreeButton
+      .locator('..')
+      .locator('[data-testid="delete-worktree-button"]');
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
 
@@ -361,8 +375,6 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
     await expect(deletePermanentlyButton).toBeVisible();
     await deletePermanentlyButton.click();
 
-    // Wait for deletion reporting dialog to appear
-    await page.waitForTimeout(500);
     await expect(page.locator('h2').filter({ hasText: /Deleting Worktree|Deletion/ })).toBeVisible({
       timeout: 5000
     });
@@ -379,9 +391,6 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
       .first()
       .textContent();
     console.log('Dialog title:', dialogTitle);
-
-    // Wait a bit for error icons to render
-    await page.waitForTimeout(500);
 
     // Verify error indicators (red X icons) are visible
     // Note: lucide-react uses 'lucide-xcircle' (no hyphen) for XCircle icon
@@ -409,7 +418,6 @@ test.describe('Worktree Deletion with PTY Cleanup', () => {
 
     // Click close to dismiss the dialog
     await closeButton.click();
-    await page.waitForTimeout(500);
 
     // Verify deletion reporting dialog is closed
     await expect(page.locator('h2', { hasText: /Deleting Worktree|Deletion/ })).not.toBeVisible();
