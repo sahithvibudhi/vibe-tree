@@ -54,9 +54,6 @@ jobs:
         with:
           version: 8
 
-      - name: Clean pnpm cache
-        run: pnpm store prune
-
       # The node-gyp bundled with pnpm 8 does not recognize the Visual Studio
       # version on current windows-latest images; use an up-to-date one
       - name: Use current node-gyp (Windows)
