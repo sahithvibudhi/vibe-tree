@@ -1,0 +1,88 @@
+:root {
+  --bg: #0d0d0d;
+  --chrome: #141414;
+  --card: #1a1a1a;
+  --line: rgba(255, 255, 255, 0.09);
+  --text: #ededed;
+  --muted: #8f8f8f;
+  --faint: #5c5c5c;
+  --live: #34d399;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--text); font-family: var(--sans);
+  -webkit-font-smoothing: antialiased; line-height: 1.65;
+}
+.layout { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; max-width: 1100px; margin: 0 auto; }
+@media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+
+/* Sidebar */
+aside {
+  border-right: 1px solid var(--line); padding: 26px 22px;
+}
+@media (max-width: 800px) { aside { border-right: none; border-bottom: 1px solid var(--line); padding-bottom: 18px; } }
+.wordmark {
+  display: flex; align-items: center; gap: 9px; font-weight: 600; font-size: 14.5px;
+  color: var(--text); text-decoration: none; margin-bottom: 28px;
+}
+.wordmark .glyph {
+  width: 20px; height: 20px; border: 1px solid var(--line); border-radius: 5px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 11px; color: var(--live); background: var(--chrome);
+}
+aside .group {
+  font-size: 10.5px; letter-spacing: 0.13em; text-transform: uppercase;
+  color: var(--faint); margin: 22px 0 8px;
+}
+aside a.item {
+  display: block; color: var(--muted); text-decoration: none; font-size: 13.5px;
+  padding: 5px 8px; border-radius: 6px; margin-left: -8px;
+}
+aside a.item:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
+aside a.item.active { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+
+/* Content */
+main { padding: 40px 48px 90px; min-width: 0; }
+@media (max-width: 800px) { main { padding: 28px 22px 70px; } }
+main .crumb { font-family: var(--mono); font-size: 12px; color: var(--live); margin-bottom: 10px; }
+h1 { font-size: 30px; font-weight: 650; letter-spacing: -0.025em; line-height: 1.15; margin-bottom: 10px; }
+.lead { color: var(--muted); font-size: 15.5px; margin-bottom: 34px; max-width: 60ch; }
+h2 { font-size: 19px; font-weight: 620; letter-spacing: -0.015em; margin: 38px 0 10px; }
+h3 { font-size: 15.5px; font-weight: 600; margin: 26px 0 8px; }
+p { font-size: 14.5px; color: var(--muted); margin-bottom: 12px; max-width: 68ch; }
+p strong { color: var(--text); font-weight: 600; }
+a { color: var(--text); text-underline-offset: 3px; }
+ul, ol { margin: 0 0 14px 22px; }
+li { font-size: 14.5px; color: var(--muted); margin-bottom: 5px; }
+li code, p code, td code {
+  font-family: var(--mono); font-size: 12.5px; color: var(--text);
+  background: rgba(255, 255, 255, 0.06); border-radius: 4px; padding: 1.5px 5px;
+}
+pre {
+  background: #000000; border: 1px solid var(--line); border-radius: 9px;
+  padding: 14px 16px; margin: 12px 0 18px; overflow-x: auto;
+}
+pre code { font-family: var(--mono); font-size: 12.5px; color: var(--text); line-height: 1.7; background: none; padding: 0; }
+pre .c { color: var(--faint); }
+pre .g { color: var(--live); }
+table { border-collapse: collapse; width: 100%; margin: 12px 0 20px; font-size: 13.5px; }
+th {
+  text-align: left; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--faint); font-weight: 600; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line);
+}
+td { padding: 9px 14px 9px 0; border-bottom: 1px solid var(--line); color: var(--muted); vertical-align: top; }
+td:first-child { font-family: var(--mono); font-size: 12.5px; color: var(--text); white-space: nowrap; }
+.note {
+  border: 1px solid var(--line); border-left: 2px solid var(--live); border-radius: 8px;
+  background: var(--chrome); padding: 12px 16px; margin: 14px 0 18px;
+}
+.note p { margin: 0; font-size: 13.5px; }
+.pager { display: flex; justify-content: space-between; margin-top: 54px; gap: 12px; }
+.pager a {
+  border: 1px solid var(--line); border-radius: 9px; padding: 11px 16px; text-decoration: none;
+  font-size: 13.5px; color: var(--muted); background: var(--chrome); flex: 0 1 auto;
+}
+.pager a:hover { color: var(--text); }
+.pager .dir { display: block; font-family: var(--mono); font-size: 10.5px; color: var(--faint); margin-bottom: 2px; }

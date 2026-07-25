@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLI - VibeTree Docs</title>
+<meta name="description" content="The vibetree command line client: manage worktrees, check agent status, and launch agents from any terminal.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23141414'/%3E%3Ctext x='16' y='21' text-anchor='middle' font-family='monospace' font-size='13' fill='%2334d399'%3E%3E_%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<div class="layout">
+<aside>
+<a class="wordmark" href="../index.html"><span class="glyph">&gt;_</span>VibeTree</a>
+<p class="group">Start</p>
+<a class="item" href="index.html">Getting started</a>
+<a class="item" href="server.html">Run the server anywhere</a>
+<p class="group">Reference</p>
+<a class="item active" href="cli.html">CLI</a>
+<a class="item" href="hooks.html">Worktree hooks</a>
+<a class="item" href="config.html">Configuration</a>
+<p class="group">Help</p>
+<a class="item" href="troubleshooting.html">Troubleshooting</a>
+</aside>
+<main>
+
+<p class="crumb">docs / cli</p>
+<h1>CLI</h1>
+<p class="lead">The <code>vibetree</code> CLI is a thin client for a running VibeTree server: the desktop app's embedded server or a standalone one.</p>
+
+<h2>Install</h2>
+<pre><code><span class="g">$</span> npm install -g vibe-tree</code></pre>
+
+<h2>Commands</h2>
+<pre><code>vibetree worktrees list                 <span class="c"># list worktrees</span>
+vibetree worktrees add &lt;branch&gt;         <span class="c"># create a worktree</span>
+vibetree worktrees remove &lt;branch&gt;      <span class="c"># remove a worktree</span>
+vibetree status                         <span class="c"># live sessions and agent states</span>
+vibetree run &lt;branch&gt; ["prompt"]        <span class="c"># start a session, launch the preset agent, send the prompt</span></code></pre>
+
+<h2>Flags</h2>
+<table>
+<tr><th>Flag</th><th>Meaning</th></tr>
+<tr><td>--project &lt;path&gt;</td><td>Project repository. Defaults to the current directory.</td></tr>
+<tr><td>--server &lt;url&gt;</td><td>Server URL. Defaults to <code>$VIBETREE_SERVER</code> or http://localhost:3002.</td></tr>
+<tr><td>--token &lt;token&gt;</td><td>Auth token for servers with auth enabled. Also read from <code>$VIBETREE_TOKEN</code>.</td></tr>
+<tr><td>--agent &lt;cmd&gt;</td><td>Override the project's agent command. Applies to run only.</td></tr>
+<tr><td>--delay &lt;seconds&gt;</td><td>Boot delay before sending the prompt. Default 4.</td></tr>
+</table>
+
+<h2>Example</h2>
+<pre><code><span class="c"># kick off an agent on a fresh branch and walk away</span>
+<span class="g">$</span> vibetree worktrees add fix-login-race
+<span class="g">$</span> vibetree run fix-login-race "fix the login race condition, add a regression test"
+<span class="c"># session keeps running server-side; open it in the app to watch</span></code></pre>
+
+<div class="pager">
+<a href="server.html"><span class="dir">previous</span>Run the server anywhere</a>
+<a href="hooks.html" style="text-align:right"><span class="dir">next</span>Worktree hooks</a>
+</div>
+</main>
+</div>
+</body>
+</html>

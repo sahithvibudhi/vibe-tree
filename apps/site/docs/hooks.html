@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worktree hooks - VibeTree Docs</title>
+<meta name="description" content="Run project setup and cleanup scripts automatically when worktrees are created and removed.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23141414'/%3E%3Ctext x='16' y='21' text-anchor='middle' font-family='monospace' font-size='13' fill='%2334d399'%3E%3E_%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<div class="layout">
+<aside>
+<a class="wordmark" href="../index.html"><span class="glyph">&gt;_</span>VibeTree</a>
+<p class="group">Start</p>
+<a class="item" href="index.html">Getting started</a>
+<a class="item" href="server.html">Run the server anywhere</a>
+<p class="group">Reference</p>
+<a class="item" href="cli.html">CLI</a>
+<a class="item active" href="hooks.html">Worktree hooks</a>
+<a class="item" href="config.html">Configuration</a>
+<p class="group">Help</p>
+<a class="item" href="troubleshooting.html">Troubleshooting</a>
+</aside>
+<main>
+
+<p class="crumb">docs / hooks</p>
+<h1>Worktree hooks</h1>
+<p class="lead">Hooks are executable scripts in your repository that VibeTree runs around the worktree lifecycle. Use them to make every new worktree ready for an agent with zero manual setup.</p>
+
+<h2>Locations</h2>
+<table>
+<tr><th>Hook</th><th>Runs</th></tr>
+<tr><td>.vibetree/hooks/post-create</td><td>After a worktree is created, with the new worktree as the working directory.</td></tr>
+<tr><td>.vibetree/hooks/pre-remove</td><td>Before a worktree is removed. A failing pre-remove warns but never blocks deletion.</td></tr>
+</table>
+<p>Hooks must be executable (<code>chmod +x</code>). They exist per repository, so commit them to share with your team.</p>
+
+<h2>Environment</h2>
+<table>
+<tr><th>Variable</th><th>Value</th></tr>
+<tr><td>VIBETREE_HOOK</td><td>The hook name, post-create or pre-remove.</td></tr>
+<tr><td>VIBETREE_PROJECT_PATH</td><td>The main repository path.</td></tr>
+<tr><td>VIBETREE_WORKTREE_PATH</td><td>The worktree the hook is running for.</td></tr>
+<tr><td>VIBETREE_BRANCH</td><td>The worktree's branch.</td></tr>
+</table>
+<p>Hooks time out after 120 seconds. Output is captured and shown in the app.</p>
+
+<h2>Example post-create</h2>
+<pre><code>#!/bin/sh
+<span class="c"># .vibetree/hooks/post-create: make the worktree agent-ready</span>
+pnpm install
+cp "$VIBETREE_PROJECT_PATH/.env" .env</code></pre>
+
+<div class="pager">
+<a href="cli.html"><span class="dir">previous</span>CLI</a>
+<a href="config.html" style="text-align:right"><span class="dir">next</span>Configuration</a>
+</div>
+</main>
+</div>
+</body>
+</html>
