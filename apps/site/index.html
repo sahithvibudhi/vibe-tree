@@ -23,6 +23,16 @@
     src: url("fonts/InstrumentSerif-Italic.ttf") format("truetype");
     font-weight: 400; font-style: italic; font-display: swap;
   }
+  @font-face {
+    font-family: "Instrument Sans";
+    src: url("fonts/InstrumentSans-Variable.ttf") format("truetype-variations");
+    font-weight: 400 700; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: "Instrument Sans";
+    src: url("fonts/InstrumentSans-Italic-Variable.ttf") format("truetype-variations");
+    font-weight: 400 700; font-style: italic; font-display: swap;
+  }
   :root {
     --bg: #0d0d0d;
     --chrome: #141414;
@@ -33,7 +43,7 @@
     --faint: #5c5c5c;
     --live: #34d399;
     --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
-    --sans: ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --sans: "Instrument Sans", ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
     --serif: "Instrument Serif", Georgia, serif;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -92,12 +102,13 @@
     box-shadow: 0 0 8px rgba(52, 211, 153, 0.7);
   }
   h1 {
-    font-size: clamp(38px, 5.4vw, 62px); line-height: 1.06;
-    letter-spacing: -0.032em; font-weight: 650;
+    font-family: var(--serif); font-weight: 400;
+    font-size: clamp(42px, 6vw, 70px); line-height: 1.05;
+    letter-spacing: -0.012em;
   }
   h1 .quiet {
-    font-family: var(--serif); font-style: italic; font-weight: 400;
-    font-size: 1.14em; letter-spacing: -0.01em;
+    font-style: italic;
+    letter-spacing: -0.008em;
     background: linear-gradient(105deg, #f4f5f8 15%, #b9bcc4 45%, #7c7f88 85%);
     -webkit-background-clip: text; background-clip: text; color: transparent;
     padding-right: 0.08em;
@@ -190,7 +201,10 @@
     .row.flip .copy { order: 1; } .row.flip .media { order: 2; }
   }
   .copy .k { font-family: var(--mono); font-size: 12px; color: var(--live); display: block; margin-bottom: 12px; }
-  .copy h2 { font-size: 27px; font-weight: 640; letter-spacing: -0.025em; line-height: 1.2; margin-bottom: 10px; }
+  .copy h2 {
+    font-family: var(--serif); font-weight: 400; font-size: 31px;
+    letter-spacing: -0.008em; line-height: 1.14; margin-bottom: 10px;
+  }
   .copy p { font-size: 15px; color: var(--muted); max-width: 40ch; }
   .media {
     border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
@@ -216,7 +230,7 @@
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
   }
   .play svg { margin-left: 4px; }
-  .demo-overlay .t { font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
+  .demo-overlay .t { font-family: var(--serif); font-size: 20px; font-weight: 400; letter-spacing: 0; }
   .demo-overlay .s { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: -12px; }
 
   /* Bento */
@@ -279,6 +293,19 @@
   footer .f-links { display: flex; gap: 22px; }
   footer .f-links a { color: var(--muted); font-size: 12.5px; text-decoration: none; }
   footer .f-links a:hover { color: var(--text); }
+
+  /* Small screens: tighter gutters, a shorter nav, and no line the
+     viewport cannot fit (the brew command is the usual offender) */
+  @media (max-width: 640px) {
+    .wrap { padding: 0 20px; }
+    nav { padding: 18px 0; }
+    .nav-links { gap: 16px; }
+    .nav-links a.hide-sm { display: none; }
+    .hero { padding: 60px 0 40px; }
+    .btn.brew { font-size: 12px; padding: 10px 12px; }
+    .os { border-right: none; border-bottom: 1px solid var(--line); }
+    .os:last-child { border-bottom: none; }
+  }
 </style>
 </head>
 <body>
@@ -287,8 +314,8 @@
   <nav>
     <span class="wordmark"><span class="glyph">&gt;_</span>VibeTree</span>
     <div class="nav-links">
-      <a href="#features">Features</a>
-      <a href="#faq">FAQ</a>
+      <a class="hide-sm" href="#features">Features</a>
+      <a class="hide-sm" href="#faq">FAQ</a>
       <a href="docs/">Docs</a>
       <a href="#install">Install</a>
       <a class="gh" href="https://github.com/sahithvibudhi/vibe-tree">GitHub</a>
