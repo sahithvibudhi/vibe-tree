@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://sahithvibudhi.github.io/vibe-tree/</loc><priority>1.0</priority></url>
+  <url><loc>https://sahithvibudhi.github.io/vibe-tree/docs/</loc><priority>0.9</priority></url>
+  <url><loc>https://sahithvibudhi.github.io/vibe-tree/docs/server.html</loc><priority>0.7</priority></url>
+  <url><loc>https://sahithvibudhi.github.io/vibe-tree/docs/cli.html</loc><priority>0.7</priority></url>
+  <url><loc>https://sahithvibudhi.github.io/vibe-tree/docs/hooks.html</loc><priority>0.7</priority></url>
+  <url><loc>https://sahithvibudhi.github.io/vibe-tree/docs/config.html</loc><priority>0.7</priority></url>
+  <url><loc>https://sahithvibudhi.github.io/vibe-tree/docs/troubleshooting.html</loc><priority>0.6</priority></url>
+</urlset>

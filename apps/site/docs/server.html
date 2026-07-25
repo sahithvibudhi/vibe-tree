@@ -6,6 +6,15 @@
 <title>Run the server anywhere - VibeTree Docs</title>
 <meta name="description" content="Run the VibeTree server on a VM or home server, secure it with auth, and pair your phone.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23141414'/%3E%3Ctext x='16' y='21' text-anchor='middle' font-family='monospace' font-size='13' fill='%2334d399'%3E%3E_%3C/text%3E%3C/svg%3E">
+<link rel="canonical" href="https://sahithvibudhi.github.io/vibe-tree/docs/server.html">
+<meta name="theme-color" content="#0d0d0d">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://sahithvibudhi.github.io/vibe-tree/docs/server.html">
+<meta property="og:site_name" content="VibeTree">
+<meta property="og:title" content="Run the server anywhere - VibeTree Docs">
+<meta property="og:description" content="Run the VibeTree server on a VM or home server, secure it with auth, and pair your phone.">
+<meta property="og:image" content="https://sahithvibudhi.github.io/vibe-tree/social-card.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="docs.css">
 </head>
 <body>
@@ -34,10 +43,6 @@
 <span class="g">$</span> pnpm install && pnpm build
 <span class="g">$</span> pnpm start:server</code></pre>
 <p>The server starts on port 3002, serves the web app, and prints local and network URLs plus a QR code for pairing. Open the URL from any device on the network.</p>
-
-<h2>Docker</h2>
-<pre><code><span class="g">$</span> docker compose up --build</code></pre>
-<p>The compose file builds the web app and server into one container. Mount your projects directory as a volume so the server can see your repositories.</p>
 
 <h2>Enable auth</h2>
 <p>The server is open by default, which is fine on localhost. If you bind it to a network, turn auth on:</p>

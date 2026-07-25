@@ -7,11 +7,21 @@
 <meta name="description" content="VibeTree runs each AI coding agent in an isolated git worktree, in parallel. Fleet status, persistent sessions, and review built in. Free and open source.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23141414'/%3E%3Ctext x='16' y='21' text-anchor='middle' font-family='monospace' font-size='13' fill='%2334d399'%3E%3E_%3C/text%3E%3C/svg%3E">
 <link rel="canonical" href="https://sahithvibudhi.github.io/vibe-tree/">
+<meta name="theme-color" content="#0d0d0d">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://sahithvibudhi.github.io/vibe-tree/">
+<meta property="og:site_name" content="VibeTree">
 <meta property="og:title" content="VibeTree - Every agent gets a worktree">
 <meta property="og:description" content="Run AI coding agents in parallel, one isolated git worktree each. Free and open source.">
-<meta property="og:image" content="https://sahithvibudhi.github.io/vibe-tree/app-dark.png">
+<meta property="og:image" content="https://sahithvibudhi.github.io/vibe-tree/social-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="VibeTree - Every agent gets a worktree">
+<meta name="twitter:description" content="Run AI coding agents in parallel, one isolated git worktree each. Free and open source.">
+<meta name="twitter:image" content="https://sahithvibudhi.github.io/vibe-tree/social-card.png">
+<link rel="preload" href="fonts/InstrumentSerif-Regular.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="fonts/InstrumentSans-Variable.ttf" as="font" type="font/ttf" crossorigin>
 <style>
   @font-face {
     font-family: "Instrument Serif";
@@ -52,7 +62,10 @@
     background: var(--bg); color: var(--text); font-family: var(--sans);
     -webkit-font-smoothing: antialiased; line-height: 1.6;
   }
-  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 32px; }
+  /* .wrap owns horizontal gutters only; sections own vertical rhythm via
+     longhand paddings. Never use the padding shorthand on either, or one
+     silently wipes out the other (that bug shipped once already) */
+  .wrap { max-width: 1060px; margin: 0 auto; padding-left: 32px; padding-right: 32px; }
 
   /* Motion */
   @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
@@ -81,7 +94,7 @@
   }
 
   /* Hero */
-  .hero { padding: 84px 0 48px; text-align: center; position: relative; }
+  .hero { padding-top: 84px; padding-bottom: 48px; text-align: center; position: relative; }
   /* Faint dot grid, fading out toward the edges */
   .hero::before {
     content: ""; position: absolute; inset: -20px 0 0 0; pointer-events: none; z-index: -1;
@@ -121,17 +134,15 @@
   }
   .btn.primary { background: var(--text); color: #101010; }
   .btn.primary:hover { background: #ffffff; }
-  .btn.brew {
-    font-family: var(--mono); font-size: 13px; color: var(--muted);
-    border: 1px solid var(--line); background: var(--chrome);
+  .btn.ghost {
+    color: var(--muted); border: 1px solid var(--line); background: var(--chrome);
   }
-  .btn.brew:hover { color: var(--text); }
-  .btn.brew .prompt { color: var(--live); }
+  .btn.ghost:hover { color: var(--text); }
   .platforms { margin-top: 16px; font-size: 12.5px; color: var(--faint); }
   .platforms a { color: var(--faint); }
 
   /* Hero shot with silver beam */
-  .shot { padding: 28px 0 20px; position: relative; }
+  .shot { padding-top: 28px; padding-bottom: 20px; position: relative; }
   .shot .halo {
     position: absolute; inset: -40px 10% 20% 10%; pointer-events: none;
     background: radial-gradient(55% 60% at 50% 30%, rgba(52, 211, 153, 0.06), transparent 70%);
@@ -177,7 +188,7 @@
   .beam img { display: block; width: 100%; height: auto; }
 
   /* Agents strip */
-  .agents { padding: 40px 0 8px; text-align: center; }
+  .agents { padding-top: 40px; padding-bottom: 8px; text-align: center; }
   .agents .label {
     font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
     color: var(--faint); margin-bottom: 16px;
@@ -188,7 +199,7 @@
   }
 
   /* Feature showcase rows */
-  .show { padding: 90px 0 10px; }
+  .show { padding-top: 90px; padding-bottom: 10px; }
   .row {
     display: grid; grid-template-columns: 5fr 7fr; gap: 48px; align-items: center;
     margin-bottom: 84px;
@@ -213,28 +224,22 @@
   .media img { display: block; width: 100%; height: auto; }
 
   /* Demo */
-  .demo { padding: 40px 0 90px; }
+  .demo { padding-top: 40px; padding-bottom: 90px; }
+  .demo h2 {
+    font-family: var(--serif); font-weight: 400; font-size: 31px;
+    letter-spacing: -0.01em; text-align: center; margin-bottom: 40px;
+  }
   .demo-frame {
-    position: relative; border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
-    background: var(--chrome); cursor: pointer;
+    border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+    background: var(--chrome); box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
   }
-  .demo-frame img { display: block; width: 100%; height: auto; opacity: 0.35; filter: saturate(0.7); }
-  .demo-overlay {
-    position: absolute; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 18px;
-    background: radial-gradient(60% 70% at 50% 50%, rgba(13, 13, 13, 0.15), rgba(13, 13, 13, 0.7));
+  .demo-frame video { display: block; width: 100%; height: auto; }
+  .demo-cap {
+    text-align: center; font-size: 13.5px; color: var(--muted); margin-top: 16px;
   }
-  .play {
-    width: 72px; height: 72px; border-radius: 999px; background: rgba(237, 237, 237, 0.95);
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
-  }
-  .play svg { margin-left: 4px; }
-  .demo-overlay .t { font-family: var(--serif); font-size: 20px; font-weight: 400; letter-spacing: 0; }
-  .demo-overlay .s { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: -12px; }
 
   /* Bento */
-  .bento { padding: 0 0 90px; }
+  .bento { padding-bottom: 90px; }
   .bento h2, .faq h2, .install h2 {
     font-family: var(--serif); font-weight: 400; font-size: 31px;
     letter-spacing: -0.01em; text-align: center; margin-bottom: 40px;
@@ -250,7 +255,7 @@
   .b p code { font-family: var(--mono); font-size: 12px; color: var(--text); }
 
   /* FAQ */
-  .faq { padding: 0 0 90px; }
+  .faq { padding-bottom: 90px; }
   .faq-list { max-width: 720px; margin: 0 auto; }
   details {
     border-bottom: 1px solid var(--line); padding: 4px 2px;
@@ -267,7 +272,7 @@
   details p code { font-family: var(--mono); font-size: 12.5px; color: var(--text); }
 
   /* Install */
-  .install { padding: 0 0 96px; }
+  .install { padding-bottom: 96px; }
   .install-box {
     border: 1px solid var(--line); border-radius: 12px; background: var(--chrome);
     display: grid; grid-template-columns: 1fr 1fr 1fr; overflow: hidden;
@@ -294,15 +299,22 @@
   footer .f-links a { color: var(--muted); font-size: 12.5px; text-decoration: none; }
   footer .f-links a:hover { color: var(--text); }
 
-  /* Small screens: tighter gutters, a shorter nav, and no line the
-     viewport cannot fit (the brew command is the usual offender) */
+  /* Small screens: tighter gutters, a shorter nav, and a deliberate
+     vertical rhythm of roughly 60px between blocks. Longhand only */
   @media (max-width: 640px) {
-    .wrap { padding: 0 20px; }
+    .wrap { padding-left: 20px; padding-right: 20px; }
     nav { padding: 18px 0; }
     .nav-links { gap: 16px; }
     .nav-links a.hide-sm { display: none; }
-    .hero { padding: 60px 0 40px; }
-    .btn.brew { font-size: 12px; padding: 10px 12px; }
+    .hero { padding-top: 60px; padding-bottom: 40px; }
+    .agents { padding-top: 36px; }
+    .show { padding-top: 64px; }
+    .row, .row.flip { margin-bottom: 64px; }
+    .demo { padding-top: 4px; padding-bottom: 64px; }
+    .bento { padding-bottom: 64px; }
+    .faq { padding-bottom: 64px; }
+    .install { padding-bottom: 72px; }
+    .bento h2, .faq h2, .install h2 { margin-bottom: 28px; }
     .os { border-right: none; border-bottom: 1px solid var(--line); }
     .os:last-child { border-bottom: none; }
   }
@@ -329,7 +341,7 @@
   <p class="sub rise d3">Run them in parallel, from one window.</p>
   <div class="cta rise d4">
     <a class="btn primary" href="https://github.com/sahithvibudhi/vibe-tree/releases/latest">Download for macOS</a>
-    <a class="btn brew" href="#install"><span class="prompt">$</span> brew install sahithvibudhi/tap/vibetree</a>
+    <a class="btn ghost" href="docs/">Read the docs</a>
   </div>
   <p class="platforms rise d4">Also for <a href="#install">Windows</a> and <a href="#install">Linux</a>. Free and open source.</p>
 </header>
@@ -355,7 +367,7 @@
       <h2>Know who needs you</h2>
       <p>A dot per agent: working, waiting, done. A ding when one asks a question.</p>
     </div>
-    <div class="media"><img src="app-dark.png" alt="Worktree sidebar with live agent status"></div>
+    <div class="media"><img src="app-dark.png" alt="Worktree sidebar with live agent status" width="1200" height="773" loading="lazy" decoding="async"></div>
   </div>
 
   <div class="row flip">
@@ -364,7 +376,7 @@
       <h2>Review without leaving</h2>
       <p>The diff lives next to the terminal. Click a file, send a note back as the agent's next prompt.</p>
     </div>
-    <div class="media"><img src="feat-changes.png" alt="Side by side diff in the Changes dock"></div>
+    <div class="media"><img src="feat-changes.png" alt="Side by side diff in the Changes dock" width="1200" height="773" loading="lazy" decoding="async"></div>
   </div>
 
   <div class="row">
@@ -373,21 +385,21 @@
       <h2>Close the window, not the work</h2>
       <p>Sessions live on a local server. Split panes, reload, switch devices: everything is still running.</p>
     </div>
-    <div class="media"><img src="feat-split.png" alt="Split terminals in one worktree"></div>
+    <div class="media"><img src="feat-split.png" alt="Split terminals in one worktree" width="1200" height="773" loading="lazy" decoding="async"></div>
   </div>
 </section>
 
-<section class="demo wrap">
-  <div class="demo-frame" title="Demo video placeholder">
-    <img src="app-dark.png" alt="VibeTree demo video">
-    <div class="demo-overlay">
-      <div class="play">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="#101010"><path d="M8 5v14l11-7z"/></svg>
-      </div>
-      <span class="t">Watch the 90 second tour</span>
-      <span class="s">coming with v0.2.0</span>
-    </div>
+<section class="demo wrap" id="demo">
+  <h2>See it work</h2>
+  <div class="demo-frame">
+    <video poster="demo-poster.jpg" width="1280" height="800"
+      autoplay muted loop playsinline controls preload="metadata"
+      aria-label="VibeTree demo: creating a worktree, launching an agent, and reviewing the diff">
+      <source src="demo.mp4" type="video/mp4">
+      <source src="demo.webm" type="video/webm">
+    </video>
   </div>
+  <p class="demo-cap">A worktree per agent, live status in the sidebar, and the diff one click away.</p>
 </section>
 
 <section class="bento wrap">
@@ -427,7 +439,7 @@
     </details>
     <details>
       <summary>Why does macOS say the app is from an unidentified developer?<span class="chev">+</span></summary>
-      <p>Builds are not yet notarized with an Apple Developer ID. Install with <code>brew install --cask --no-quarantine sahithvibudhi/tap/vibetree</code>, or approve the app once under System Settings, Privacy and Security.</p>
+      <p>Builds are not yet notarized with an Apple Developer ID. Approve the app once under System Settings, Privacy and Security, Open Anyway, or install with <code>brew install --cask --no-quarantine sahithvibudhi/tap/vibetree</code>.</p>
     </details>
   </div>
 </section>
@@ -451,7 +463,7 @@
       <h4>Linux</h4>
       <p>AppImage and deb</p>
       <a class="get" href="https://github.com/sahithvibudhi/vibe-tree/releases/latest">Download AppImage</a>
-      <p class="alt">$ npm i -g vibe-tree for the CLI</p>
+      <p class="alt">chmod +x the AppImage, then run it</p>
     </div>
   </div>
 </section>
@@ -479,6 +491,22 @@
     {"@type": "Question", "name": "Can I check on agents from my phone?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. The web app is an installable PWA served by the same local server, paired by QR code."}},
     {"@type": "Question", "name": "Why does macOS say the app is from an unidentified developer?", "acceptedAnswer": {"@type": "Answer", "text": "Builds are not yet notarized with an Apple Developer ID. Install via Homebrew with the no-quarantine flag or approve the app once in System Settings."}}
   ]
+}
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "VibeTree",
+  "operatingSystem": "macOS, Windows, Linux",
+  "applicationCategory": "DeveloperApplication",
+  "description": "Run AI coding agents in parallel, one isolated git worktree each. Desktop app, web app, and CLI.",
+  "url": "https://sahithvibudhi.github.io/vibe-tree/",
+  "downloadUrl": "https://github.com/sahithvibudhi/vibe-tree/releases/latest",
+  "softwareVersion": "0.2.0",
+  "license": "https://opensource.org/licenses/MIT",
+  "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}
 }
 </script>
 
