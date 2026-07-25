@@ -21,9 +21,11 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    # No environment declaration on purpose. Enabling Pages in branch mode
+    # creates a github-pages environment restricted to gh-pages, which
+    # rejects any job from main that claims that environment before a
+    # single step runs. deploy-pages only needs the pages and id-token
+    # permissions granted above.
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -62,7 +64,6 @@ jobs:
 
       - name: Deploy
         if: steps.probe.outputs.mode == 'artifact'
-        id: deployment
         uses: actions/deploy-pages@v4
 
       - name: Publish to gh-pages branch
