@@ -13,6 +13,16 @@
 <meta property="og:image" content="https://sahithvibudhi.github.io/vibe-tree/app-dark.png">
 <meta name="twitter:card" content="summary_large_image">
 <style>
+  @font-face {
+    font-family: "Instrument Serif";
+    src: url("fonts/InstrumentSerif-Regular.ttf") format("truetype");
+    font-weight: 400; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: "Instrument Serif";
+    src: url("fonts/InstrumentSerif-Italic.ttf") format("truetype");
+    font-weight: 400; font-style: italic; font-display: swap;
+  }
   :root {
     --bg: #0d0d0d;
     --chrome: #141414;
@@ -24,6 +34,7 @@
     --live: #34d399;
     --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
     --sans: ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --serif: "Instrument Serif", Georgia, serif;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -60,7 +71,15 @@
   }
 
   /* Hero */
-  .hero { padding: 84px 0 48px; text-align: center; }
+  .hero { padding: 84px 0 48px; text-align: center; position: relative; }
+  /* Faint dot grid, fading out toward the edges */
+  .hero::before {
+    content: ""; position: absolute; inset: -20px 0 0 0; pointer-events: none; z-index: -1;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1.4px);
+    background-size: 26px 26px;
+    -webkit-mask-image: radial-gradient(58% 68% at 50% 42%, #000 0%, transparent 78%);
+    mask-image: radial-gradient(58% 68% at 50% 42%, #000 0%, transparent 78%);
+  }
   .pill {
     display: inline-flex; align-items: center; gap: 8px;
     font-family: var(--mono); font-size: 12px; color: var(--muted);
@@ -76,7 +95,13 @@
     font-size: clamp(38px, 5.4vw, 62px); line-height: 1.06;
     letter-spacing: -0.032em; font-weight: 650;
   }
-  h1 .quiet { color: var(--faint); }
+  h1 .quiet {
+    font-family: var(--serif); font-style: italic; font-weight: 400;
+    font-size: 1.14em; letter-spacing: -0.01em;
+    background: linear-gradient(105deg, #f4f5f8 15%, #b9bcc4 45%, #7c7f88 85%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    padding-right: 0.08em;
+  }
   .sub { color: var(--muted); font-size: 17.5px; max-width: 46ch; margin: 24px auto 0; }
   .cta { display: flex; gap: 12px; justify-content: center; margin-top: 36px; flex-wrap: wrap; }
   .btn {
@@ -197,7 +222,8 @@
   /* Bento */
   .bento { padding: 0 0 90px; }
   .bento h2, .faq h2, .install h2 {
-    font-size: 26px; font-weight: 640; letter-spacing: -0.025em; text-align: center; margin-bottom: 40px;
+    font-family: var(--serif); font-weight: 400; font-size: 31px;
+    letter-spacing: -0.01em; text-align: center; margin-bottom: 40px;
   }
   .bento-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
   @media (max-width: 860px) { .bento-grid { grid-template-columns: 1fr; } }

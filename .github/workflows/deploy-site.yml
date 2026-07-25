@@ -1,4 +1,4 @@
-name: Deploy Site
+name: Deploy Site and Docs
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -28,17 +28,66 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # The site is plain static files, so there is no build step to break
+      # The artifact path only works when a human has set the Pages source
+      # to GitHub Actions; the workflow token is not allowed to create the
+      # Pages site itself. Probe the real state and fall back to the
+      # gh-pages branch, which GitHub publishes for public repos without
+      # any settings changes.
+      - name: Probe Pages configuration
+        id: probe
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          status=$(curl -s -o /tmp/pages.json -w '%{http_code}' \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pages")
+          build_type=$(jq -r '.build_type // empty' /tmp/pages.json 2>/dev/null || true)
+          echo "pages api status=$status build_type=$build_type"
+          if [ "$status" = "200" ] && [ "$build_type" = "workflow" ]; then
+            echo "mode=artifact" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=branch" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Configure Pages
+        if: steps.probe.outputs.mode == 'artifact'
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload site
+        if: steps.probe.outputs.mode == 'artifact'
         uses: actions/upload-pages-artifact@v3
         with:
           path: apps/site
 
       - name: Deploy
+        if: steps.probe.outputs.mode == 'artifact'
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Publish to gh-pages branch
+        if: steps.probe.outputs.mode == 'branch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd apps/site
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "deploy site and docs from ${GITHUB_SHA}"
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
+
+      # Best effort: if a Pages site exists but serves another branch, aim
+      # it at gh-pages; harmless when the token lacks permission
+      - name: Align Pages source
+        if: steps.probe.outputs.mode == 'branch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -s -X PUT \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pages" \
+            -d '{"source":{"branch":"gh-pages","path":"/"}}' > /dev/null || true
+          echo "site publishes at https://sahithvibudhi.github.io/vibe-tree/"
