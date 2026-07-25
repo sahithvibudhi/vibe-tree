@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configuration - VibeTree Docs</title>
+<meta name="description" content="Server environment variables, project agent presets, and keyboard shortcuts.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23141414'/%3E%3Ctext x='16' y='21' text-anchor='middle' font-family='monospace' font-size='13' fill='%2334d399'%3E%3E_%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<div class="layout">
+<aside>
+<a class="wordmark" href="../index.html"><span class="glyph">&gt;_</span>VibeTree</a>
+<p class="group">Start</p>
+<a class="item" href="index.html">Getting started</a>
+<a class="item" href="server.html">Run the server anywhere</a>
+<p class="group">Reference</p>
+<a class="item" href="cli.html">CLI</a>
+<a class="item" href="hooks.html">Worktree hooks</a>
+<a class="item active" href="config.html">Configuration</a>
+<p class="group">Help</p>
+<a class="item" href="troubleshooting.html">Troubleshooting</a>
+</aside>
+<main>
+
+<p class="crumb">docs / configuration</p>
+<h1>Configuration</h1>
+<p class="lead">Everything configurable, in one place.</p>
+
+<h2>Server environment variables</h2>
+<table>
+<tr><th>Variable</th><th>Default</th><th>Meaning</th></tr>
+<tr><td>PORT</td><td>3002</td><td>Port the server listens on.</td></tr>
+<tr><td>AUTH_REQUIRED</td><td>false</td><td>Require login for the web app and API.</td></tr>
+<tr><td>VIBETREE_USERNAME</td><td></td><td>Username when auth is enabled.</td></tr>
+<tr><td>VIBETREE_PASSWORD</td><td></td><td>Password when auth is enabled.</td></tr>
+<tr><td>VIBETREE_PROJECTS_ROOT</td><td></td><td>Directories the server browser and repo discovery may list, comma separated.</td></tr>
+<tr><td>SESSION_IDLE_TIMEOUT_MS</td><td>86400000</td><td>Idle time before a session is cleaned up. Default 24 hours.</td></tr>
+</table>
+
+<h2>Project config</h2>
+<p><code>.vibetree/config.json</code> lives in your repository and is safe to commit:</p>
+<pre><code>{
+  "agentCommand": "claude"
+}</code></pre>
+<p>The agent command gets a one click launch button in every terminal of the project, and <code>vibetree run</code> uses it as the default agent.</p>
+
+<h2>Keyboard shortcuts</h2>
+<table>
+<tr><th>Shortcut</th><th>Action</th></tr>
+<tr><td>Cmd/Ctrl+Shift+K</td><td>New worktree</td></tr>
+<tr><td>Cmd/Ctrl+Shift+E</td><td>Toggle the Changes view</td></tr>
+<tr><td>Cmd/Ctrl+Alt+Up/Down</td><td>Previous or next worktree</td></tr>
+<tr><td>Cmd/Ctrl+B</td><td>Toggle the sidebar (desktop)</td></tr>
+<tr><td>?</td><td>Show shortcuts (web)</td></tr>
+</table>
+
+<div class="pager">
+<a href="hooks.html"><span class="dir">previous</span>Worktree hooks</a>
+<a href="troubleshooting.html" style="text-align:right"><span class="dir">next</span>Troubleshooting</a>
+</div>
+</main>
+</div>
+</body>
+</html>

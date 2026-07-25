@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Run the server anywhere - VibeTree Docs</title>
+<meta name="description" content="Run the VibeTree server on a VM or home server, secure it with auth, and pair your phone.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23141414'/%3E%3Ctext x='16' y='21' text-anchor='middle' font-family='monospace' font-size='13' fill='%2334d399'%3E%3E_%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<div class="layout">
+<aside>
+<a class="wordmark" href="../index.html"><span class="glyph">&gt;_</span>VibeTree</a>
+<p class="group">Start</p>
+<a class="item" href="index.html">Getting started</a>
+<a class="item active" href="server.html">Run the server anywhere</a>
+<p class="group">Reference</p>
+<a class="item" href="cli.html">CLI</a>
+<a class="item" href="hooks.html">Worktree hooks</a>
+<a class="item" href="config.html">Configuration</a>
+<p class="group">Help</p>
+<a class="item" href="troubleshooting.html">Troubleshooting</a>
+</aside>
+<main>
+
+<p class="crumb">docs / server</p>
+<h1>Run the server anywhere</h1>
+<p class="lead">The desktop app embeds the VibeTree server. You can also run the same server standalone on a VM, a home server, or a spare machine, and use VibeTree from any browser or phone.</p>
+
+<h2>Standalone server</h2>
+<pre><code><span class="c"># on the machine that has your repositories</span>
+<span class="g">$</span> git clone https://github.com/sahithvibudhi/vibe-tree && cd vibe-tree
+<span class="g">$</span> pnpm install && pnpm build
+<span class="g">$</span> pnpm start:server</code></pre>
+<p>The server starts on port 3002, serves the web app, and prints local and network URLs plus a QR code for pairing. Open the URL from any device on the network.</p>
+
+<h2>Docker</h2>
+<pre><code><span class="g">$</span> docker compose up --build</code></pre>
+<p>The compose file builds the web app and server into one container. Mount your projects directory as a volume so the server can see your repositories.</p>
+
+<h2>Enable auth</h2>
+<p>The server is open by default, which is fine on localhost. If you bind it to a network, turn auth on:</p>
+<pre><code><span class="g">$</span> AUTH_REQUIRED=true \
+  VIBETREE_USERNAME=you \
+  VIBETREE_PASSWORD=a-strong-password \
+  pnpm start:server</code></pre>
+<p>The web app then shows a login page, and API and terminal traffic require a token. The CLI passes it with <code>--token</code> or <code>$VIBETREE_TOKEN</code>.</p>
+
+<h2>Phone</h2>
+<p>Open the server URL on your phone and install the web app when the browser offers it; it is a full PWA. Scan the QR code the server prints to skip typing the address. Terminals, agent states, and diffs all work from the phone, and sessions keep running when you lock the screen.</p>
+
+<h2>Remote access</h2>
+<p>For access from outside your network, put the server behind something you already trust: Tailscale is the simplest (the server URL just works inside your tailnet), or a reverse proxy with TLS if you have one. Keep auth enabled for anything reachable beyond localhost.</p>
+
+<h2>Sessions</h2>
+<p>Terminal sessions live in the server, not in any window. Browsers can disconnect and reconnect freely; scrollback replays on reattach. Idle sessions are cleaned up after 24 hours by default, configurable with <code>SESSION_IDLE_TIMEOUT_MS</code>.</p>
+
+<div class="pager">
+<a href="index.html"><span class="dir">previous</span>Getting started</a>
+<a href="cli.html" style="text-align:right"><span class="dir">next</span>CLI</a>
+</div>
+</main>
+</div>
+</body>
+</html>

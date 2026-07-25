@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troubleshooting - VibeTree Docs</title>
+<meta name="description" content="Fixes for the most common VibeTree issues.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23141414'/%3E%3Ctext x='16' y='21' text-anchor='middle' font-family='monospace' font-size='13' fill='%2334d399'%3E%3E_%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<div class="layout">
+<aside>
+<a class="wordmark" href="../index.html"><span class="glyph">&gt;_</span>VibeTree</a>
+<p class="group">Start</p>
+<a class="item" href="index.html">Getting started</a>
+<a class="item" href="server.html">Run the server anywhere</a>
+<p class="group">Reference</p>
+<a class="item" href="cli.html">CLI</a>
+<a class="item" href="hooks.html">Worktree hooks</a>
+<a class="item" href="config.html">Configuration</a>
+<p class="group">Help</p>
+<a class="item active" href="troubleshooting.html">Troubleshooting</a>
+</aside>
+<main>
+
+<p class="crumb">docs / troubleshooting</p>
+<h1>Troubleshooting</h1>
+<p class="lead">The short list of things that go wrong, and the fix for each.</p>
+
+<h2>macOS blocks the app</h2>
+<p>Builds are not yet notarized with an Apple Developer ID, so Gatekeeper flags the first launch. Either install through Homebrew with <code>--no-quarantine</code>, or launch once and approve the app under System Settings, Privacy and Security, Open Anyway.</p>
+
+<h2>Port already in use</h2>
+<p>The standalone server defaults to port 3002. Pick another with <code>PORT=3010 pnpm start:server</code>. The desktop app's embedded server always uses a free ephemeral port, so it never conflicts.</p>
+
+<h2>A session will not go away</h2>
+<p>Sessions are server-side by design; closing a window does not kill them. Close the terminal from the app (the x button in the terminal header) to terminate the process, or let the idle cleanup reap it after 24 hours.</p>
+
+<h2>Dev build fails with spawn npx EACCES</h2>
+<p>Fixed in 0.2.0. Pull the latest main and run <code>pnpm install</code> once, then <code>pnpm dev:desktop</code>.</p>
+
+<h2>The worktree list shows a branch that no longer exists</h2>
+<p>Press the refresh button in the Worktrees sidebar. If a worktree was deleted outside VibeTree, run <code>git worktree prune</code> in the repository.</p>
+
+<h2>Something else</h2>
+<p>Open an issue on <a href="https://github.com/sahithvibudhi/vibe-tree/issues">GitHub</a> with what you did, what you expected, and what happened. Logs from the terminal panel help.</p>
+
+<div class="pager">
+<a href="config.html"><span class="dir">previous</span>Configuration</a>
+</div>
+</main>
+</div>
+</body>
+</html>
