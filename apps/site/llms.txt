@@ -1,0 +1,21 @@
+# VibeTree
+
+> Run AI coding agents in parallel, one isolated git worktree each. A free, MIT licensed desktop app, web app, and CLI. Works with Claude Code, OpenAI Codex CLI, Gemini CLI, Aider, opencode, and any other terminal program.
+
+VibeTree gives every agent its own git worktree: an isolated checkout with its own branch and a persistent terminal, so several agents can work on one repository without touching each other's files. Sessions live on a local server and survive reloads and reconnects. Everything runs on the user's machine; there is no cloud component and no telemetry.
+
+## Docs
+
+- [Getting started](https://sahithvibudhi.github.io/vibe-tree/docs/): install on macOS, Windows, or Linux, open a project, create a worktree, launch an agent
+- [Run the server anywhere](https://sahithvibudhi.github.io/vibe-tree/docs/server.html): standalone server on a VM or home server, auth, phone pairing, remote access
+- [CLI](https://sahithvibudhi.github.io/vibe-tree/docs/cli.html): the vibetree command line client, commands, flags
+- [Worktree hooks](https://sahithvibudhi.github.io/vibe-tree/docs/hooks.html): post-create and pre-remove scripts, environment variables
+- [Configuration](https://sahithvibudhi.github.io/vibe-tree/docs/config.html): server environment variables, project agent presets, keyboard shortcuts
+- [Troubleshooting](https://sahithvibudhi.github.io/vibe-tree/docs/troubleshooting.html): common issues and fixes
+
+## Project
+
+- [Website](https://sahithvibudhi.github.io/vibe-tree/)
+- [GitHub repository](https://github.com/sahithvibudhi/vibe-tree)
+- [Releases](https://github.com/sahithvibudhi/vibe-tree/releases)
+- [Full docs as plain text](https://sahithvibudhi.github.io/vibe-tree/llms-full.txt)
