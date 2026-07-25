@@ -1,0 +1,232 @@
+# VibeTree documentation
+
+Run AI coding agents in parallel, one isolated git worktree each. Desktop app, web app, and CLI. MIT licensed, no cloud component, no telemetry. Website: https://sahithvibudhi.github.io/vibe-tree/ GitHub: https://github.com/sahithvibudhi/vibe-tree
+
+
+## Getting started
+
+VibeTree runs each AI coding agent in its own git worktree. This page takes you from install to your first agent in a few minutes.
+
+### Install
+
+#### macOS
+
+Download the dmg from the latest release (Intel and Apple Silicon), or install through the Homebrew tap:
+
+```
+$ brew install --cask --no-quarantine sahithvibudhi/tap/vibetree
+```
+
+Note: Builds are not yet notarized by Apple. If macOS blocks the app, approve it once under System Settings, Privacy and Security, or use the brew command above which skips the quarantine flag.
+
+#### Windows
+
+Download the Setup exe from the latest release. No admin rights required.
+
+#### Linux
+
+Download the AppImage or deb from the latest release.
+
+### Open a project
+
+Launch VibeTree and pick any git repository with Open Project Folder. Projects open as tabs in the titlebar, so you can keep several open at once.
+
+### Create a worktree
+
+Press the `+` button in the Worktrees sidebar, or `Cmd/Ctrl+Shift+K`, and name a branch. VibeTree runs `git worktree add` and opens an isolated checkout with its own terminal. Create one worktree per task or per agent; they never touch each other's files.
+
+### Launch an agent
+
+Type your agent command in the terminal, for example `claude`, `codex`, or `aider`. To make it one click, save it as the project's agent preset: open project settings and set the agent command, which is stored in `.vibetree/config.json` and shared with your team.
+The sidebar shows each worktree's state while agents run: a green dot for a live session, a badge with the changed file count, and a ding when an agent asks a question or finishes.
+
+### Review and ship
+
+Switch to the Changes view to see the diff beside the terminal. Click a file and send a note straight back to the agent as its next prompt. When the work is good, commit and push from the same terminal.
+
+## Run the server anywhere
+
+The desktop app embeds the VibeTree server. You can also run the same server standalone on a VM, a home server, or a spare machine, and use VibeTree from any browser or phone.
+
+### Standalone server
+
+```
+# on the machine that has your repositories
+$ git clone https://github.com/sahithvibudhi/vibe-tree && cd vibe-tree
+$ pnpm install && pnpm build
+$ pnpm start:server
+```
+
+The server starts on port 3002, serves the web app, and prints local and network URLs plus a QR code for pairing. Open the URL from any device on the network.
+
+### Enable auth
+
+The server is open by default, which is fine on localhost. If you bind it to a network, turn auth on:
+
+```
+$ AUTH_REQUIRED=true \
+  VIBETREE_USERNAME=you \
+  VIBETREE_PASSWORD=a-strong-password \
+  pnpm start:server
+```
+
+The web app then shows a login page, and API and terminal traffic require a token. The CLI passes it with `--token` or `$VIBETREE_TOKEN`.
+
+### Phone
+
+Open the server URL on your phone and install the web app when the browser offers it; it is a full PWA. Scan the QR code the server prints to skip typing the address. Terminals, agent states, and diffs all work from the phone, and sessions keep running when you lock the screen.
+
+### Remote access
+
+For access from outside your network, put the server behind something you already trust: Tailscale is the simplest (the server URL just works inside your tailnet), or a reverse proxy with TLS if you have one. Keep auth enabled for anything reachable beyond localhost.
+
+### Sessions
+
+Terminal sessions live in the server, not in any window. Browsers can disconnect and reconnect freely; scrollback replays on reattach. Idle sessions are cleaned up after 24 hours by default, configurable with `SESSION_IDLE_TIMEOUT_MS`.
+
+## CLI
+
+The `vibetree` CLI is a thin client for a running VibeTree server: the desktop app's embedded server or a standalone one.
+
+### Install
+
+The CLI ships with the repository. Build it once from a checkout:
+
+```
+$ git clone https://github.com/sahithvibudhi/vibe-tree && cd vibe-tree
+$ pnpm install && pnpm build
+$ node packages/cli/dist/index.js status
+```
+
+Add an alias to call it as `vibetree` from anywhere:
+
+```
+$ alias vibetree="node /path/to/vibe-tree/packages/cli/dist/index.js"
+```
+
+### Commands
+
+```
+vibetree worktrees list                 # list worktrees
+vibetree worktrees add          # create a worktree
+vibetree worktrees remove       # remove a worktree
+vibetree status                         # live sessions and agent states
+vibetree run  ["prompt"]        # start a session, launch the preset agent, send the prompt
+```
+
+### Flags
+
+| Flag | Meaning |
+|---|---|
+| --project <path> | Project repository. Defaults to the current directory. |
+| --server <url> | Server URL. Defaults to $VIBETREE_SERVER or http://localhost:3002. |
+| --token <token> | Auth token for servers with auth enabled. Also read from $VIBETREE_TOKEN. |
+| --agent <cmd> | Override the project's agent command. Applies to run only. |
+| --delay <seconds> | Boot delay before sending the prompt. Default 4. |
+
+### Example
+
+```
+# kick off an agent on a fresh branch and walk away
+$ vibetree worktrees add fix-login-race
+$ vibetree run fix-login-race "fix the login race condition, add a regression test"
+# session keeps running server-side; open it in the app to watch
+```
+
+## Worktree hooks
+
+Hooks are executable scripts in your repository that VibeTree runs around the worktree lifecycle. Use them to make every new worktree ready for an agent with zero manual setup.
+
+### Locations
+
+| Hook | Runs |
+|---|---|
+| .vibetree/hooks/post-create | After a worktree is created, with the new worktree as the working directory. |
+| .vibetree/hooks/pre-remove | Before a worktree is removed. A failing pre-remove warns but never blocks deletion. |
+
+Hooks must be executable (`chmod +x`). They exist per repository, so commit them to share with your team.
+
+### Environment
+
+| Variable | Value |
+|---|---|
+| VIBETREE_HOOK | The hook name, post-create or pre-remove. |
+| VIBETREE_PROJECT_PATH | The main repository path. |
+| VIBETREE_WORKTREE_PATH | The worktree the hook is running for. |
+| VIBETREE_BRANCH | The worktree's branch. |
+
+Hooks time out after 120 seconds. Output is captured and shown in the app.
+
+### Example post-create
+
+```
+#!/bin/sh
+# .vibetree/hooks/post-create: make the worktree agent-ready
+pnpm install
+cp "$VIBETREE_PROJECT_PATH/.env" .env
+```
+
+## Configuration
+
+Everything configurable, in one place.
+
+### Server environment variables
+
+| Variable | Default | Meaning |
+|---|---|---|
+| PORT | 3002 | Port the server listens on. |
+| AUTH_REQUIRED | false | Require login for the web app and API. |
+| VIBETREE_USERNAME |  | Username when auth is enabled. |
+| VIBETREE_PASSWORD |  | Password when auth is enabled. |
+| VIBETREE_PROJECTS_ROOT |  | Directories the server browser and repo discovery may list, comma separated. |
+| SESSION_IDLE_TIMEOUT_MS | 86400000 | Idle time before a session is cleaned up. Default 24 hours. |
+
+### Project config
+
+`.vibetree/config.json` lives in your repository and is safe to commit:
+
+```
+{
+  "agentCommand": "claude"
+}
+```
+
+The agent command gets a one click launch button in every terminal of the project, and `vibetree run` uses it as the default agent.
+
+### Keyboard shortcuts
+
+| Shortcut | Action |
+|---|---|
+| Cmd/Ctrl+Shift+K | New worktree |
+| Cmd/Ctrl+Shift+E | Toggle the Changes view |
+| Cmd/Ctrl+Alt+Up/Down | Previous or next worktree |
+| Cmd/Ctrl+B | Toggle the sidebar (desktop) |
+| ? | Show shortcuts (web) |
+
+## Troubleshooting
+
+The short list of things that go wrong, and the fix for each.
+
+### macOS blocks the app
+
+Builds are not yet notarized with an Apple Developer ID, so Gatekeeper flags the first launch. Either install through Homebrew with `--no-quarantine`, or launch once and approve the app under System Settings, Privacy and Security, Open Anyway.
+
+### Port already in use
+
+The standalone server defaults to port 3002. Pick another with `PORT=3010 pnpm start:server`. The desktop app's embedded server always uses a free ephemeral port, so it never conflicts.
+
+### A session will not go away
+
+Sessions are server-side by design; closing a window does not kill them. Close the terminal from the app (the x button in the terminal header) to terminate the process, or let the idle cleanup reap it after 24 hours.
+
+### Dev build fails with spawn npx EACCES
+
+Fixed in 0.2.0. Pull the latest main and run `pnpm install` once, then `pnpm dev:desktop`.
+
+### The worktree list shows a branch that no longer exists
+
+Press the refresh button in the Worktrees sidebar. If a worktree was deleted outside VibeTree, run `git worktree prune` in the repository.
+
+### Something else
+
+Open an issue on GitHub with what you did, what you expected, and what happened. Logs from the terminal panel help.

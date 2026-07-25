@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sahithvibudhi.github.io/vibe-tree/sitemap.xml

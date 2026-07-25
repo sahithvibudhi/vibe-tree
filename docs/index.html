@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting started - VibeTree Docs</title>
+<meta name="description" content="Install VibeTree, open a project, create a worktree, and launch your first agent.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23141414'/%3E%3Ctext x='16' y='21' text-anchor='middle' font-family='monospace' font-size='13' fill='%2334d399'%3E%3E_%3C/text%3E%3C/svg%3E">
+<link rel="canonical" href="https://sahithvibudhi.github.io/vibe-tree/docs/">
+<meta name="theme-color" content="#0d0d0d">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://sahithvibudhi.github.io/vibe-tree/docs/">
+<meta property="og:site_name" content="VibeTree">
+<meta property="og:title" content="Getting started - VibeTree Docs">
+<meta property="og:description" content="Install VibeTree, open a project, create a worktree, and launch your first agent.">
+<meta property="og:image" content="https://sahithvibudhi.github.io/vibe-tree/social-card.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<div class="layout">
+<aside>
+<a class="wordmark" href="../index.html"><span class="glyph">&gt;_</span>VibeTree</a>
+<p class="group">Start</p>
+<a class="item active" href="index.html">Getting started</a>
+<a class="item" href="server.html">Run the server anywhere</a>
+<p class="group">Reference</p>
+<a class="item" href="cli.html">CLI</a>
+<a class="item" href="hooks.html">Worktree hooks</a>
+<a class="item" href="config.html">Configuration</a>
+<p class="group">Help</p>
+<a class="item" href="troubleshooting.html">Troubleshooting</a>
+</aside>
+<main>
+
+<p class="crumb">docs / getting started</p>
+<h1>Getting started</h1>
+<p class="lead">VibeTree runs each AI coding agent in its own git worktree. This page takes you from install to your first agent in a few minutes.</p>
+
+<h2>Install</h2>
+<h3>macOS</h3>
+<p>Download the dmg from the <a href="https://github.com/sahithvibudhi/vibe-tree/releases/latest">latest release</a> (Intel and Apple Silicon), or install through the Homebrew tap:</p>
+<pre><code><span class="g">$</span> brew install --cask --no-quarantine sahithvibudhi/tap/vibetree</code></pre>
+<div class="note"><p>Builds are not yet notarized by Apple. If macOS blocks the app, approve it once under System Settings, Privacy and Security, or use the brew command above which skips the quarantine flag.</p></div>
+<h3>Windows</h3>
+<p>Download the Setup exe from the <a href="https://github.com/sahithvibudhi/vibe-tree/releases/latest">latest release</a>. No admin rights required.</p>
+<h3>Linux</h3>
+<p>Download the AppImage or deb from the <a href="https://github.com/sahithvibudhi/vibe-tree/releases/latest">latest release</a>.</p>
+
+<h2>Open a project</h2>
+<p>Launch VibeTree and pick any git repository with <strong>Open Project Folder</strong>. Projects open as tabs in the titlebar, so you can keep several open at once.</p>
+
+<h2>Create a worktree</h2>
+<p>Press the <code>+</code> button in the Worktrees sidebar, or <code>Cmd/Ctrl+Shift+K</code>, and name a branch. VibeTree runs <code>git worktree add</code> and opens an isolated checkout with its own terminal. Create one worktree per task or per agent; they never touch each other's files.</p>
+
+<h2>Launch an agent</h2>
+<p>Type your agent command in the terminal, for example <code>claude</code>, <code>codex</code>, or <code>aider</code>. To make it one click, save it as the project's agent preset: open project settings and set the agent command, which is stored in <code>.vibetree/config.json</code> and shared with your team.</p>
+<p>The sidebar shows each worktree's state while agents run: a green dot for a live session, a badge with the changed file count, and a ding when an agent asks a question or finishes.</p>
+
+<h2>Review and ship</h2>
+<p>Switch to the <strong>Changes</strong> view to see the diff beside the terminal. Click a file and send a note straight back to the agent as its next prompt. When the work is good, commit and push from the same terminal.</p>
+
+<div class="pager">
+<span></span>
+<a href="server.html" style="text-align:right"><span class="dir">next</span>Run the server anywhere</a>
+</div>
+</main>
+</div>
+</body>
+</html>
