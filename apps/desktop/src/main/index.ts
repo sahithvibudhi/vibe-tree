@@ -35,12 +35,13 @@ function createWindow() {
       : {
           titleBarStyle: 'hidden' as const,
           titleBarOverlay: {
-            color: nativeTheme.shouldUseDarkColors ? '#000000' : '#ffffff',
-            symbolColor: nativeTheme.shouldUseDarkColors ? '#ffffff' : '#000000',
+            // Matches the dark ash chrome (--background 0 0% 8%)
+            color: nativeTheme.shouldUseDarkColors ? '#141414' : '#ffffff',
+            symbolColor: nativeTheme.shouldUseDarkColors ? '#ededed' : '#000000',
             height: 40
           }
         }),
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#000000' : '#ffffff',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#141414' : '#ffffff',
     icon: path.join(__dirname, '../../assets/icons/VibeTree.png'),
     title: windowTitle,
     webPreferences: {
